@@ -439,7 +439,8 @@
     margin-bottom: var(--spacing-sm);
 }
 
-.validation-item .icon {
+.validation-item .icon,
+.validation-item .validation-icon {
     width: 2rem;
     height: 2rem;
     display: flex;
@@ -449,37 +450,50 @@
     font-size: 0.875rem;
 }
 
-.validation-item .icon.pending {
+.validation-item .icon.pending,
+.validation-item .validation-icon.pending {
     background: var(--bg-secondary);
     color: var(--text-muted);
 }
 
-.validation-item .icon.checking {
+.validation-item .icon.checking,
+.validation-item .validation-icon.checking {
     background: rgba(59, 130, 246, 0.2);
     color: var(--info);
     animation: pulse 1s infinite;
 }
 
-.validation-item .icon.success {
+.validation-item .icon.success,
+.validation-item .validation-icon.success {
     background: rgba(16, 185, 129, 0.2);
     color: var(--success);
 }
 
-.validation-item .icon.error {
+.validation-item .icon.error,
+.validation-item .validation-icon.error {
     background: rgba(239, 68, 68, 0.2);
     color: var(--danger);
 }
 
-.validation-item .content {
+.validation-item .icon.warning,
+.validation-item .validation-icon.warning {
+    background: rgba(251, 191, 36, 0.2);
+    color: var(--warning);
+}
+
+.validation-item .content,
+.validation-item .validation-content {
     flex: 1;
 }
 
-.validation-item .content h4 {
+.validation-item .content h4,
+.validation-item .validation-content h4 {
     font-size: 0.875rem;
     margin-bottom: 0.125rem;
 }
 
-.validation-item .content p {
+.validation-item .content p,
+.validation-item .validation-content p {
     font-size: 0.75rem;
 }
 
