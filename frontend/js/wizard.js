@@ -5,37 +5,69 @@
  */
 
 // Global state
-let currentWizardStep = 1;
-const totalWizardSteps = 5;
-let selectedProvider = 'ollama';
+window.currentWizardStep = 1;
+window.totalWizardSteps = 5;
+window.selectedProvider = 'ollama';
 
 /**
  * Initialize the wizard
  */
-function initWizard() {
-  bindWizardEvents();
+window.initWizard = function() {
+  console.log('Initializing wizard...');
+
+  // Bind all events
+  bindProviderCards();
+  bindCloudToggles();
+  bindChannelToggles();
+  bindOnpremTabs();
+
+  // Load saved config and show first step
   loadSavedWizardConfig();
   showWizardStep(1);
   updateWizardProgress();
-  loadModelsForProvider(selectedProvider);
+
+  // Default to ollama if no provider selected
+  if (!window.selectedProvider) {
+    window.selectedProvider = 'ollama';
+  }
+  selectLLMProvider(window.selectedProvider);
+
+  console.log('Wizard initialized');
+};
+
+/**
+ * Bind provider card click events
+ */
+function bindProviderCards() {
+  const cards = document.querySelectorAll('.provider-card');
+  console.log('Found ' + cards.length + ' provider cards');
+
+  cards.forEach(card => {
+    // Remove any existing listeners
+    card.replaceWith(card.cloneNode(true));
+  });
+
+  // Re-select and bind
+  document.querySelectorAll('.provider-card').forEach(card => {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const provider = this.dataset.provider;
+      console.log('Provider card clicked:', provider);
+      selectLLMProvider(provider);
+    });
+  });
 }
 
 /**
- * Bind event handlers
+ * Bind cloud provider toggles
  */
-function bindWizardEvents() {
-  // Provider selection cards
-  document.querySelectorAll('.provider-card').forEach(card => {
-    card.addEventListener('click', () => {
-      selectLLMProvider(card.dataset.provider);
-    });
-  });
-
-  // Cloud provider toggles
+function bindCloudToggles() {
   ['aws', 'azure', 'gcp', 'onprem'].forEach(provider => {
     const toggle = document.getElementById(`${provider}-enabled`);
     if (toggle) {
-      toggle.addEventListener('change', (e) => {
+      toggle.addEventListener('change', function(e) {
         const config = document.getElementById(`${provider}-config`);
         if (config) {
           config.style.display = e.target.checked ? 'block' : 'none';
@@ -43,12 +75,16 @@ function bindWizardEvents() {
       });
     }
   });
+}
 
-  // Channel toggles
+/**
+ * Bind channel toggles
+ */
+function bindChannelToggles() {
   ['telegram', 'whatsapp', 'slack'].forEach(channel => {
     const toggle = document.getElementById(`${channel}-enabled`);
     if (toggle) {
-      toggle.addEventListener('change', (e) => {
+      toggle.addEventListener('change', function(e) {
         const config = document.getElementById(`${channel}-config`);
         if (config) {
           config.style.display = e.target.checked ? 'block' : 'none';
@@ -56,98 +92,111 @@ function bindWizardEvents() {
       });
     }
   });
-
-  // On-prem tabs
-  document.querySelectorAll('.onprem-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.onprem-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.onprem-content').forEach(c => c.classList.add('hidden'));
-      tab.classList.add('active');
-      const content = document.getElementById(`onprem-${tab.dataset.tab}`);
-      if (content) content.classList.remove('hidden');
-    });
-  });
-
-  // Intent input enter key
-  const intentInput = document.getElementById('intent-input');
-  if (intentInput) {
-    intentInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        submitIntent();
-      }
-    });
-  }
 }
 
 /**
- * Show a specific step
+ * Bind on-prem tabs
  */
-function showWizardStep(stepNum) {
+function bindOnpremTabs() {
+  document.querySelectorAll('.onprem-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.onprem-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.onprem-content').forEach(c => c.classList.add('hidden'));
+      this.classList.add('active');
+      const content = document.getElementById(`onprem-${this.dataset.tab}`);
+      if (content) content.classList.remove('hidden');
+    });
+  });
+}
+
+/**
+ * Show a specific wizard step
+ */
+window.showWizardStep = function(stepNum) {
+  console.log('Showing wizard step:', stepNum);
+
   // Hide all steps
   document.querySelectorAll('.wizard-step').forEach(step => {
     step.classList.remove('active');
+    step.style.display = 'none';
   });
 
   // Show target step
   const targetStep = document.getElementById(`wizard-step-${stepNum}`);
   if (targetStep) {
     targetStep.classList.add('active');
-    currentWizardStep = stepNum;
+    targetStep.style.display = 'block';
+    window.currentWizardStep = stepNum;
     updateWizardProgress();
     updateWizardNavButtons();
 
     // Run validation if on validation step
     if (stepNum === 4) {
-      runValidation();
+      setTimeout(() => runValidation(), 100);
     }
   }
-}
+};
 
 /**
- * Go to next step
+ * Go to next wizard step
  */
-function wizardNext() {
+window.wizardNext = function() {
+  console.log('wizardNext called, current step:', window.currentWizardStep);
+
   // Save current step config
   saveWizardStepConfig();
 
   // Move to next step
-  if (currentWizardStep < totalWizardSteps) {
-    showWizardStep(currentWizardStep + 1);
+  if (window.currentWizardStep < window.totalWizardSteps) {
+    showWizardStep(window.currentWizardStep + 1);
   }
-}
+};
 
 /**
- * Go to previous step
+ * Go to previous wizard step
  */
-function wizardPrev() {
-  if (currentWizardStep > 1) {
-    showWizardStep(currentWizardStep - 1);
+window.wizardPrev = function() {
+  console.log('wizardPrev called, current step:', window.currentWizardStep);
+
+  if (window.currentWizardStep > 1) {
+    showWizardStep(window.currentWizardStep - 1);
   }
-}
+};
 
 /**
  * Skip wizard and go to main app
  */
-function skipWizard() {
+window.skipWizard = function() {
+  console.log('skipWizard called');
+
   // Set default provider to ollama (no API key needed)
   AegisConfig.setValue('llm.provider', 'ollama');
   AegisConfig.setValue('llm.ollama.baseUrl', 'http://localhost:11434');
   AegisConfig.markSetupComplete();
 
   // Hide wizard and show app
-  document.getElementById('setup-wizard').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
+  const wizard = document.getElementById('setup-wizard');
+  const app = document.getElementById('app');
+
+  if (wizard) wizard.classList.add('hidden');
+  if (app) app.classList.remove('hidden');
 
   // Initialize main app
-  initMainApp();
+  if (typeof initMainApp === 'function') {
+    initMainApp();
+  }
 
   Toast.info('Setup skipped. You can configure settings anytime from the Settings page.');
-}
+
+  return false; // Prevent default link behavior
+};
 
 /**
- * Finish wizard
+ * Finish wizard and start the app
  */
-function wizardFinish() {
+window.wizardFinish = function() {
+  console.log('wizardFinish called');
+
   // Save final configuration
   saveWizardStepConfig();
 
@@ -155,14 +204,19 @@ function wizardFinish() {
   AegisConfig.markSetupComplete();
 
   // Hide wizard and show app
-  document.getElementById('setup-wizard').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
+  const wizard = document.getElementById('setup-wizard');
+  const app = document.getElementById('app');
+
+  if (wizard) wizard.classList.add('hidden');
+  if (app) app.classList.remove('hidden');
 
   // Initialize main application
-  initMainApp();
+  if (typeof initMainApp === 'function') {
+    initMainApp();
+  }
 
   Toast.success('Setup complete! Welcome to AEGIS-T2A.');
-}
+};
 
 /**
  * Update progress indicator
@@ -170,7 +224,7 @@ function wizardFinish() {
 function updateWizardProgress() {
   const progressFill = document.getElementById('wizard-progress-fill');
   if (progressFill) {
-    const percentage = ((currentWizardStep - 1) / (totalWizardSteps - 1)) * 100;
+    const percentage = ((window.currentWizardStep - 1) / (window.totalWizardSteps - 1)) * 100;
     progressFill.style.width = `${percentage}%`;
   }
 
@@ -178,9 +232,9 @@ function updateWizardProgress() {
   document.querySelectorAll('.progress-step').forEach((step) => {
     const stepNum = parseInt(step.dataset.step);
     step.classList.remove('active', 'completed');
-    if (stepNum === currentWizardStep) {
+    if (stepNum === window.currentWizardStep) {
       step.classList.add('active');
-    } else if (stepNum < currentWizardStep) {
+    } else if (stepNum < window.currentWizardStep) {
       step.classList.add('completed');
     }
   });
@@ -195,35 +249,39 @@ function updateWizardNavButtons() {
   const finishBtn = document.getElementById('wizard-finish');
 
   if (prevBtn) {
-    prevBtn.disabled = currentWizardStep === 1;
-    prevBtn.style.visibility = currentWizardStep === 1 ? 'hidden' : 'visible';
+    prevBtn.disabled = window.currentWizardStep === 1;
+    prevBtn.style.visibility = window.currentWizardStep === 1 ? 'hidden' : 'visible';
   }
 
   if (nextBtn) {
-    nextBtn.style.display = currentWizardStep === totalWizardSteps ? 'none' : 'inline-flex';
+    nextBtn.style.display = window.currentWizardStep === window.totalWizardSteps ? 'none' : 'inline-flex';
   }
 
   if (finishBtn) {
-    finishBtn.style.display = currentWizardStep === totalWizardSteps ? 'inline-flex' : 'none';
+    finishBtn.style.display = window.currentWizardStep === window.totalWizardSteps ? 'inline-flex' : 'none';
   }
 }
 
 /**
  * Select LLM provider
  */
-function selectLLMProvider(provider) {
-  selectedProvider = provider;
+window.selectLLMProvider = function(provider) {
+  console.log('selectLLMProvider called:', provider);
+  window.selectedProvider = provider;
 
   // Update selection visual
   document.querySelectorAll('.provider-card').forEach(c => {
     c.classList.remove('selected');
   });
   const card = document.querySelector(`.provider-card[data-provider="${provider}"]`);
-  if (card) card.classList.add('selected');
+  if (card) {
+    card.classList.add('selected');
+  }
 
-  // Show/hide API key section
+  // Show API key section
   const apiKeySection = document.getElementById('api-key-section');
-  const apiKeyGroup = document.querySelector('#api-key-section .form-group:first-child');
+  const apiKeyInput = document.getElementById('llm-api-key');
+  const apiKeyGroup = apiKeyInput ? apiKeyInput.closest('.form-group') : null;
   const ollamaUrlGroup = document.getElementById('ollama-url-group');
   const apiKeyLabel = document.getElementById('api-key-label');
   const apiKeyHelp = document.getElementById('api-key-help');
@@ -254,12 +312,12 @@ function selectLLMProvider(provider) {
 
   // Save selection
   AegisConfig.setValue('llm.provider', provider);
-}
+};
 
 /**
  * Load models for a provider
  */
-async function loadModelsForProvider(provider) {
+window.loadModelsForProvider = async function(provider) {
   const modelSelect = document.getElementById('llm-model');
   if (!modelSelect) return;
 
@@ -270,7 +328,14 @@ async function loadModelsForProvider(provider) {
       // Try to load from Ollama server
       const ollamaUrl = document.getElementById('ollama-url')?.value || 'http://localhost:11434';
       try {
-        const response = await fetch(`${ollamaUrl}/api/tags`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const response = await fetch(`${ollamaUrl}/api/tags`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
         if (response.ok) {
           const data = await response.json();
           const models = data.models || [];
@@ -278,24 +343,21 @@ async function loadModelsForProvider(provider) {
             modelSelect.innerHTML = models.map(m =>
               `<option value="${m.name}">${m.name}</option>`
             ).join('');
-          } else {
-            modelSelect.innerHTML = `
-              <option value="llama2">llama2 (pull with: ollama pull llama2)</option>
-              <option value="mistral">mistral</option>
-              <option value="codellama">codellama</option>
-            `;
+            return;
           }
-        } else {
-          throw new Error('Ollama not running');
         }
       } catch (e) {
-        modelSelect.innerHTML = `
-          <option value="llama2">llama2</option>
-          <option value="mistral">mistral</option>
-          <option value="codellama">codellama</option>
-          <option value="llama3">llama3</option>
-        `;
+        console.log('Could not connect to Ollama:', e.message);
       }
+
+      // Fallback models
+      modelSelect.innerHTML = `
+        <option value="llama2">llama2</option>
+        <option value="llama3">llama3</option>
+        <option value="mistral">mistral</option>
+        <option value="codellama">codellama</option>
+        <option value="phi">phi</option>
+      `;
     } else {
       // Use predefined models
       const modelsByProvider = {
@@ -330,12 +392,12 @@ async function loadModelsForProvider(provider) {
     console.error('Failed to load models:', error);
     modelSelect.innerHTML = '<option value="">Failed to load models</option>';
   }
-}
+};
 
 /**
  * Toggle password visibility
  */
-function togglePassword(inputId) {
+window.togglePassword = function(inputId) {
   const input = document.getElementById(inputId);
   if (input) {
     input.type = input.type === 'password' ? 'text' : 'password';
@@ -344,42 +406,60 @@ function togglePassword(inputId) {
       icon.className = input.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
     }
   }
-}
+};
 
 /**
  * Save current step configuration
  */
 function saveWizardStepConfig() {
   // Step 1: LLM Provider
-  if (currentWizardStep === 1) {
+  if (window.currentWizardStep === 1) {
     const apiKey = document.getElementById('llm-api-key')?.value;
     const model = document.getElementById('llm-model')?.value;
     const ollamaUrl = document.getElementById('ollama-url')?.value;
 
-    AegisConfig.setValue('llm.provider', selectedProvider);
+    AegisConfig.setValue('llm.provider', window.selectedProvider);
 
-    if (selectedProvider === 'ollama') {
+    if (window.selectedProvider === 'ollama') {
       AegisConfig.setValue('llm.ollama.baseUrl', ollamaUrl || 'http://localhost:11434');
       AegisConfig.setValue('llm.ollama.model', model);
     } else {
-      AegisConfig.setValue(`llm.${selectedProvider}.apiKey`, apiKey);
-      AegisConfig.setValue(`llm.${selectedProvider}.model`, model);
+      AegisConfig.setValue(`llm.${window.selectedProvider}.apiKey`, apiKey);
+      AegisConfig.setValue(`llm.${window.selectedProvider}.model`, model);
     }
   }
 
   // Step 2: Cloud providers
-  if (currentWizardStep === 2) {
+  if (window.currentWizardStep === 2) {
     ['aws', 'azure', 'gcp', 'onprem'].forEach(provider => {
       const enabled = document.getElementById(`${provider}-enabled`)?.checked;
       AegisConfig.setValue(`cloud.${provider}.enabled`, enabled || false);
+
+      // Save cloud credentials if enabled
+      if (enabled) {
+        if (provider === 'aws') {
+          AegisConfig.setValue('cloud.aws.accessKeyId', document.getElementById('aws-access-key')?.value);
+          AegisConfig.setValue('cloud.aws.secretAccessKey', document.getElementById('aws-secret-key')?.value);
+          AegisConfig.setValue('cloud.aws.region', document.getElementById('aws-region')?.value);
+        }
+        // Add other providers...
+      }
     });
   }
 
   // Step 3: Channels
-  if (currentWizardStep === 3) {
+  if (window.currentWizardStep === 3) {
     ['telegram', 'whatsapp', 'slack'].forEach(channel => {
       const enabled = document.getElementById(`${channel}-enabled`)?.checked;
       AegisConfig.setValue(`channels.${channel}.enabled`, enabled || false);
+
+      // Save channel tokens if enabled
+      if (enabled) {
+        if (channel === 'telegram') {
+          AegisConfig.setValue('channels.telegram.botToken', document.getElementById('telegram-token')?.value);
+        }
+        // Add other channels...
+      }
     });
   }
 }
@@ -392,7 +472,7 @@ function loadSavedWizardConfig() {
 
   // Load LLM provider
   const provider = config.llm?.provider || 'ollama';
-  selectLLMProvider(provider);
+  window.selectedProvider = provider;
 
   // Load API key if present
   if (provider !== 'ollama' && config.llm?.[provider]?.apiKey) {
@@ -410,7 +490,7 @@ function loadSavedWizardConfig() {
 /**
  * Run validation on step 4
  */
-async function runValidation() {
+window.runValidation = async function() {
   const validationList = document.getElementById('validation-list');
   if (!validationList) return;
 
@@ -466,11 +546,15 @@ async function runValidation() {
       <p>Your AEGIS-T2A instance is ready to use</p>
     ` : `
       <div class="summary-icon warning"><i class="fas fa-exclamation-circle"></i></div>
-      <h3>Some validations failed</h3>
-      <p>You can still proceed, but some features may not work correctly</p>
+      <h3>Some validations need attention</h3>
+      <p>You can still proceed, but some features may not work</p>
     `;
   }
-}
+
+  // Update buttons
+  document.getElementById('run-validation').style.display = 'none';
+  document.getElementById('rerun-validation').style.display = 'inline-flex';
+};
 
 /**
  * Validate a single item
@@ -486,6 +570,9 @@ async function validateItem(item) {
   icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
   content.textContent = 'Checking...';
 
+  // Small delay for visual effect
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   try {
     let success = false;
     let message = '';
@@ -497,19 +584,24 @@ async function validateItem(item) {
       if (provider === 'ollama') {
         try {
           const ollamaUrl = config.llm?.ollama?.baseUrl || 'http://localhost:11434';
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
           const response = await fetch(`${ollamaUrl}/api/tags`, {
-            signal: AbortSignal.timeout(5000)
+            signal: controller.signal
           });
+          clearTimeout(timeoutId);
+
           success = response.ok;
           message = success ? 'Connected to Ollama' : 'Cannot connect to Ollama';
         } catch (e) {
           success = false;
-          message = 'Ollama not running - start with: ollama serve';
+          message = 'Ollama not running. Start with: ollama serve';
         }
       } else {
         const apiKey = config.llm?.[provider]?.apiKey;
-        success = !!apiKey;
-        message = success ? 'API key configured' : 'No API key provided';
+        success = !!apiKey && apiKey.length > 10;
+        message = success ? 'API key configured' : 'No valid API key provided';
       }
     } else {
       // For other providers, just check if configured
@@ -527,12 +619,9 @@ async function validateItem(item) {
   }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  // The wizard will be initialized by app.js if needed
-});
-
-// Export for modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { initWizard, wizardNext, wizardPrev, wizardFinish, skipWizard };
+// Auto-initialize when DOM is ready (as backup)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Wizard will be initialized by app.js
+  });
 }

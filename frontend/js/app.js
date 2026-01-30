@@ -374,9 +374,11 @@ async function startBuild(request) {
   const autoRun = document.getElementById('build-auto-run')?.checked ?? true;
 
   // Hide options, show status
-  document.querySelector('.build-options').style.display = 'none';
+  const buildOptions = document.querySelector('.build-options');
+  if (buildOptions) buildOptions.style.display = 'none';
   document.getElementById('build-status').style.display = 'block';
-  document.getElementById('start-build-btn').style.display = 'none';
+  const startBtn = document.getElementById('start-build-btn');
+  if (startBtn) startBtn.style.display = 'none';
 
   const statusText = document.getElementById('build-status-text');
   const progressFill = document.getElementById('build-progress-fill');
@@ -394,67 +396,117 @@ async function startBuild(request) {
     }
   };
 
+  // Map stack to framework
+  const frameworkMap = {
+    'node-express': 'express',
+    'python-flask': 'express',
+    'python-fastapi': 'fastapi',
+    'static-html': 'react'
+  };
+
   try {
     updateStatus('Creating project structure...', 10);
     await sleep(500);
 
-    updateStatus(`Generating ${projectType} code with LLM...`, 30);
+    updateStatus(`Generating ${projectType} code with LLM...`, 20);
 
-    // Call the build API
-    const buildResult = await AegisAPI.post('/api/v1/build', {
-      request,
-      projectName,
-      projectType,
-      stack,
-      useDocker,
-      autoRun
+    // Call the build API with correct schema
+    const buildResult = await AegisAPI.startBuild({
+      type: projectType,
+      name: projectName,
+      description: request,
+      options: {
+        framework: frameworkMap[stack] || 'express',
+        database: 'none',
+        styling: 'tailwind'
+      }
     });
 
-    if (buildResult.success) {
-      updateStatus('Project files generated!', 50);
-      await sleep(300);
+    if (buildResult.success && buildResult.buildId) {
+      updateStatus('Build started, generating code...', 30);
 
-      if (useDocker) {
-        updateStatus('Building Docker container...', 70);
+      // Poll for build status
+      let build = null;
+      let attempts = 0;
+      const maxAttempts = 60; // 60 seconds max
+
+      while (attempts < maxAttempts) {
         await sleep(1000);
+        attempts++;
+
+        try {
+          const statusResponse = await AegisAPI.getBuild(buildResult.buildId);
+          build = statusResponse.build;
+
+          if (build) {
+            updateStatus(build.logs[build.logs.length - 1] || 'Processing...', build.progress);
+
+            if (build.status === 'completed') {
+              break;
+            } else if (build.status === 'failed') {
+              throw new Error(build.error || 'Build failed');
+            }
+          }
+        } catch (e) {
+          console.log('Polling error:', e);
+        }
       }
 
-      if (autoRun) {
-        updateStatus('Starting application...', 90);
-        await sleep(500);
+      if (build && build.status === 'completed') {
+        updateStatus('Build complete!', 100);
+
+        // Show success message with link
+        if (build.url) {
+          logsContainer.innerHTML += `
+            <div class="log-entry success">
+              ✅ Application ready at <a href="${build.url}" target="_blank">${build.url}</a>
+            </div>
+          `;
+
+          // Update footer
+          const modalFooter = document.getElementById('modal-footer');
+          modalFooter.innerHTML = `
+            <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <a class="btn btn-success" href="${build.url}" target="_blank">
+              <i class="fas fa-external-link-alt"></i> Open Application
+            </a>
+          `;
+        } else {
+          logsContainer.innerHTML += `
+            <div class="log-entry success">
+              ✅ Build complete! Files are in the builds directory.
+            </div>
+          `;
+        }
+
+        Toast.success('Application built successfully!');
+      } else {
+        throw new Error('Build timed out');
       }
-
-      updateStatus('Build complete!', 100);
-
-      // Show success message with link
-      const port = buildResult.port || 3001;
-      logsContainer.innerHTML += `
-        <div class="log-entry success">
-          ✅ Application is running at <a href="http://localhost:${port}" target="_blank">http://localhost:${port}</a>
-        </div>
-      `;
-
-      // Update footer
-      const modalFooter = document.getElementById('modal-footer');
-      modalFooter.innerHTML = `
-        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
-        <a class="btn btn-success" href="http://localhost:${port}" target="_blank">
-          <i class="fas fa-external-link-alt"></i> Open Application
-        </a>
-      `;
-
-      Toast.success('Application built and running!');
     } else {
-      throw new Error(buildResult.error || 'Build failed');
+      throw new Error(buildResult.error || 'Failed to start build');
     }
   } catch (error) {
     updateStatus(`Error: ${error.message}`, 0);
-    logsContainer.innerHTML += `
-      <div class="log-entry error">❌ ${error.message}</div>
-    `;
+    if (logsContainer) {
+      logsContainer.innerHTML += `
+        <div class="log-entry error">❌ ${error.message}</div>
+      `;
+    }
     Toast.error('Build failed: ' + error.message);
+
+    // Re-enable modal footer
+    const modalFooter = document.getElementById('modal-footer');
+    if (modalFooter) {
+      modalFooter.innerHTML = `
+        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+      `;
+    }
   }
 }
+
+// Make startBuild globally accessible
+window.startBuild = startBuild;
 
 /**
  * Close modal
