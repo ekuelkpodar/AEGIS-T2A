@@ -11,6 +11,479 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
+    <!-- Inline Wizard Script - Guaranteed to load before any elements -->
+    <script>
+    (function() {
+        'use strict';
+
+        // Global wizard state
+        var currentWizardStep = 1;
+        var totalWizardSteps = 5;
+        var selectedProvider = 'ollama';
+
+        // Initialize wizard
+        function initWizard() {
+            console.log('[WIZARD] Initializing...');
+            setupCloudToggles();
+            setupChannelToggles();
+            showWizardStep(1);
+            selectLLMProvider('ollama');
+            console.log('[WIZARD] Ready');
+        }
+
+        // Setup cloud toggles
+        function setupCloudToggles() {
+            ['aws', 'azure', 'gcp', 'onprem'].forEach(function(p) {
+                var t = document.getElementById(p + '-enabled');
+                if (t) {
+                    t.onchange = function() {
+                        var c = document.getElementById(p + '-config');
+                        if (c) c.style.display = this.checked ? 'block' : 'none';
+                    };
+                }
+            });
+        }
+
+        // Setup channel toggles
+        function setupChannelToggles() {
+            ['telegram', 'whatsapp', 'slack'].forEach(function(ch) {
+                var t = document.getElementById(ch + '-enabled');
+                if (t) {
+                    t.onchange = function() {
+                        var c = document.getElementById(ch + '-config');
+                        if (c) c.style.display = this.checked ? 'block' : 'none';
+                    };
+                }
+            });
+        }
+
+        // Show wizard step
+        function showWizardStep(stepNum) {
+            console.log('[WIZARD] Showing step:', stepNum);
+
+            // Hide all steps
+            var steps = document.querySelectorAll('.wizard-step');
+            for (var i = 0; i < steps.length; i++) {
+                steps[i].classList.remove('active');
+                steps[i].style.display = 'none';
+            }
+
+            // Show target
+            var target = document.getElementById('wizard-step-' + stepNum);
+            if (target) {
+                target.classList.add('active');
+                target.style.display = 'block';
+                currentWizardStep = stepNum;
+            }
+
+            updateProgress();
+            updateNavButtons();
+
+            if (stepNum === 4) setTimeout(runValidation, 300);
+        }
+
+        // Next step
+        function wizardNext() {
+            console.log('[WIZARD] Next from step:', currentWizardStep);
+            saveStepData();
+            if (currentWizardStep < totalWizardSteps) {
+                showWizardStep(currentWizardStep + 1);
+            }
+        }
+
+        // Previous step
+        function wizardPrev() {
+            console.log('[WIZARD] Previous from step:', currentWizardStep);
+            if (currentWizardStep > 1) {
+                showWizardStep(currentWizardStep - 1);
+            }
+        }
+
+        // Skip wizard
+        function skipWizard() {
+            console.log('[WIZARD] Skipping...');
+
+            if (typeof AegisConfig !== 'undefined') {
+                AegisConfig.setValue('llm.provider', 'ollama');
+                AegisConfig.setValue('llm.ollama.baseUrl', 'http://localhost:11434');
+                AegisConfig.markSetupComplete();
+            }
+
+            var wizard = document.getElementById('setup-wizard');
+            var app = document.getElementById('app');
+
+            if (wizard) wizard.classList.add('hidden');
+            if (app) app.classList.remove('hidden');
+
+            if (typeof initMainApp === 'function') initMainApp();
+            if (typeof Toast !== 'undefined') Toast.info('Setup skipped. Configure in Settings.');
+
+            return false;
+        }
+
+        // Finish wizard
+        function wizardFinish() {
+            console.log('[WIZARD] Finishing...');
+            saveStepData();
+
+            if (typeof AegisConfig !== 'undefined') {
+                AegisConfig.markSetupComplete();
+            }
+
+            var wizard = document.getElementById('setup-wizard');
+            var app = document.getElementById('app');
+
+            if (wizard) wizard.classList.add('hidden');
+            if (app) app.classList.remove('hidden');
+
+            if (typeof initMainApp === 'function') initMainApp();
+            if (typeof Toast !== 'undefined') Toast.success('Setup complete! Welcome to AEGIS-T2A.');
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            var fill = document.getElementById('wizard-progress-fill');
+            if (fill) {
+                var pct = ((currentWizardStep - 1) / (totalWizardSteps - 1)) * 100;
+                fill.style.width = pct + '%';
+            }
+
+            var indicators = document.querySelectorAll('.progress-step');
+            for (var i = 0; i < indicators.length; i++) {
+                var step = indicators[i];
+                var num = parseInt(step.getAttribute('data-step'));
+                step.classList.remove('active', 'completed');
+                if (num === currentWizardStep) step.classList.add('active');
+                else if (num < currentWizardStep) step.classList.add('completed');
+            }
+        }
+
+        // Update nav buttons
+        function updateNavButtons() {
+            var prev = document.getElementById('wizard-prev');
+            var next = document.getElementById('wizard-next');
+            var finish = document.getElementById('wizard-finish');
+
+            if (prev) {
+                prev.disabled = (currentWizardStep === 1);
+                prev.style.visibility = (currentWizardStep === 1) ? 'hidden' : 'visible';
+            }
+            if (next) {
+                next.style.display = (currentWizardStep === totalWizardSteps) ? 'none' : 'inline-flex';
+            }
+            if (finish) {
+                finish.style.display = (currentWizardStep === totalWizardSteps) ? 'inline-flex' : 'none';
+            }
+        }
+
+        // Select LLM provider
+        function selectLLMProvider(provider) {
+            console.log('[WIZARD] Selecting provider:', provider);
+            selectedProvider = provider;
+
+            // Update cards
+            var cards = document.querySelectorAll('.provider-card');
+            for (var i = 0; i < cards.length; i++) {
+                var card = cards[i];
+                card.classList.remove('selected');
+                if (card.getAttribute('data-provider') === provider) {
+                    card.classList.add('selected');
+                }
+            }
+
+            var apiKeySection = document.getElementById('api-key-section');
+            var apiKeyInput = document.getElementById('llm-api-key');
+            var ollamaUrlGroup = document.getElementById('ollama-url-group');
+            var apiKeyLabel = document.getElementById('api-key-label');
+            var apiKeyHelp = document.getElementById('api-key-help');
+            var apiKeyGroup = apiKeyInput ? apiKeyInput.parentElement.parentElement : null;
+
+            if (apiKeySection) apiKeySection.style.display = 'block';
+
+            if (provider === 'ollama') {
+                if (apiKeyGroup) apiKeyGroup.style.display = 'none';
+                if (ollamaUrlGroup) ollamaUrlGroup.style.display = 'block';
+                if (apiKeyHelp) apiKeyHelp.textContent = 'Ollama runs locally - no API key needed';
+            } else {
+                if (apiKeyGroup) apiKeyGroup.style.display = 'block';
+                if (ollamaUrlGroup) ollamaUrlGroup.style.display = 'none';
+
+                var labels = {
+                    anthropic: 'Anthropic API Key',
+                    openai: 'OpenAI API Key',
+                    openrouter: 'OpenRouter API Key'
+                };
+                if (apiKeyLabel) apiKeyLabel.textContent = labels[provider] || 'API Key';
+                if (apiKeyHelp) apiKeyHelp.textContent = 'Your API key is stored locally and never shared';
+            }
+
+            loadModels(provider);
+
+            if (typeof AegisConfig !== 'undefined') {
+                AegisConfig.setValue('llm.provider', provider);
+            }
+        }
+
+        // Load models
+        function loadModels(provider) {
+            var select = document.getElementById('llm-model');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">Loading...</option>';
+
+            if (provider === 'ollama') {
+                var url = 'http://localhost:11434';
+                var urlInput = document.getElementById('ollama-url');
+                if (urlInput) url = urlInput.value;
+
+                fetch(url + '/api/tags', { signal: AbortSignal.timeout(3000) })
+                    .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+                    .then(function(data) {
+                        var models = data.models || [];
+                        if (models.length) {
+                            select.innerHTML = models.map(function(m) {
+                                return '<option value="' + m.name + '">' + m.name + '</option>';
+                            }).join('');
+                        } else {
+                            setDefaultModels(select);
+                        }
+                    })
+                    .catch(function() { setDefaultModels(select); });
+            } else {
+                var modelList = {
+                    anthropic: [
+                        ['claude-sonnet-4-20250514', 'Claude Sonnet 4'],
+                        ['claude-3-5-sonnet-20241022', 'Claude 3.5 Sonnet'],
+                        ['claude-3-opus-20240229', 'Claude 3 Opus'],
+                        ['claude-3-haiku-20240307', 'Claude 3 Haiku']
+                    ],
+                    openai: [
+                        ['gpt-4-turbo', 'GPT-4 Turbo'],
+                        ['gpt-4o', 'GPT-4o'],
+                        ['gpt-4o-mini', 'GPT-4o Mini'],
+                        ['gpt-3.5-turbo', 'GPT-3.5 Turbo']
+                    ],
+                    openrouter: [
+                        ['anthropic/claude-sonnet-4', 'Claude Sonnet 4'],
+                        ['anthropic/claude-3.5-sonnet', 'Claude 3.5 Sonnet'],
+                        ['openai/gpt-4-turbo', 'GPT-4 Turbo'],
+                        ['meta-llama/llama-3-70b', 'Llama 3 70B']
+                    ]
+                };
+
+                var list = modelList[provider] || [];
+                select.innerHTML = list.map(function(m) {
+                    return '<option value="' + m[0] + '">' + m[1] + '</option>';
+                }).join('');
+            }
+        }
+
+        function setDefaultModels(select) {
+            select.innerHTML = '<option value="llama2">llama2</option>' +
+                '<option value="llama3">llama3</option>' +
+                '<option value="mistral">mistral</option>' +
+                '<option value="codellama">codellama</option>';
+        }
+
+        // Toggle password
+        function togglePassword(id) {
+            var input = document.getElementById(id);
+            if (input) {
+                input.type = (input.type === 'password') ? 'text' : 'password';
+            }
+        }
+
+        // Save step data
+        function saveStepData() {
+            if (typeof AegisConfig === 'undefined') return;
+
+            if (currentWizardStep === 1) {
+                var key = document.getElementById('llm-api-key');
+                var model = document.getElementById('llm-model');
+                var ollamaUrl = document.getElementById('ollama-url');
+
+                AegisConfig.setValue('llm.provider', selectedProvider);
+
+                if (selectedProvider === 'ollama') {
+                    AegisConfig.setValue('llm.ollama.baseUrl', ollamaUrl ? ollamaUrl.value : 'http://localhost:11434');
+                    AegisConfig.setValue('llm.ollama.model', model ? model.value : '');
+                } else {
+                    AegisConfig.setValue('llm.' + selectedProvider + '.apiKey', key ? key.value : '');
+                    AegisConfig.setValue('llm.' + selectedProvider + '.model', model ? model.value : '');
+                }
+            }
+
+            if (currentWizardStep === 2) {
+                ['aws', 'azure', 'gcp', 'onprem'].forEach(function(p) {
+                    var t = document.getElementById(p + '-enabled');
+                    AegisConfig.setValue('cloud.' + p + '.enabled', t ? t.checked : false);
+                });
+            }
+
+            if (currentWizardStep === 3) {
+                ['telegram', 'whatsapp', 'slack'].forEach(function(ch) {
+                    var t = document.getElementById(ch + '-enabled');
+                    AegisConfig.setValue('channels.' + ch + '.enabled', t ? t.checked : false);
+                });
+            }
+        }
+
+        // Run validation
+        function runValidation() {
+            console.log('[WIZARD] Running validation...');
+
+            var list = document.getElementById('validation-list');
+            if (!list) return;
+
+            list.innerHTML = '';
+
+            var config = (typeof AegisConfig !== 'undefined') ? AegisConfig.get() : {};
+            var provider = (config.llm && config.llm.provider) || 'ollama';
+
+            var items = [{ name: 'LLM Provider (' + provider + ')', id: 'llm' }];
+
+            if (config.cloud) {
+                if (config.cloud.aws && config.cloud.aws.enabled) items.push({ name: 'AWS', id: 'aws' });
+                if (config.cloud.azure && config.cloud.azure.enabled) items.push({ name: 'Azure', id: 'azure' });
+                if (config.cloud.gcp && config.cloud.gcp.enabled) items.push({ name: 'Google Cloud', id: 'gcp' });
+                if (config.cloud.onprem && config.cloud.onprem.enabled) items.push({ name: 'On-Premises', id: 'onprem' });
+            }
+
+            if (config.channels) {
+                if (config.channels.telegram && config.channels.telegram.enabled) items.push({ name: 'Telegram', id: 'telegram' });
+                if (config.channels.whatsapp && config.channels.whatsapp.enabled) items.push({ name: 'WhatsApp', id: 'whatsapp' });
+                if (config.channels.slack && config.channels.slack.enabled) items.push({ name: 'Slack', id: 'slack' });
+            }
+
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                var div = document.createElement('div');
+                div.className = 'validation-item';
+                div.id = 'validation-' + item.id;
+                div.innerHTML = '<div class="icon pending"><i class="fas fa-circle"></i></div>' +
+                    '<div class="content"><h4>' + item.name + '</h4><p>Waiting...</p></div>';
+                list.appendChild(div);
+            }
+
+            validateItems(items, 0, config);
+        }
+
+        function validateItems(items, idx, config) {
+            if (idx >= items.length) {
+                showValidationSummary();
+                return;
+            }
+
+            var item = items[idx];
+            var el = document.getElementById('validation-' + item.id);
+            if (!el) {
+                setTimeout(function() { validateItems(items, idx + 1, config); }, 100);
+                return;
+            }
+
+            var icon = el.querySelector('.icon');
+            var content = el.querySelector('.content p');
+
+            icon.className = 'icon checking';
+            icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            content.textContent = 'Checking...';
+
+            setTimeout(function() {
+                var success = true;
+                var msg = 'Configured';
+
+                if (item.id === 'llm') {
+                    var prov = (config.llm && config.llm.provider) || 'ollama';
+                    if (prov === 'ollama') {
+                        var url = (config.llm && config.llm.ollama && config.llm.ollama.baseUrl) || 'http://localhost:11434';
+                        fetch(url + '/api/tags', { signal: AbortSignal.timeout(2000) })
+                            .then(function(r) {
+                                if (r.ok) {
+                                    icon.className = 'icon success';
+                                    icon.innerHTML = '<i class="fas fa-check"></i>';
+                                    content.textContent = 'Connected to Ollama';
+                                } else {
+                                    throw new Error();
+                                }
+                                setTimeout(function() { validateItems(items, idx + 1, config); }, 200);
+                            })
+                            .catch(function() {
+                                icon.className = 'icon error';
+                                icon.innerHTML = '<i class="fas fa-times"></i>';
+                                content.textContent = 'Ollama not running';
+                                setTimeout(function() { validateItems(items, idx + 1, config); }, 200);
+                            });
+                        return;
+                    } else {
+                        var key = config.llm && config.llm[prov] && config.llm[prov].apiKey;
+                        success = key && key.length > 10;
+                        msg = success ? 'API key configured' : 'API key missing';
+                    }
+                }
+
+                icon.className = success ? 'icon success' : 'icon error';
+                icon.innerHTML = success ? '<i class="fas fa-check"></i>' : '<i class="fas fa-times"></i>';
+                content.textContent = msg;
+
+                setTimeout(function() { validateItems(items, idx + 1, config); }, 200);
+            }, 500);
+        }
+
+        function showValidationSummary() {
+            var errors = document.querySelectorAll('.validation-item .icon.error').length;
+            var summary = document.getElementById('validation-summary');
+
+            if (summary) {
+                summary.style.display = 'block';
+                if (errors === 0) {
+                    summary.innerHTML = '<div class="summary-icon success"><i class="fas fa-check-circle"></i></div>' +
+                        '<h3>All validations passed!</h3><p>Your AEGIS-T2A instance is ready</p>';
+                } else {
+                    summary.innerHTML = '<div class="summary-icon warning"><i class="fas fa-exclamation-circle"></i></div>' +
+                        '<h3>Some items need attention</h3><p>You can still proceed</p>';
+                }
+            }
+
+            var runBtn = document.getElementById('run-validation');
+            var rerunBtn = document.getElementById('rerun-validation');
+            if (runBtn) runBtn.style.display = 'none';
+            if (rerunBtn) rerunBtn.style.display = 'inline-flex';
+        }
+
+        // Switch on-prem tab
+        function switchOnpremTab(tab) {
+            var tabs = document.querySelectorAll('.onprem-tab');
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+                if (tabs[i].getAttribute('data-tab') === tab) tabs[i].classList.add('active');
+            }
+
+            var contents = document.querySelectorAll('.onprem-content');
+            for (var j = 0; j < contents.length; j++) {
+                contents[j].classList.add('hidden');
+            }
+
+            var active = document.getElementById('onprem-' + tab);
+            if (active) active.classList.remove('hidden');
+        }
+
+        // Expose all functions globally
+        window.initWizard = initWizard;
+        window.showWizardStep = showWizardStep;
+        window.wizardNext = wizardNext;
+        window.wizardPrev = wizardPrev;
+        window.wizardFinish = wizardFinish;
+        window.skipWizard = skipWizard;
+        window.selectLLMProvider = selectLLMProvider;
+        window.loadModels = loadModels;
+        window.togglePassword = togglePassword;
+        window.runValidation = runValidation;
+        window.switchOnpremTab = switchOnpremTab;
+
+        console.log('[WIZARD] Functions loaded and exposed to window');
+    })();
+    </script>
+
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
