@@ -1,0 +1,449 @@
+# ==============================================================================
+# AEGIS-T2A Governance Services - Kubernetes Deployment
+# ==============================================================================
+
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aegis-governance
+  labels:
+    app.kubernetes.io/name: aegis-governance
+    app.kubernetes.io/part-of: aegis-t2a
+
+---
+# ConfigMap for policies
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aegis-policies
+  namespace: aegis-governance
+data:
+  default-policy.yaml: |
+    id: default-policy
+    version: "1.0.0"
+    name: Default Security Policy
+    tenant_id: null
+    default_decision: DENY
+    rules:
+      - id: system-admin-full-access
+        name: System Admin Full Access
+        priority: 1
+        enabled: true
+        conditions:
+          - field: agent.role
+            operator: equals
+            value: system_admin
+        effect:
+          decision: ALLOW
+          reason_template: "System admin granted full access"
+      - id: allow-read-operations
+        name: Allow Read Operations
+        priority: 100
+        enabled: true
+        conditions:
+          - field: action
+            operator: matches
+            value: "^(get|list|read|describe|status)$"
+        effect:
+          decision: ALLOW
+          reason_template: "Read operation allowed"
+    metadata:
+      created_at: "2024-01-01T00:00:00Z"
+      updated_at: "2024-01-01T00:00:00Z"
+      created_by: system
+      tags: [default]
+
+---
+# Secret for JWT keys
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aegis-jwt-keys
+  namespace: aegis-governance
+type: Opaque
+stringData:
+  # These should be replaced with actual keys in production
+  private-key.pem: |
+    -----BEGIN PRIVATE KEY-----
+    # Generate with: openssl genpkey -algorithm RSA -out private-key.pem -pkeyopt rsa_keygen_bits:2048
+    # PLACEHOLDER - REPLACE IN PRODUCTION
+    -----END PRIVATE KEY-----
+  public-key.pem: |
+    -----BEGIN PUBLIC KEY-----
+    # Generate with: openssl rsa -pubout -in private-key.pem -out public-key.pem
+    # PLACEHOLDER - REPLACE IN PRODUCTION
+    -----END PUBLIC KEY-----
+
+---
+# OPA Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa
+  namespace: aegis-governance
+  labels:
+    app: opa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+    spec:
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:latest-static
+          args:
+            - "run"
+            - "--server"
+            - "--addr=0.0.0.0:8181"
+            - "--log-level=info"
+            - "/policies"
+          ports:
+            - containerPort: 8181
+              name: http
+          volumeMounts:
+            - name: policies
+              mountPath: /policies
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8181
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health?bundle=true
+              port: 8181
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: policies
+          configMap:
+            name: aegis-opa-policies
+
+---
+# OPA Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa
+  namespace: aegis-governance
+spec:
+  selector:
+    app: opa
+  ports:
+    - port: 8181
+      targetPort: 8181
+      name: http
+  type: ClusterIP
+
+---
+# Enforcement Proxy Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enforcement-proxy
+  namespace: aegis-governance
+  labels:
+    app: enforcement-proxy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: enforcement-proxy
+  template:
+    metadata:
+      labels:
+        app: enforcement-proxy
+    spec:
+      serviceAccountName: aegis-proxy
+      containers:
+        - name: proxy
+          image: aegis-t2a/enforcement-proxy:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "8080"
+            - name: OPA_URL
+              value: "http://opa:8181"
+            - name: POLICY_BUNDLE_PATH
+              value: "/app/policies"
+            - name: SHADOW_MODE
+              value: "false"
+            - name: FAIL_CLOSED
+              value: "true"
+            - name: JWT_ALGORITHM
+              value: "RS256"
+            - name: JWT_ISSUER
+              value: "aegis-t2a"
+            - name: JWT_AUDIENCE
+              value: "aegis-agents"
+          volumeMounts:
+            - name: policies
+              mountPath: /app/policies
+            - name: jwt-keys
+              mountPath: /app/keys
+              readOnly: true
+            - name: audit-logs
+              mountPath: /app/audit
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: policies
+          configMap:
+            name: aegis-policies
+        - name: jwt-keys
+          secret:
+            secretName: aegis-jwt-keys
+        - name: audit-logs
+          persistentVolumeClaim:
+            claimName: aegis-audit-logs
+
+---
+# Enforcement Proxy Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: enforcement-proxy
+  namespace: aegis-governance
+spec:
+  selector:
+    app: enforcement-proxy
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+  type: ClusterIP
+
+---
+# Approval Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: approval-service
+  namespace: aegis-governance
+  labels:
+    app: approval-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: approval-service
+  template:
+    metadata:
+      labels:
+        app: approval-service
+    spec:
+      containers:
+        - name: approval
+          image: aegis-t2a/approval-service:latest
+          ports:
+            - containerPort: 8082
+              name: http
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "8082"
+            - name: DEFAULT_TIMEOUT_SECONDS
+              value: "3600"
+            - name: MAX_PENDING_PER_AGENT
+              value: "10"
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aegis-webhooks
+                  key: slack-webhook-url
+                  optional: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 30
+
+---
+# Approval Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: approval-service
+  namespace: aegis-governance
+spec:
+  selector:
+    app: approval-service
+  ports:
+    - port: 80
+      targetPort: 8082
+      name: http
+  type: ClusterIP
+
+---
+# PersistentVolumeClaim for audit logs
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aegis-audit-logs
+  namespace: aegis-governance
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+# ServiceAccount for proxy
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aegis-proxy
+  namespace: aegis-governance
+
+---
+# RBAC - Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: aegis-proxy-role
+  namespace: aegis-governance
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+
+---
+# RBAC - RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aegis-proxy-rolebinding
+  namespace: aegis-governance
+subjects:
+  - kind: ServiceAccount
+    name: aegis-proxy
+    namespace: aegis-governance
+roleRef:
+  kind: Role
+  name: aegis-proxy-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# NetworkPolicy - Restrict traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aegis-governance-network-policy
+  namespace: aegis-governance
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: aegis-t2a
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8181
+        - protocol: TCP
+          port: 8082
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443  # HTTPS for webhooks
+
+---
+# HorizontalPodAutoscaler for Proxy
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: enforcement-proxy-hpa
+  namespace: aegis-governance
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: enforcement-proxy
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# PodDisruptionBudget for Proxy
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: enforcement-proxy-pdb
+  namespace: aegis-governance
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: enforcement-proxy

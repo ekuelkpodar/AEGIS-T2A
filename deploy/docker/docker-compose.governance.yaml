@@ -1,0 +1,170 @@
+# ==============================================================================
+# AEGIS-T2A Governance Services - Docker Compose
+# For local development and testing
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  # OPA Policy Engine
+  opa:
+    image: openpolicyagent/opa:latest-static
+    container_name: aegis-opa
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--log-level=info"
+      - "--set=decision_logs.console=true"
+      - "/policies"
+    volumes:
+      - ../../src/governance/policy/opa:/policies:ro
+    ports:
+      - "8181:8181"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8181/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - aegis-network
+
+  # Enforcement Proxy
+  enforcement-proxy:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.proxy
+    container_name: aegis-proxy
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - OPA_URL=http://opa:8181
+      - POLICY_BUNDLE_PATH=/app/policies
+      - SHADOW_MODE=false
+      - FAIL_CLOSED=true
+      - JWT_ALGORITHM=RS256
+      - JWT_ISSUER=aegis-t2a
+      - JWT_AUDIENCE=aegis-agents
+      - TOKEN_TTL_SECONDS=3600
+      - AUDIT_BACKEND=file
+      - AUDIT_FILE_PATH=/app/audit/audit.log
+    volumes:
+      - ../../policies:/app/policies:ro
+      - audit-logs:/app/audit
+      - jwt-keys:/app/keys
+    ports:
+      - "8080:8080"
+    depends_on:
+      opa:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - aegis-network
+
+  # Approval Service
+  approval-service:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.proxy
+    container_name: aegis-approval
+    command: ["node", "dist/governance/approval-server.js"]
+    environment:
+      - NODE_ENV=development
+      - PORT=8082
+      - DEFAULT_TIMEOUT_SECONDS=3600
+      - MAX_PENDING_PER_AGENT=10
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - aegis-network
+
+  # Redis for caching and rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: aegis-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aegis-network
+
+  # Elasticsearch for audit logs (optional)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: aegis-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - aegis-network
+    profiles:
+      - full
+
+  # Kibana for audit log visualization (optional)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: aegis-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - aegis-network
+    profiles:
+      - full
+
+  # Jaeger for distributed tracing (optional)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: aegis-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    networks:
+      - aegis-network
+    profiles:
+      - tracing
+
+volumes:
+  audit-logs:
+  jwt-keys:
+  redis-data:
+  elasticsearch-data:
+
+networks:
+  aegis-network:
+    driver: bridge

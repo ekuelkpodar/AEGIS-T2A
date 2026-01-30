@@ -1,0 +1,56 @@
+# ==============================================================================
+# AEGIS-T2A Enforcement Proxy Dockerfile
+# ==============================================================================
+
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source
+COPY src/ ./src/
+COPY tsconfig.json ./
+
+# Build TypeScript
+RUN npm run build
+
+# Production image
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 aegis && \
+    adduser -u 1001 -G aegis -s /bin/sh -D aegis
+
+# Copy built files
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+
+# Copy policies
+COPY policies/ ./policies/
+
+# Create directories for runtime data
+RUN mkdir -p /app/audit /app/keys && \
+    chown -R aegis:aegis /app
+
+USER aegis
+
+# Environment variables
+ENV NODE_ENV=production \
+    PORT=8080 \
+    POLICY_BUNDLE_PATH=/app/policies \
+    AUDIT_PATH=/app/audit \
+    SHADOW_MODE=false \
+    FAIL_CLOSED=true
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+CMD ["node", "dist/governance/server.js"]

@@ -1,0 +1,355 @@
+# ==============================================================================
+# AEGIS-T2A Default Policy Bundle
+#
+# This policy bundle provides a secure-by-default configuration with:
+# - Deny-by-default behavior
+# - Read operations allowed for all authenticated agents
+# - Write operations require appropriate roles
+# - Destructive operations require approval
+# - Sensitive data handling with parameter sanitization
+# ==============================================================================
+
+id: default-policy
+version: "1.0.0"
+name: Default Security Policy
+description: |
+  Default policy bundle providing secure-by-default behavior.
+  Implements least-privilege access and requires approval for high-risk actions.
+tenant_id: null  # Global policy (applies to all tenants)
+
+# Default decision when no rules match
+default_decision: DENY
+
+# Policy rules (evaluated in priority order, lower number = higher priority)
+rules:
+  # ---------------------------------------------------------------------------
+  # System Admin - Full Access
+  # ---------------------------------------------------------------------------
+  - id: system-admin-full-access
+    name: System Admin Full Access
+    description: System administrators have unrestricted access
+    priority: 1
+    enabled: true
+    conditions:
+      - field: agent.role
+        operator: equals
+        value: system_admin
+    effect:
+      decision: ALLOW
+      reason_template: "System admin {agent_id} granted full access"
+
+  # ---------------------------------------------------------------------------
+  # Read Operations - Allow for Authenticated Users
+  # ---------------------------------------------------------------------------
+  - id: allow-read-operations
+    name: Allow Read Operations
+    description: Allow read-only operations for all authenticated agents
+    priority: 100
+    enabled: true
+    conditions:
+      - field: action
+        operator: matches
+        value: "^(get|list|read|describe|status|health|ping)$"
+    effect:
+      decision: ALLOW
+      reason_template: "Read operation '{action}' allowed for {role}"
+
+  # ---------------------------------------------------------------------------
+  # LLM Operations
+  # ---------------------------------------------------------------------------
+  - id: llm-allow-inference
+    name: Allow LLM Inference
+    description: Allow LLM inference for operators and above
+    priority: 200
+    enabled: true
+    conditions:
+      - field: tool
+        operator: equals
+        value: llm
+      - field: action
+        operator: in
+        value: [complete, chat, generate]
+      - field: agent.role
+        operator: in
+        value: [system_admin, tenant_admin, operator, developer]
+    effect:
+      decision: ALLOW
+      reason_template: "LLM inference allowed for {role}"
+
+  - id: llm-redact-api-keys
+    name: Redact API Keys in LLM Logs
+    description: Sanitize API keys from LLM request parameters
+    priority: 199
+    enabled: true
+    conditions:
+      - field: tool
+        operator: equals
+        value: llm
+      - field: parameters.api_key
+        operator: exists
+        value: true
+    effect:
+      decision: MODIFY
+      reason_template: "API key redacted from LLM request"
+    modifications:
+      - path: api_key
+        type: redact
+      - path: authorization
+        type: redact
+
+  # ---------------------------------------------------------------------------
+  # Cloud Operations
+  # ---------------------------------------------------------------------------
+  - id: cloud-read-operations
+    name: Allow Cloud Read Operations
+    description: Allow cloud describe/list operations
+    priority: 300
+    enabled: true
+    conditions:
+      - field: tool
+        operator: in
+        value: [aws, azure, gcp, kubernetes]
+      - field: action
+        operator: matches
+        value: "^(describe|list|get)"
+      - field: agent.role
+        operator: in
+        value: [system_admin, tenant_admin, operator, developer, readonly]
+    effect:
+      decision: ALLOW
+      reason_template: "Cloud read operation allowed"
+
+  - id: cloud-create-operations
+    name: Allow Cloud Create Operations
+    description: Allow cloud resource creation for operators
+    priority: 301
+    enabled: true
+    conditions:
+      - field: tool
+        operator: in
+        value: [aws, azure, gcp, kubernetes]
+      - field: action
+        operator: matches
+        value: "^(create|launch|start|deploy)"
+      - field: agent.role
+        operator: in
+        value: [system_admin, tenant_admin, operator]
+    effect:
+      decision: ALLOW
+      reason_template: "Cloud create operation allowed for {role}"
+
+  - id: cloud-destructive-require-approval
+    name: Require Approval for Cloud Destructive Operations
+    description: Destructive cloud operations require human approval
+    priority: 50
+    enabled: true
+    conditions:
+      - field: tool
+        operator: in
+        value: [aws, azure, gcp, kubernetes]
+      - field: action
+        operator: matches
+        value: "^(delete|terminate|destroy|remove)"
+    effect:
+      decision: AWAIT_APPROVAL
+      reason_template: "Destructive operation '{action}' on {tool} requires approval"
+    approval_config:
+      required_approvers:
+        - tenant_admin
+        - operator
+      min_approvals: 1
+      timeout_seconds: 3600
+      notify_channels:
+        - slack
+        - webhook
+      auto_deny_on_timeout: true
+      escalation:
+        - after_seconds: 1800
+          escalate_to:
+            - system_admin
+          message: "Approval request escalated after 30 minutes"
+
+  # ---------------------------------------------------------------------------
+  # Database Operations
+  # ---------------------------------------------------------------------------
+  - id: database-read-operations
+    name: Allow Database Read Operations
+    description: Allow database queries for authorized roles
+    priority: 400
+    enabled: true
+    conditions:
+      - field: tool
+        operator: equals
+        value: database
+      - field: action
+        operator: in
+        value: [select, query, count]
+      - field: agent.role
+        operator: in
+        value: [system_admin, tenant_admin, operator, developer]
+    effect:
+      decision: ALLOW
+      reason_template: "Database read allowed"
+
+  - id: database-write-operations
+    name: Allow Database Write Operations
+    description: Allow database modifications for operators
+    priority: 401
+    enabled: true
+    conditions:
+      - field: tool
+        operator: equals
+        value: database
+      - field: action
+        operator: in
+        value: [insert, update]
+      - field: agent.role
+        operator: in
+        value: [system_admin, tenant_admin, operator]
+    effect:
+      decision: ALLOW
+      reason_template: "Database write allowed for {role}"
+
+  - id: database-delete-require-approval
+    name: Require Approval for Database Deletes
+    description: Database delete operations require approval
+    priority: 51
+    enabled: true
+    conditions:
+      - field: tool
+        operator: equals
+        value: database
+      - field: action
+        operator: in
+        value: [delete, drop, truncate]
+    effect:
+      decision: AWAIT_APPROVAL
+      reason_template: "Database delete operation requires approval"
+    approval_config:
+      required_approvers:
+        - tenant_admin
+      min_approvals: 1
+      timeout_seconds: 1800
+      notify_channels:
+        - slack
+      auto_deny_on_timeout: true
+
+  # ---------------------------------------------------------------------------
+  # Sensitive Parameter Handling
+  # ---------------------------------------------------------------------------
+  - id: mask-passwords
+    name: Mask Passwords in Requests
+    description: Automatically mask password fields in all requests
+    priority: 10
+    enabled: true
+    conditions:
+      - field: parameters.password
+        operator: exists
+        value: true
+    effect:
+      decision: MODIFY
+      reason_template: "Password masked in request"
+    modifications:
+      - path: password
+        type: mask
+        mask_pattern: "********"
+
+  - id: mask-secrets
+    name: Mask Secrets in Requests
+    description: Mask secret and credential fields
+    priority: 11
+    enabled: true
+    conditions:
+      - field: parameters.secret
+        operator: exists
+        value: true
+    effect:
+      decision: MODIFY
+      reason_template: "Secret masked in request"
+    modifications:
+      - path: secret
+        type: mask
+        mask_pattern: "****"
+      - path: credentials
+        type: redact
+
+  # ---------------------------------------------------------------------------
+  # Budget Constraints
+  # ---------------------------------------------------------------------------
+  - id: deny-over-budget
+    name: Deny When Over Budget
+    description: Deny requests when budget is exceeded
+    priority: 5
+    enabled: true
+    conditions:
+      - field: context.budget_usage.limit_exceeded
+        operator: equals
+        value: true
+    effect:
+      decision: DENY
+      reason_template: "Budget exceeded - request denied"
+
+  # ---------------------------------------------------------------------------
+  # Rate Limiting
+  # ---------------------------------------------------------------------------
+  - id: deny-rate-limited
+    name: Deny Rate Limited Requests
+    description: Deny requests when rate limit is exceeded
+    priority: 6
+    enabled: true
+    conditions:
+      - field: context.rate_status.rate_limited
+        operator: equals
+        value: true
+    effect:
+      decision: DENY
+      reason_template: "Rate limit exceeded - request denied"
+
+  # ---------------------------------------------------------------------------
+  # Restricted Role - Deny All Writes
+  # ---------------------------------------------------------------------------
+  - id: restricted-deny-writes
+    name: Deny Write Operations for Restricted Role
+    description: Restricted agents can only perform read operations
+    priority: 20
+    enabled: true
+    conditions:
+      - field: agent.role
+        operator: equals
+        value: restricted
+      - field: action
+        operator: not_in
+        value: [get, list, read, describe, status, health, ping]
+    effect:
+      decision: DENY
+      reason_template: "Restricted role cannot perform '{action}'"
+
+  # ---------------------------------------------------------------------------
+  # Development Environment - More Permissive
+  # ---------------------------------------------------------------------------
+  - id: dev-environment-allow
+    name: Allow More in Development
+    description: More permissive rules for development environment
+    priority: 500
+    enabled: true
+    conditions:
+      - field: context.environment
+        operator: equals
+        value: development
+      - field: agent.role
+        operator: in
+        value: [developer, operator, tenant_admin, system_admin]
+    effect:
+      decision: ALLOW
+      reason_template: "Development environment - action allowed"
+
+# Policy metadata
+metadata:
+  created_at: "2024-01-01T00:00:00Z"
+  updated_at: "2024-01-01T00:00:00Z"
+  created_by: system
+  checksum: ""
+  tags:
+    - default
+    - security
+    - production-ready
