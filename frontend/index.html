@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGIS-T2A | Text-to-Action Platform</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/wizard.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h1>AEGIS-T2A</h1>
+            <p>Text-to-Action Anywhere Platform</p>
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+
+    <!-- Setup Wizard (shown on first run) -->
+    <div id="setup-wizard" class="wizard-overlay hidden">
+        <div class="wizard-container">
+            <div class="wizard-header">
+                <div class="wizard-logo">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <h1>Welcome to AEGIS-T2A</h1>
+                <p>Let's get you set up in just a few steps</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="wizard-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="wizard-progress-fill"></div>
+                </div>
+                <div class="progress-steps">
+                    <div class="progress-step active" data-step="1">
+                        <div class="step-circle">1</div>
+                        <span>LLM Provider</span>
+                    </div>
+                    <div class="progress-step" data-step="2">
+                        <div class="step-circle">2</div>
+                        <span>Cloud Services</span>
+                    </div>
+                    <div class="progress-step" data-step="3">
+                        <div class="step-circle">3</div>
+                        <span>Channels</span>
+                    </div>
+                    <div class="progress-step" data-step="4">
+                        <div class="step-circle">4</div>
+                        <span>Validation</span>
+                    </div>
+                    <div class="progress-step" data-step="5">
+                        <div class="step-circle">5</div>
+                        <span>Complete</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wizard Steps -->
+            <div class="wizard-content">
+                <!-- Step 1: LLM Provider -->
+                <div class="wizard-step active" id="wizard-step-1">
+                    <h2><i class="fas fa-brain"></i> Configure AI Provider</h2>
+                    <p class="step-description">Choose your preferred LLM provider for intent parsing and planning</p>
+
+                    <div class="provider-cards">
+                        <div class="provider-card" data-provider="anthropic">
+                            <div class="provider-icon anthropic">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <h3>Anthropic Claude</h3>
+                            <p>Best for complex reasoning and safety</p>
+                            <span class="badge recommended">Recommended</span>
+                        </div>
+                        <div class="provider-card" data-provider="openai">
+                            <div class="provider-icon openai">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <h3>OpenAI GPT</h3>
+                            <p>Fast and versatile</p>
+                        </div>
+                        <div class="provider-card" data-provider="openrouter">
+                            <div class="provider-icon openrouter">
+                                <i class="fas fa-route"></i>
+                            </div>
+                            <h3>OpenRouter</h3>
+                            <p>Access multiple models</p>
+                        </div>
+                        <div class="provider-card" data-provider="ollama">
+                            <div class="provider-icon ollama">
+                                <i class="fas fa-server"></i>
+                            </div>
+                            <h3>Ollama (Local)</h3>
+                            <p>Self-hosted, private</p>
+                            <span class="badge">No API Key</span>
+                        </div>
+                    </div>
+
+                    <div class="api-key-section" id="api-key-section">
+                        <div class="form-group">
+                            <label for="llm-api-key">
+                                <i class="fas fa-key"></i>
+                                <span id="api-key-label">API Key</span>
+                            </label>
+                            <div class="input-with-icon">
+                                <input type="password" id="llm-api-key" placeholder="Enter your API key">
+                                <button type="button" class="toggle-password" onclick="togglePassword('llm-api-key')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <small id="api-key-help">Your API key is stored securely and never shared</small>
+                        </div>
+
+                        <div class="form-group" id="ollama-url-group" style="display: none;">
+                            <label for="ollama-url">
+                                <i class="fas fa-link"></i>
+                                Ollama Server URL
+                            </label>
+                            <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+                        </div>
+
+                        <div class="form-group" id="model-select-group">
+                            <label for="llm-model">
+                                <i class="fas fa-cube"></i>
+                                Model
+                            </label>
+                            <select id="llm-model">
+                                <option value="">Select a model</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Cloud Services -->
+                <div class="wizard-step" id="wizard-step-2">
+                    <h2><i class="fas fa-cloud"></i> Connect Cloud Services</h2>
+                    <p class="step-description">Connect your cloud providers for infrastructure automation (optional)</p>
+
+                    <div class="cloud-providers">
+                        <div class="cloud-provider-card" data-cloud="aws">
+                            <div class="cloud-header">
+                                <div class="cloud-icon aws">
+                                    <i class="fab fa-aws"></i>
+                                </div>
+                                <div class="cloud-info">
+                                    <h3>Amazon Web Services</h3>
+                                    <p>EC2, S3, Lambda, RDS, and more</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="aws-enabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="cloud-config" id="aws-config" style="display: none;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Access Key ID</label>
+                                        <input type="text" id="aws-access-key" placeholder="AKIA...">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Secret Access Key</label>
+                                        <input type="password" id="aws-secret-key" placeholder="Secret key">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Default Region</label>
+                                    <select id="aws-region">
+                                        <option value="us-east-1">US East (N. Virginia)</option>
+                                        <option value="us-west-2">US West (Oregon)</option>
+                                        <option value="eu-west-1">EU (Ireland)</option>
+                                        <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cloud-provider-card" data-cloud="azure">
+                            <div class="cloud-header">
+                                <div class="cloud-icon azure">
+                                    <i class="fab fa-microsoft"></i>
+                                </div>
+                                <div class="cloud-info">
+                                    <h3>Microsoft Azure</h3>
+                                    <p>VMs, Storage, Functions, and more</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="azure-enabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="cloud-config" id="azure-config" style="display: none;">
+                                <div class="form-group">
+                                    <label>Tenant ID</label>
+                                    <input type="text" id="azure-tenant-id" placeholder="Tenant ID">
+                                </div>
+                                <div class="form-group">
+                                    <label>Client ID</label>
+                                    <input type="text" id="azure-client-id" placeholder="Client ID">
+                                </div>
+                                <div class="form-group">
+                                    <label>Client Secret</label>
+                                    <input type="password" id="azure-client-secret" placeholder="Client Secret">
+                                </div>
+                                <div class="form-group">
+                                    <label>Subscription ID</label>
+                                    <input type="text" id="azure-subscription-id" placeholder="Subscription ID">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cloud-provider-card" data-cloud="gcp">
+                            <div class="cloud-header">
+                                <div class="cloud-icon gcp">
+                                    <i class="fab fa-google"></i>
+                                </div>
+                                <div class="cloud-info">
+                                    <h3>Google Cloud Platform</h3>
+                                    <p>Compute, Storage, Cloud Functions</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="gcp-enabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="cloud-config" id="gcp-config" style="display: none;">
+                                <div class="form-group">
+                                    <label>Project ID</label>
+                                    <input type="text" id="gcp-project-id" placeholder="my-project-id">
+                                </div>
+                                <div class="form-group">
+                                    <label>Service Account JSON</label>
+                                    <div class="file-upload">
+                                        <input type="file" id="gcp-credentials" accept=".json">
+                                        <label for="gcp-credentials">
+                                            <i class="fas fa-upload"></i>
+                                            <span>Upload credentials.json</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cloud-provider-card" data-cloud="onprem">
+                            <div class="cloud-header">
+                                <div class="cloud-icon onprem">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <div class="cloud-info">
+                                    <h3>On-Premises / Custom</h3>
+                                    <p>SSH, Kubernetes, Docker, APIs</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="onprem-enabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="cloud-config" id="onprem-config" style="display: none;">
+                                <div class="onprem-tabs">
+                                    <button class="onprem-tab active" data-tab="ssh">SSH</button>
+                                    <button class="onprem-tab" data-tab="kubernetes">Kubernetes</button>
+                                    <button class="onprem-tab" data-tab="docker">Docker</button>
+                                </div>
+                                <div class="onprem-content" id="onprem-ssh">
+                                    <div class="form-group">
+                                        <label>Host</label>
+                                        <input type="text" id="ssh-host" placeholder="192.168.1.100 or hostname">
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Port</label>
+                                            <input type="number" id="ssh-port" value="22">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Username</label>
+                                            <input type="text" id="ssh-username" placeholder="root">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Authentication</label>
+                                        <select id="ssh-auth-type">
+                                            <option value="key">SSH Key</option>
+                                            <option value="password">Password</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" id="ssh-key-group">
+                                        <label>Private Key</label>
+                                        <textarea id="ssh-private-key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+                                    </div>
+                                </div>
+                                <div class="onprem-content hidden" id="onprem-kubernetes">
+                                    <div class="form-group">
+                                        <label>Kubeconfig</label>
+                                        <div class="file-upload">
+                                            <input type="file" id="kubeconfig-file">
+                                            <label for="kubeconfig-file">
+                                                <i class="fas fa-upload"></i>
+                                                <span>Upload kubeconfig</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Context</label>
+                                        <select id="k8s-context">
+                                            <option value="">Upload kubeconfig first</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="onprem-content hidden" id="onprem-docker">
+                                    <div class="form-group">
+                                        <label>Docker Host</label>
+                                        <input type="text" id="docker-host" placeholder="unix:///var/run/docker.sock or tcp://host:2376">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="docker-tls">
+                                            <span>Enable TLS</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Channels -->
+                <div class="wizard-step" id="wizard-step-3">
+                    <h2><i class="fas fa-comments"></i> Communication Channels</h2>
+                    <p class="step-description">Configure how you want to interact with AEGIS-T2A</p>
+
+                    <div class="channel-grid">
+                        <div class="channel-card enabled" data-channel="web">
+                            <div class="channel-icon web">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                            <h3>Web Interface</h3>
+                            <p>Browser-based dashboard</p>
+                            <span class="channel-status">
+                                <i class="fas fa-check-circle"></i> Always enabled
+                            </span>
+                        </div>
+
+                        <div class="channel-card enabled" data-channel="terminal">
+                            <div class="channel-icon terminal">
+                                <i class="fas fa-terminal"></i>
+                            </div>
+                            <h3>Terminal CLI</h3>
+                            <p>Command-line interface</p>
+                            <span class="channel-status">
+                                <i class="fas fa-check-circle"></i> Always enabled
+                            </span>
+                        </div>
+
+                        <div class="channel-card" data-channel="telegram">
+                            <div class="channel-icon telegram">
+                                <i class="fab fa-telegram"></i>
+                            </div>
+                            <h3>Telegram Bot</h3>
+                            <p>Chat-based interactions</p>
+                            <label class="toggle-switch small">
+                                <input type="checkbox" id="telegram-enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="channel-card" data-channel="whatsapp">
+                            <div class="channel-icon whatsapp">
+                                <i class="fab fa-whatsapp"></i>
+                            </div>
+                            <h3>WhatsApp</h3>
+                            <p>Business API integration</p>
+                            <label class="toggle-switch small">
+                                <input type="checkbox" id="whatsapp-enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="channel-card" data-channel="slack">
+                            <div class="channel-icon slack">
+                                <i class="fab fa-slack"></i>
+                            </div>
+                            <h3>Slack</h3>
+                            <p>Team collaboration</p>
+                            <label class="toggle-switch small">
+                                <input type="checkbox" id="slack-enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="channel-card" data-channel="api">
+                            <div class="channel-icon api">
+                                <i class="fas fa-code"></i>
+                            </div>
+                            <h3>REST API</h3>
+                            <p>Programmatic access</p>
+                            <span class="channel-status">
+                                <i class="fas fa-check-circle"></i> Always enabled
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Channel Configuration Panels -->
+                    <div class="channel-config-section">
+                        <div class="channel-config" id="telegram-config" style="display: none;">
+                            <h4><i class="fab fa-telegram"></i> Telegram Bot Setup</h4>
+                            <div class="setup-instructions">
+                                <ol>
+                                    <li>Open Telegram and search for <strong>@BotFather</strong></li>
+                                    <li>Send <code>/newbot</code> and follow the prompts</li>
+                                    <li>Copy the bot token provided</li>
+                                </ol>
+                            </div>
+                            <div class="form-group">
+                                <label>Bot Token</label>
+                                <input type="password" id="telegram-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                            </div>
+                            <div class="form-group">
+                                <label>Allowed User IDs (comma-separated)</label>
+                                <input type="text" id="telegram-allowed-users" placeholder="123456789, 987654321">
+                                <small>Leave empty to allow all users (not recommended)</small>
+                            </div>
+                        </div>
+
+                        <div class="channel-config" id="whatsapp-config" style="display: none;">
+                            <h4><i class="fab fa-whatsapp"></i> WhatsApp Business API Setup</h4>
+                            <div class="setup-instructions">
+                                <ol>
+                                    <li>Go to <a href="https://business.facebook.com" target="_blank">Meta Business Suite</a></li>
+                                    <li>Create a WhatsApp Business account</li>
+                                    <li>Get your API credentials from the dashboard</li>
+                                </ol>
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number ID</label>
+                                <input type="text" id="whatsapp-phone-id" placeholder="Phone Number ID">
+                            </div>
+                            <div class="form-group">
+                                <label>Access Token</label>
+                                <input type="password" id="whatsapp-token" placeholder="Access Token">
+                            </div>
+                            <div class="form-group">
+                                <label>Webhook Verify Token</label>
+                                <input type="text" id="whatsapp-verify-token" placeholder="Custom verification token">
+                            </div>
+                        </div>
+
+                        <div class="channel-config" id="slack-config" style="display: none;">
+                            <h4><i class="fab fa-slack"></i> Slack App Setup</h4>
+                            <div class="setup-instructions">
+                                <ol>
+                                    <li>Go to <a href="https://api.slack.com/apps" target="_blank">Slack API</a></li>
+                                    <li>Create a new app and configure OAuth</li>
+                                    <li>Add bot scopes: chat:write, commands, app_mentions:read</li>
+                                </ol>
+                            </div>
+                            <div class="form-group">
+                                <label>Bot Token</label>
+                                <input type="password" id="slack-bot-token" placeholder="xoxb-...">
+                            </div>
+                            <div class="form-group">
+                                <label>Signing Secret</label>
+                                <input type="password" id="slack-signing-secret" placeholder="Signing Secret">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Validation -->
+                <div class="wizard-step" id="wizard-step-4">
+                    <h2><i class="fas fa-check-double"></i> Validate Connections</h2>
+                    <p class="step-description">Testing your configuration to ensure everything works</p>
+
+                    <div class="validation-container">
+                        <div class="validation-list" id="validation-list">
+                            <!-- Validation items will be added dynamically -->
+                        </div>
+
+                        <div class="validation-actions">
+                            <button class="btn btn-primary" id="run-validation" onclick="runValidation()">
+                                <i class="fas fa-play"></i> Run Validation
+                            </button>
+                            <button class="btn btn-secondary" id="rerun-validation" onclick="runValidation()" style="display: none;">
+                                <i class="fas fa-redo"></i> Re-run Validation
+                            </button>
+                        </div>
+
+                        <div class="validation-summary" id="validation-summary" style="display: none;">
+                            <div class="summary-icon success">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <h3>All connections validated!</h3>
+                            <p>Your AEGIS-T2A instance is ready to use</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Complete -->
+                <div class="wizard-step" id="wizard-step-5">
+                    <h2><i class="fas fa-rocket"></i> Setup Complete!</h2>
+                    <p class="step-description">You're all set to start using AEGIS-T2A</p>
+
+                    <div class="completion-content">
+                        <div class="completion-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+
+                        <div class="quick-start-guide">
+                            <h3>Quick Start Guide</h3>
+
+                            <div class="quick-start-item">
+                                <div class="qs-icon"><i class="fas fa-globe"></i></div>
+                                <div class="qs-content">
+                                    <h4>Web Interface</h4>
+                                    <p>Type your intent in the command bar and press Enter</p>
+                                    <code>Deploy my-app to production with zero downtime</code>
+                                </div>
+                            </div>
+
+                            <div class="quick-start-item">
+                                <div class="qs-icon"><i class="fas fa-terminal"></i></div>
+                                <div class="qs-content">
+                                    <h4>Terminal CLI</h4>
+                                    <p>Use the aegis command from your terminal</p>
+                                    <code>aegis intent "Create S3 bucket my-data" --execute</code>
+                                </div>
+                            </div>
+
+                            <div class="quick-start-item" id="qs-telegram" style="display: none;">
+                                <div class="qs-icon"><i class="fab fa-telegram"></i></div>
+                                <div class="qs-content">
+                                    <h4>Telegram</h4>
+                                    <p>Send messages to your bot</p>
+                                    <code>/action Scale web servers to 5 instances</code>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="next-steps">
+                            <h3>What's Next?</h3>
+                            <ul>
+                                <li><i class="fas fa-book"></i> <a href="#docs">Read the documentation</a></li>
+                                <li><i class="fas fa-cog"></i> <a href="#settings">Fine-tune your settings</a></li>
+                                <li><i class="fas fa-shield-alt"></i> <a href="#policies">Configure security policies</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wizard Navigation -->
+            <div class="wizard-nav">
+                <button class="btn btn-secondary" id="wizard-prev" onclick="wizardPrev()" disabled>
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button class="btn btn-primary" id="wizard-next" onclick="wizardNext()">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+                <button class="btn btn-success" id="wizard-finish" onclick="wizardFinish()" style="display: none;">
+                    <i class="fas fa-check"></i> Get Started
+                </button>
+            </div>
+
+            <div class="wizard-skip">
+                <a href="#" onclick="skipWizard()">Skip setup and configure later</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app" class="app-container hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>AEGIS-T2A</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#intents" class="nav-item" data-page="intents">
+                    <i class="fas fa-comment-dots"></i>
+                    <span>Intents</span>
+                </a>
+                <a href="#workflows" class="nav-item" data-page="workflows">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Workflows</span>
+                </a>
+                <a href="#audit" class="nav-item" data-page="audit">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Audit Log</span>
+                </a>
+
+                <div class="nav-divider"></div>
+
+                <a href="#settings" class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+                <a href="#integrations" class="nav-item" data-page="integrations">
+                    <i class="fas fa-plug"></i>
+                    <span>Integrations</span>
+                </a>
+                <a href="#policies" class="nav-item" data-page="policies">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Policies</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="connection-status">
+                    <span class="status-dot connected"></span>
+                    <span>Connected</span>
+                </div>
+                <div class="version">v0.1.0</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <div class="intent-bar">
+                    <i class="fas fa-magic"></i>
+                    <input type="text" id="intent-input" placeholder="What would you like to do? (e.g., 'Deploy my-app to staging')">
+                    <button class="btn btn-primary" onclick="submitIntent()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="icon-btn" onclick="showNotifications()" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">3</span>
+                    </button>
+                    <button class="icon-btn" onclick="showHelp()" title="Help">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                    <div class="user-menu">
+                        <button class="user-btn" onclick="toggleUserMenu()">
+                            <div class="avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span>Admin</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="page-content">
+                <!-- Dashboard Page -->
+                <div class="page active" id="page-dashboard">
+                    <div class="page-header">
+                        <h1>Dashboard</h1>
+                        <p>Overview of your AEGIS-T2A instance</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <i class="fas fa-comment-dots"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="stat-intents">0</h3>
+                                <p>Total Intents</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="stat-completed">0</h3>
+                                <p>Completed</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon yellow">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="stat-pending">0</h3>
+                                <p>Pending Approval</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="stat-failed">0</h3>
+                                <p>Failed</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-history"></i> Recent Activity</h2>
+                                <a href="#audit">View all</a>
+                            </div>
+                            <div class="activity-list" id="recent-activity">
+                                <div class="activity-item">
+                                    <div class="activity-icon success">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p>Workflow completed successfully</p>
+                                        <small>2 minutes ago</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-plug"></i> Connected Services</h2>
+                                <a href="#integrations">Manage</a>
+                            </div>
+                            <div class="services-list" id="connected-services">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card full-width">
+                            <div class="card-header">
+                                <h2><i class="fas fa-hourglass-half"></i> Pending Approvals</h2>
+                            </div>
+                            <div class="approvals-list" id="pending-approvals">
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No pending approvals</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div class="page" id="page-settings">
+                    <div class="page-header">
+                        <h1>Settings</h1>
+                        <p>Configure your AEGIS-T2A instance</p>
+                    </div>
+
+                    <div class="settings-container">
+                        <div class="settings-nav">
+                            <a href="#" class="settings-nav-item active" data-section="general">
+                                <i class="fas fa-cog"></i> General
+                            </a>
+                            <a href="#" class="settings-nav-item" data-section="llm">
+                                <i class="fas fa-brain"></i> AI Provider
+                            </a>
+                            <a href="#" class="settings-nav-item" data-section="security">
+                                <i class="fas fa-shield-alt"></i> Security
+                            </a>
+                            <a href="#" class="settings-nav-item" data-section="notifications">
+                                <i class="fas fa-bell"></i> Notifications
+                            </a>
+                            <a href="#" class="settings-nav-item" data-section="advanced">
+                                <i class="fas fa-sliders-h"></i> Advanced
+                            </a>
+                        </div>
+
+                        <div class="settings-content">
+                            <!-- General Settings -->
+                            <div class="settings-section active" id="settings-general">
+                                <h2>General Settings</h2>
+
+                                <div class="settings-group">
+                                    <div class="form-group">
+                                        <label>Instance Name</label>
+                                        <input type="text" id="settings-instance-name" value="AEGIS-T2A">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Default Environment</label>
+                                        <select id="settings-environment">
+                                            <option value="development">Development</option>
+                                            <option value="staging">Staging</option>
+                                            <option value="production">Production</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Timezone</label>
+                                        <select id="settings-timezone">
+                                            <option value="UTC">UTC</option>
+                                            <option value="America/New_York">Eastern Time</option>
+                                            <option value="America/Los_Angeles">Pacific Time</option>
+                                            <option value="Europe/London">London</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- LLM Settings -->
+                            <div class="settings-section" id="settings-llm">
+                                <h2>AI Provider Settings</h2>
+
+                                <div class="settings-group">
+                                    <div class="form-group">
+                                        <label>Provider</label>
+                                        <select id="settings-llm-provider" onchange="updateLLMSettings()">
+                                            <option value="anthropic">Anthropic Claude</option>
+                                            <option value="openai">OpenAI GPT</option>
+                                            <option value="openrouter">OpenRouter</option>
+                                            <option value="ollama">Ollama (Local)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" id="settings-api-key-group">
+                                        <label>API Key</label>
+                                        <div class="input-with-icon">
+                                            <input type="password" id="settings-api-key">
+                                            <button type="button" class="toggle-password" onclick="togglePassword('settings-api-key')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" id="settings-ollama-url-group" style="display: none;">
+                                        <label>Ollama URL</label>
+                                        <input type="text" id="settings-ollama-url" value="http://localhost:11434">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Model</label>
+                                        <select id="settings-llm-model">
+                                            <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Temperature</label>
+                                        <input type="range" id="settings-temperature" min="0" max="1" step="0.1" value="0.7">
+                                        <span id="temperature-value">0.7</span>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-primary" onclick="testLLMConnection()">
+                                    <i class="fas fa-vial"></i> Test Connection
+                                </button>
+                            </div>
+
+                            <!-- Security Settings -->
+                            <div class="settings-section" id="settings-security">
+                                <h2>Security Settings</h2>
+
+                                <div class="settings-group">
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="settings-require-approval" checked>
+                                            <span>Require approval for high-risk actions</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="settings-multi-signer" checked>
+                                            <span>Require multiple approvers for destructive actions</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Session Timeout (minutes)</label>
+                                        <input type="number" id="settings-session-timeout" value="60" min="5" max="480">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Credential TTL (seconds)</label>
+                                        <input type="number" id="settings-credential-ttl" value="300" min="60" max="3600">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Settings -->
+                            <div class="settings-section" id="settings-advanced">
+                                <h2>Advanced Settings</h2>
+
+                                <div class="settings-group">
+                                    <div class="form-group">
+                                        <label>Max Retries</label>
+                                        <input type="number" id="settings-max-retries" value="3" min="0" max="10">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Workflow Timeout (ms)</label>
+                                        <input type="number" id="settings-workflow-timeout" value="300000" min="10000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Simulation Iterations</label>
+                                        <input type="number" id="settings-simulation-iterations" value="10" min="1" max="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="settings-dry-run-default">
+                                            <span>Enable dry-run by default</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="danger-zone">
+                                    <h3>Danger Zone</h3>
+                                    <div class="danger-actions">
+                                        <button class="btn btn-danger" onclick="resetSettings()">
+                                            <i class="fas fa-undo"></i> Reset to Defaults
+                                        </button>
+                                        <button class="btn btn-danger" onclick="clearData()">
+                                            <i class="fas fa-trash"></i> Clear All Data
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button class="btn btn-secondary" onclick="discardSettings()">
+                            Discard Changes
+                        </button>
+                        <button class="btn btn-primary" onclick="saveSettings()">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Integrations Page -->
+                <div class="page" id="page-integrations">
+                    <div class="page-header">
+                        <h1>Integrations</h1>
+                        <p>Manage cloud providers and communication channels</p>
+                    </div>
+
+                    <div class="integrations-tabs">
+                        <button class="tab-btn active" data-tab="cloud">Cloud Providers</button>
+                        <button class="tab-btn" data-tab="channels">Channels</button>
+                        <button class="tab-btn" data-tab="tools">Tools & Adapters</button>
+                    </div>
+
+                    <div class="integrations-content">
+                        <!-- Cloud Providers Tab -->
+                        <div class="tab-content active" id="tab-cloud">
+                            <!-- Same cloud provider cards as wizard, but with more options -->
+                            <div class="integration-cards" id="cloud-integrations">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Channels Tab -->
+                        <div class="tab-content" id="tab-channels">
+                            <div class="integration-cards" id="channel-integrations">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Tools Tab -->
+                        <div class="tab-content" id="tab-tools">
+                            <div class="tools-list" id="registered-tools">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other pages (intents, workflows, audit, policies) -->
+                <div class="page" id="page-intents">
+                    <div class="page-header">
+                        <h1>Intents</h1>
+                        <p>View and manage your intents</p>
+                    </div>
+                    <div class="intents-list" id="intents-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="page" id="page-workflows">
+                    <div class="page-header">
+                        <h1>Workflows</h1>
+                        <p>Monitor and manage workflow executions</p>
+                    </div>
+                    <div class="workflows-list" id="workflows-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="page" id="page-audit">
+                    <div class="page-header">
+                        <h1>Audit Log</h1>
+                        <p>Complete history of all actions</p>
+                    </div>
+                    <div class="audit-controls">
+                        <input type="text" placeholder="Search events..." id="audit-search">
+                        <select id="audit-filter">
+                            <option value="">All Events</option>
+                            <option value="intent">Intents</option>
+                            <option value="workflow">Workflows</option>
+                            <option value="approval">Approvals</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="exportAudit()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                    <div class="audit-list" id="audit-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="page" id="page-policies">
+                    <div class="page-header">
+                        <h1>Security Policies</h1>
+                        <p>Configure access control and risk policies</p>
+                    </div>
+                    <div class="policies-list" id="policies-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Modal content -->
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <!-- Modal actions -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/wizard.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
