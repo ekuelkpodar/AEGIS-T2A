@@ -286,6 +286,26 @@ const AegisAPI = {
 
   async getStats(period = '24h') {
     return this.get(`/api/v1/stats?period=${period}`);
+  },
+
+  // ==========================================================================
+  // App Builder Operations
+  // ==========================================================================
+
+  async startBuild(config) {
+    return this.post('/api/v1/build', config);
+  },
+
+  async getBuild(buildId) {
+    return this.get(`/api/v1/build/${buildId}`);
+  },
+
+  async getBuilds() {
+    return this.get('/api/v1/builds');
+  },
+
+  async stopBuild(buildId) {
+    return this.post(`/api/v1/build/${buildId}/stop`);
   }
 };
 

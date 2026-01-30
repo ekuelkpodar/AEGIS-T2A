@@ -4,440 +4,896 @@
  * Initializes and coordinates all frontend components.
  */
 
-const AegisApp = {
-  initialized: false,
+let appInitialized = false;
 
-  /**
-   * Initialize the application
-   */
-  async init() {
-    if (this.initialized) return;
+/**
+ * Initialize the application
+ */
+function initApp() {
+  if (appInitialized) return;
 
-    console.log('Initializing AEGIS-T2A...');
+  console.log('Initializing AEGIS-T2A...');
 
-    // Initialize configuration
-    AegisConfig.init();
+  // Initialize configuration
+  AegisConfig.init();
 
-    // Initialize API client
-    AegisAPI.init();
+  // Initialize API client
+  AegisAPI.init();
 
-    // Set up theme
-    this.initTheme();
+  // Set up theme
+  initTheme();
 
-    // Check if setup is needed
-    if (!AegisConfig.isSetupComplete()) {
-      this.showSetupWizard();
-    } else {
-      this.showMainApp();
-    }
-
-    // Initialize components
-    Toast.init();
-
-    // Set up global event handlers
-    this.bindGlobalEvents();
-
-    // Check server connectivity
-    this.checkServerConnection();
-
-    this.initialized = true;
-    console.log('AEGIS-T2A initialized');
-  },
-
-  /**
-   * Show setup wizard
-   */
-  showSetupWizard() {
-    document.getElementById('loading-screen')?.classList.add('hidden');
-    document.getElementById('setup-wizard')?.classList.remove('hidden');
-    document.getElementById('app')?.classList.add('hidden');
-
-    // Initialize wizard
-    SetupWizard.init();
-    SetupWizard.loadSavedConfig();
-  },
-
-  /**
-   * Show main application
-   */
-  showMainApp() {
-    document.getElementById('loading-screen')?.classList.add('hidden');
-    document.getElementById('setup-wizard')?.classList.add('hidden');
-    document.getElementById('app')?.classList.remove('hidden');
-
-    // Initialize dashboard and settings
-    Dashboard.init();
-    Settings.init();
-
-    // Load initial data
-    this.loadInitialData();
-  },
-
-  /**
-   * Initialize theme
-   */
-  initTheme() {
-    const theme = AegisConfig.getValue('general.theme') || 'system';
-    const root = document.documentElement;
-
-    if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-
-      // Listen for system theme changes
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        if (AegisConfig.getValue('general.theme') === 'system') {
-          root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-        }
-      });
-    } else {
-      root.setAttribute('data-theme', theme);
-    }
-  },
-
-  /**
-   * Bind global event handlers
-   */
-  bindGlobalEvents() {
-    // Navigation
-    document.querySelectorAll('[data-nav]').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.navigate(link.dataset.nav);
-      });
-    });
-
-    // Modal close buttons
-    document.querySelectorAll('.modal-close, .modal-overlay').forEach(el => {
-      el.addEventListener('click', (e) => {
-        if (e.target === el) {
-          this.closeModal(el.closest('.modal'));
-        }
-      });
-    });
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      this.handleKeyboard(e);
-    });
-
-    // Handle page visibility
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        Dashboard.startAutoRefresh();
-      } else {
-        Dashboard.stopAutoRefresh();
-      }
-    });
-
-    // Handle online/offline
-    window.addEventListener('online', () => {
-      Toast.success('Connection restored');
-      this.checkServerConnection();
-    });
-
-    window.addEventListener('offline', () => {
-      Toast.error('Connection lost');
-    });
-
-    // Prevent accidental navigation with unsaved changes
-    window.addEventListener('beforeunload', (e) => {
-      if (document.querySelector('.dirty')) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    });
-  },
-
-  /**
-   * Navigate to a section
-   */
-  navigate(section) {
-    // Update navigation state
-    document.querySelectorAll('[data-nav]').forEach(link => {
-      link.classList.toggle('active', link.dataset.nav === section);
-    });
-
-    // Show section
-    document.querySelectorAll('.app-section').forEach(sec => {
-      sec.classList.toggle('active', sec.id === `section-${section}`);
-    });
-
-    // Update URL hash
-    window.location.hash = section;
-
-    // Track navigation
-    console.log(`Navigated to: ${section}`);
-  },
-
-  /**
-   * Handle keyboard shortcuts
-   */
-  handleKeyboard(e) {
-    // Ctrl/Cmd + K - Quick intent input
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      const intentInput = document.getElementById('intent-input');
-      if (intentInput) {
-        intentInput.focus();
-        intentInput.select();
-      }
-    }
-
-    // Escape - Close modals
-    if (e.key === 'Escape') {
-      const openModal = document.querySelector('.modal.show');
-      if (openModal) {
-        this.closeModal(openModal);
-      }
-    }
-
-    // Ctrl/Cmd + S - Save settings
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      const settingsSection = document.querySelector('.settings-section.active');
-      if (settingsSection) {
-        e.preventDefault();
-        Settings.saveSection(Settings.currentSection);
-      }
-    }
-  },
-
-  /**
-   * Open a modal
-   */
-  openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-      modal.classList.add('show');
-      document.body.classList.add('modal-open');
-    }
-  },
-
-  /**
-   * Close a modal
-   */
-  closeModal(modal) {
-    if (typeof modal === 'string') {
-      modal = document.getElementById(modal);
-    }
-    if (modal) {
-      modal.classList.remove('show');
-      document.body.classList.remove('modal-open');
-    }
-  },
-
-  /**
-   * Check server connection
-   */
-  async checkServerConnection() {
-    const indicator = document.getElementById('connection-status');
-
-    try {
-      const health = await AegisAPI.healthCheck();
-
-      if (indicator) {
-        indicator.classList.remove('disconnected', 'connecting');
-        indicator.classList.add('connected');
-        indicator.title = 'Connected to server';
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Server connection failed:', error);
-
-      if (indicator) {
-        indicator.classList.remove('connected', 'connecting');
-        indicator.classList.add('disconnected');
-        indicator.title = 'Disconnected from server';
-      }
-
-      return false;
-    }
-  },
-
-  /**
-   * Load initial data
-   */
-  async loadInitialData() {
-    try {
-      // Check connection first
-      const connected = await this.checkServerConnection();
-
-      if (connected) {
-        // Load adapters
-        await this.loadAdapters();
-
-        // Load policy rules
-        await this.loadPolicyRules();
-      }
-    } catch (error) {
-      console.error('Failed to load initial data:', error);
-    }
-  },
-
-  /**
-   * Load tool adapters
-   */
-  async loadAdapters() {
-    try {
-      const adapters = await AegisAPI.getAdapters();
-      this.renderAdaptersList(adapters.adapters || adapters);
-    } catch (error) {
-      console.error('Failed to load adapters:', error);
-    }
-  },
-
-  /**
-   * Render adapters list
-   */
-  renderAdaptersList(adapters) {
-    const container = document.getElementById('adapters-list');
-    if (!container || !adapters) return;
-
-    container.innerHTML = adapters.map(adapter => `
-      <div class="adapter-card">
-        <div class="adapter-header">
-          <span class="adapter-icon">${this.getAdapterIcon(adapter.adapterId)}</span>
-          <span class="adapter-name">${adapter.name}</span>
-          <span class="adapter-version">v${adapter.version}</span>
-        </div>
-        <div class="adapter-meta">
-          <span class="adapter-risk risk-${adapter.riskLevel}">${adapter.riskLevel}</span>
-          <span class="adapter-status ${adapter.enabled !== false ? 'enabled' : 'disabled'}">
-            ${adapter.enabled !== false ? 'Enabled' : 'Disabled'}
-          </span>
-        </div>
-        <div class="adapter-capabilities">
-          ${(adapter.capabilities || []).map(cap =>
-            `<span class="capability-badge">${cap}</span>`
-          ).join('')}
-        </div>
-      </div>
-    `).join('');
-  },
-
-  /**
-   * Get adapter icon
-   */
-  getAdapterIcon(adapterId) {
-    const icons = {
-      'aws-ec2': '☁️',
-      'aws-s3': '📦',
-      'aws-lambda': '⚡',
-      'azure-vm': '☁️',
-      'gcp-compute': '☁️',
-      'github': '🐙',
-      'kubernetes': '☸️',
-      'docker': '🐳',
-      'terraform': '🏗️',
-      'ansible': '📜',
-      'shell': '💻',
-      'http': '🌐'
-    };
-    return icons[adapterId] || '🔧';
-  },
-
-  /**
-   * Load policy rules
-   */
-  async loadPolicyRules() {
-    try {
-      const rules = await AegisAPI.getPolicyRules();
-      this.renderPolicyRules(rules.rules || rules);
-    } catch (error) {
-      console.error('Failed to load policy rules:', error);
-    }
-  },
-
-  /**
-   * Render policy rules
-   */
-  renderPolicyRules(rules) {
-    const container = document.getElementById('policy-rules');
-    if (!container || !rules) return;
-
-    container.innerHTML = rules.map(rule => `
-      <div class="policy-rule ${rule.effect}">
-        <div class="rule-header">
-          <span class="rule-name">${rule.name}</span>
-          <span class="rule-effect effect-${rule.effect}">${rule.effect}</span>
-        </div>
-        <div class="rule-description">${rule.description || ''}</div>
-        <div class="rule-conditions">
-          ${(rule.conditions || []).map(cond =>
-            `<span class="condition-badge">${cond.field} ${cond.operator} ${cond.value}</span>`
-          ).join('')}
-        </div>
-      </div>
-    `).join('');
-  },
-
-  /**
-   * Show loading state
-   */
-  showLoading(message = 'Loading...') {
-    const loader = document.getElementById('loading-overlay');
-    const loaderText = document.getElementById('loading-text');
-
-    if (loaderText) loaderText.textContent = message;
-    if (loader) loader.classList.add('show');
-  },
-
-  /**
-   * Hide loading state
-   */
-  hideLoading() {
-    const loader = document.getElementById('loading-overlay');
-    if (loader) loader.classList.remove('show');
-  },
-
-  /**
-   * Reset application
-   */
-  reset() {
-    if (!confirm('Reset all settings and data? This cannot be undone.')) return;
-
-    AegisConfig.reset();
-    localStorage.clear();
-    window.location.reload();
-  },
-
-  /**
-   * Open settings
-   */
-  openSettings(section = 'general') {
-    this.navigate('settings');
-    Settings.showSection(section);
-  },
-
-  /**
-   * Format error for display
-   */
-  formatError(error) {
-    if (typeof error === 'string') return error;
-    if (error.message) return error.message;
-    if (error.error) return error.error;
-    return 'An unknown error occurred';
+  // Check if setup is needed
+  if (!AegisConfig.isSetupComplete()) {
+    showSetupWizard();
+  } else {
+    showMainApp();
   }
-};
+
+  // Initialize toast notifications
+  Toast.init();
+
+  appInitialized = true;
+  console.log('AEGIS-T2A initialized');
+}
+
+/**
+ * Show setup wizard
+ */
+function showSetupWizard() {
+  document.getElementById('loading-screen')?.classList.add('hidden');
+  document.getElementById('setup-wizard')?.classList.remove('hidden');
+  document.getElementById('app')?.classList.add('hidden');
+
+  // Initialize wizard
+  initWizard();
+}
+
+/**
+ * Show main application
+ */
+function showMainApp() {
+  document.getElementById('loading-screen')?.classList.add('hidden');
+  document.getElementById('setup-wizard')?.classList.add('hidden');
+  document.getElementById('app')?.classList.remove('hidden');
+
+  // Initialize main app components
+  initMainApp();
+}
+
+/**
+ * Initialize main application after wizard
+ */
+function initMainApp() {
+  // Bind navigation
+  bindNavigation();
+
+  // Bind intent input
+  bindIntentInput();
+
+  // Load initial data
+  loadDashboardData();
+
+  // Check server connection
+  checkServerConnection();
+
+  // Show dashboard by default
+  navigateTo('dashboard');
+}
+
+/**
+ * Initialize theme
+ */
+function initTheme() {
+  const theme = AegisConfig.getValue('general.theme') || 'system';
+  const root = document.documentElement;
+
+  if (theme === 'system') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (AegisConfig.getValue('general.theme') === 'system') {
+        root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      }
+    });
+  } else {
+    root.setAttribute('data-theme', theme);
+  }
+}
+
+/**
+ * Bind navigation events
+ */
+function bindNavigation() {
+  document.querySelectorAll('.nav-item').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const page = link.dataset.page;
+      if (page) navigateTo(page);
+    });
+  });
+
+  // Settings navigation
+  document.querySelectorAll('.settings-nav-item').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const section = link.dataset.section;
+      if (section) showSettingsSection(section);
+    });
+  });
+
+  // Integrations tabs
+  document.querySelectorAll('.integrations-tabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      if (tab) showIntegrationsTab(tab);
+    });
+  });
+}
+
+/**
+ * Navigate to a page
+ */
+function navigateTo(page) {
+  // Update navigation state
+  document.querySelectorAll('.nav-item').forEach(link => {
+    link.classList.toggle('active', link.dataset.page === page);
+  });
+
+  // Show page
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.toggle('active', p.id === `page-${page}`);
+  });
+
+  // Load page-specific data
+  if (page === 'dashboard') loadDashboardData();
+  if (page === 'audit') loadAuditData();
+  if (page === 'settings') loadSettingsData();
+  if (page === 'integrations') loadIntegrationsData();
+}
+
+/**
+ * Show settings section
+ */
+function showSettingsSection(section) {
+  document.querySelectorAll('.settings-nav-item').forEach(link => {
+    link.classList.toggle('active', link.dataset.section === section);
+  });
+
+  document.querySelectorAll('.settings-section').forEach(s => {
+    s.classList.toggle('active', s.id === `settings-${section}`);
+  });
+}
+
+/**
+ * Show integrations tab
+ */
+function showIntegrationsTab(tab) {
+  document.querySelectorAll('.integrations-tabs .tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.toggle('active', content.id === `tab-${tab}`);
+  });
+}
+
+/**
+ * Bind intent input
+ */
+function bindIntentInput() {
+  const intentInput = document.getElementById('intent-input');
+  if (intentInput) {
+    intentInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        submitIntent();
+      }
+    });
+  }
+}
+
+/**
+ * Submit intent from input
+ */
+async function submitIntent() {
+  const intentInput = document.getElementById('intent-input');
+  if (!intentInput) return;
+
+  const text = intentInput.value.trim();
+  if (!text) {
+    Toast.warning('Please enter what you want to do');
+    return;
+  }
+
+  // Show loading state
+  intentInput.disabled = true;
+  const submitBtn = intentInput.parentElement.querySelector('button');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
+
+  try {
+    // Check if this is an app building request
+    if (isAppBuildingRequest(text)) {
+      await handleAppBuildingRequest(text);
+    } else {
+      // Regular intent processing
+      const result = await AegisAPI.createIntent(text);
+
+      if (result.success) {
+        Toast.success('Intent created! Generating plan...');
+        intentInput.value = '';
+
+        // Navigate to intents page or show plan
+        if (result.intent) {
+          showIntentDetails(result.intent);
+        }
+      } else {
+        Toast.error(result.error || 'Failed to create intent');
+      }
+    }
+  } catch (error) {
+    console.error('Intent submission failed:', error);
+    Toast.error(error.message || 'Failed to process your request');
+  } finally {
+    intentInput.disabled = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+    }
+  }
+}
+
+/**
+ * Check if request is for building an app
+ */
+function isAppBuildingRequest(text) {
+  const buildKeywords = [
+    'build', 'create', 'make', 'generate', 'scaffold',
+    'crud', 'landing page', 'website', 'web app', 'application',
+    'api', 'backend', 'frontend', 'full stack'
+  ];
+  const lowerText = text.toLowerCase();
+  return buildKeywords.some(keyword => lowerText.includes(keyword));
+}
+
+/**
+ * Handle app building request
+ */
+async function handleAppBuildingRequest(text) {
+  // Show build modal
+  showBuildModal(text);
+}
+
+/**
+ * Show build modal
+ */
+function showBuildModal(request) {
+  const modal = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+  const modalFooter = document.getElementById('modal-footer');
+
+  if (!modal || !modalBody) return;
+
+  modalTitle.textContent = 'Building Your Application';
+  modalBody.innerHTML = `
+    <div class="build-modal">
+      <div class="build-request">
+        <i class="fas fa-quote-left"></i>
+        <p>${escapeHtml(request)}</p>
+      </div>
+
+      <div class="build-options">
+        <h4>Build Configuration</h4>
+
+        <div class="form-group">
+          <label>Project Name</label>
+          <input type="text" id="build-project-name" placeholder="my-awesome-app" value="${generateProjectName(request)}">
+        </div>
+
+        <div class="form-group">
+          <label>Project Type</label>
+          <select id="build-project-type">
+            <option value="crud">CRUD Application</option>
+            <option value="landing">Landing Page</option>
+            <option value="api">REST API</option>
+            <option value="fullstack">Full Stack App</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Technology Stack</label>
+          <select id="build-stack">
+            <option value="node-express">Node.js + Express</option>
+            <option value="python-flask">Python + Flask</option>
+            <option value="python-fastapi">Python + FastAPI</option>
+            <option value="static-html">Static HTML/CSS/JS</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="build-use-docker" checked>
+            <span>Build with Docker</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="build-auto-run" checked>
+            <span>Run automatically after build</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="build-status" id="build-status" style="display: none;">
+        <div class="build-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" id="build-progress-fill"></div>
+          </div>
+          <p id="build-status-text">Initializing...</p>
+        </div>
+        <div class="build-logs" id="build-logs"></div>
+      </div>
+    </div>
+  `;
+
+  modalFooter.innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" id="start-build-btn" onclick="startBuild('${escapeHtml(request).replace(/'/g, "\\'")}')">
+      <i class="fas fa-hammer"></i> Start Build
+    </button>
+  `;
+
+  modal.classList.add('active');
+}
+
+/**
+ * Generate project name from request
+ */
+function generateProjectName(request) {
+  const words = request.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !['build', 'create', 'make', 'please', 'want', 'need', 'the', 'for', 'with'].includes(w))
+    .slice(0, 2);
+  return words.join('-') || 'my-app';
+}
+
+/**
+ * Start the build process
+ */
+async function startBuild(request) {
+  const projectName = document.getElementById('build-project-name')?.value || 'my-app';
+  const projectType = document.getElementById('build-project-type')?.value || 'crud';
+  const stack = document.getElementById('build-stack')?.value || 'node-express';
+  const useDocker = document.getElementById('build-use-docker')?.checked ?? true;
+  const autoRun = document.getElementById('build-auto-run')?.checked ?? true;
+
+  // Hide options, show status
+  document.querySelector('.build-options').style.display = 'none';
+  document.getElementById('build-status').style.display = 'block';
+  document.getElementById('start-build-btn').style.display = 'none';
+
+  const statusText = document.getElementById('build-status-text');
+  const progressFill = document.getElementById('build-progress-fill');
+  const logsContainer = document.getElementById('build-logs');
+
+  const updateStatus = (text, progress) => {
+    if (statusText) statusText.textContent = text;
+    if (progressFill) progressFill.style.width = `${progress}%`;
+    if (logsContainer) {
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+      logsContainer.appendChild(logEntry);
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+  };
+
+  try {
+    updateStatus('Creating project structure...', 10);
+    await sleep(500);
+
+    updateStatus(`Generating ${projectType} code with LLM...`, 30);
+
+    // Call the build API
+    const buildResult = await AegisAPI.post('/api/v1/build', {
+      request,
+      projectName,
+      projectType,
+      stack,
+      useDocker,
+      autoRun
+    });
+
+    if (buildResult.success) {
+      updateStatus('Project files generated!', 50);
+      await sleep(300);
+
+      if (useDocker) {
+        updateStatus('Building Docker container...', 70);
+        await sleep(1000);
+      }
+
+      if (autoRun) {
+        updateStatus('Starting application...', 90);
+        await sleep(500);
+      }
+
+      updateStatus('Build complete!', 100);
+
+      // Show success message with link
+      const port = buildResult.port || 3001;
+      logsContainer.innerHTML += `
+        <div class="log-entry success">
+          ✅ Application is running at <a href="http://localhost:${port}" target="_blank">http://localhost:${port}</a>
+        </div>
+      `;
+
+      // Update footer
+      const modalFooter = document.getElementById('modal-footer');
+      modalFooter.innerHTML = `
+        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+        <a class="btn btn-success" href="http://localhost:${port}" target="_blank">
+          <i class="fas fa-external-link-alt"></i> Open Application
+        </a>
+      `;
+
+      Toast.success('Application built and running!');
+    } else {
+      throw new Error(buildResult.error || 'Build failed');
+    }
+  } catch (error) {
+    updateStatus(`Error: ${error.message}`, 0);
+    logsContainer.innerHTML += `
+      <div class="log-entry error">❌ ${error.message}</div>
+    `;
+    Toast.error('Build failed: ' + error.message);
+  }
+}
+
+/**
+ * Close modal
+ */
+function closeModal() {
+  const modal = document.getElementById('modal-overlay');
+  if (modal) modal.classList.remove('active');
+}
+
+/**
+ * Show intent details
+ */
+function showIntentDetails(intent) {
+  // Navigate to intents page and show details
+  navigateTo('intents');
+  // TODO: Show specific intent details
+}
+
+/**
+ * Load dashboard data
+ */
+async function loadDashboardData() {
+  try {
+    // Load stats
+    const [health, auditEvents] = await Promise.all([
+      AegisAPI.healthCheck().catch(() => null),
+      AegisAPI.getAuditEvents({ limit: 10 }).catch(() => ({ events: [] }))
+    ]);
+
+    // Update stats
+    if (auditEvents.events) {
+      const events = auditEvents.events;
+      document.getElementById('stat-intents').textContent = events.filter(e => e.eventType?.includes('INTENT')).length;
+      document.getElementById('stat-completed').textContent = events.filter(e => e.eventType?.includes('COMPLETED')).length;
+      document.getElementById('stat-pending').textContent = events.filter(e => e.eventType?.includes('PENDING')).length;
+      document.getElementById('stat-failed').textContent = events.filter(e => e.eventType?.includes('FAILED')).length;
+
+      // Update recent activity
+      updateRecentActivity(events);
+    }
+
+    // Update connection status
+    updateConnectionStatus(!!health);
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error);
+  }
+}
+
+/**
+ * Update recent activity list
+ */
+function updateRecentActivity(events) {
+  const container = document.getElementById('recent-activity');
+  if (!container || !events.length) return;
+
+  container.innerHTML = events.slice(0, 5).map(event => `
+    <div class="activity-item">
+      <div class="activity-icon ${event.success ? 'success' : 'error'}">
+        <i class="fas fa-${event.success ? 'check' : 'times'}"></i>
+      </div>
+      <div class="activity-content">
+        <p>${event.action || event.eventType}</p>
+        <small>${formatTimeAgo(event.timestamp)}</small>
+      </div>
+    </div>
+  `).join('');
+}
+
+/**
+ * Load audit data
+ */
+async function loadAuditData() {
+  try {
+    const result = await AegisAPI.getAuditEvents({ limit: 50 });
+    const container = document.getElementById('audit-list');
+    if (!container) return;
+
+    if (!result.events || result.events.length === 0) {
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>No audit events yet</p></div>';
+      return;
+    }
+
+    container.innerHTML = result.events.map(event => `
+      <div class="audit-item">
+        <div class="audit-icon ${event.success ? 'success' : 'error'}">
+          <i class="fas fa-${event.success ? 'check-circle' : 'times-circle'}"></i>
+        </div>
+        <div class="audit-content">
+          <div class="audit-header">
+            <span class="audit-type">${event.eventType}</span>
+            <span class="audit-time">${formatTimeAgo(event.timestamp)}</span>
+          </div>
+          <p class="audit-action">${event.action}</p>
+          <p class="audit-actor">by ${event.actorId}</p>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Failed to load audit data:', error);
+  }
+}
+
+/**
+ * Load settings data
+ */
+async function loadSettingsData() {
+  try {
+    const settings = await AegisAPI.getSettings();
+    const config = AegisConfig.get();
+
+    // Populate LLM settings
+    const providerSelect = document.getElementById('settings-llm-provider');
+    if (providerSelect) providerSelect.value = settings.llm?.provider || config.llm?.provider || 'ollama';
+
+    // Update based on saved config
+    updateLLMSettings();
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+  }
+}
+
+/**
+ * Update LLM settings UI based on selected provider
+ */
+function updateLLMSettings() {
+  const provider = document.getElementById('settings-llm-provider')?.value;
+  const apiKeyGroup = document.getElementById('settings-api-key-group');
+  const ollamaUrlGroup = document.getElementById('settings-ollama-url-group');
+  const modelSelect = document.getElementById('settings-llm-model');
+
+  if (provider === 'ollama') {
+    if (apiKeyGroup) apiKeyGroup.style.display = 'none';
+    if (ollamaUrlGroup) ollamaUrlGroup.style.display = 'block';
+  } else {
+    if (apiKeyGroup) apiKeyGroup.style.display = 'block';
+    if (ollamaUrlGroup) ollamaUrlGroup.style.display = 'none';
+  }
+
+  // Load models for provider
+  if (modelSelect) {
+    loadSettingsModels(provider, modelSelect);
+  }
+}
+
+/**
+ * Load models for settings
+ */
+async function loadSettingsModels(provider, select) {
+  select.innerHTML = '<option value="">Loading...</option>';
+
+  const modelsByProvider = {
+    anthropic: [
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+    ],
+    openai: [
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+      { id: 'gpt-4o', name: 'GPT-4o' },
+    ],
+    openrouter: [
+      { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+      { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo' },
+    ],
+    ollama: [
+      { id: 'llama2', name: 'Llama 2' },
+      { id: 'mistral', name: 'Mistral' },
+      { id: 'codellama', name: 'Code Llama' },
+    ],
+  };
+
+  const models = modelsByProvider[provider] || [];
+  select.innerHTML = models.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+/**
+ * Load integrations data
+ */
+function loadIntegrationsData() {
+  // Load cloud integrations
+  const cloudContainer = document.getElementById('cloud-integrations');
+  if (cloudContainer) {
+    const config = AegisConfig.get();
+    cloudContainer.innerHTML = `
+      <div class="integration-card ${config.cloud?.aws?.enabled ? 'enabled' : ''}">
+        <div class="integration-icon aws"><i class="fab fa-aws"></i></div>
+        <div class="integration-info">
+          <h3>Amazon Web Services</h3>
+          <p>${config.cloud?.aws?.enabled ? 'Connected' : 'Not configured'}</p>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="configureIntegration('aws')">Configure</button>
+      </div>
+      <div class="integration-card ${config.cloud?.azure?.enabled ? 'enabled' : ''}">
+        <div class="integration-icon azure"><i class="fab fa-microsoft"></i></div>
+        <div class="integration-info">
+          <h3>Microsoft Azure</h3>
+          <p>${config.cloud?.azure?.enabled ? 'Connected' : 'Not configured'}</p>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="configureIntegration('azure')">Configure</button>
+      </div>
+      <div class="integration-card ${config.cloud?.gcp?.enabled ? 'enabled' : ''}">
+        <div class="integration-icon gcp"><i class="fab fa-google"></i></div>
+        <div class="integration-info">
+          <h3>Google Cloud</h3>
+          <p>${config.cloud?.gcp?.enabled ? 'Connected' : 'Not configured'}</p>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="configureIntegration('gcp')">Configure</button>
+      </div>
+      <div class="integration-card ${config.cloud?.onprem?.enabled ? 'enabled' : ''}">
+        <div class="integration-icon onprem"><i class="fas fa-server"></i></div>
+        <div class="integration-info">
+          <h3>Local / On-Premises</h3>
+          <p>${config.cloud?.onprem?.enabled ? 'Connected' : 'Not configured'}</p>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="configureIntegration('onprem')">Configure</button>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Configure integration
+ */
+function configureIntegration(provider) {
+  Toast.info(`Opening ${provider} configuration...`);
+  // TODO: Open integration configuration modal
+}
+
+/**
+ * Check server connection
+ */
+async function checkServerConnection() {
+  try {
+    await AegisAPI.healthCheck();
+    updateConnectionStatus(true);
+  } catch (error) {
+    updateConnectionStatus(false);
+  }
+}
+
+/**
+ * Update connection status indicator
+ */
+function updateConnectionStatus(connected) {
+  const statusDot = document.querySelector('.connection-status .status-dot');
+  const statusText = document.querySelector('.connection-status span:last-child');
+
+  if (statusDot) {
+    statusDot.classList.toggle('connected', connected);
+    statusDot.classList.toggle('disconnected', !connected);
+  }
+  if (statusText) {
+    statusText.textContent = connected ? 'Connected' : 'Disconnected';
+  }
+}
+
+/**
+ * Save settings
+ */
+async function saveSettings() {
+  const provider = document.getElementById('settings-llm-provider')?.value;
+  const apiKey = document.getElementById('settings-api-key')?.value;
+  const model = document.getElementById('settings-llm-model')?.value;
+  const ollamaUrl = document.getElementById('settings-ollama-url')?.value;
+
+  // Save to local config
+  AegisConfig.setValue('llm.provider', provider);
+  if (provider === 'ollama') {
+    AegisConfig.setValue('llm.ollama.baseUrl', ollamaUrl);
+    AegisConfig.setValue('llm.ollama.model', model);
+  } else {
+    AegisConfig.setValue(`llm.${provider}.apiKey`, apiKey);
+    AegisConfig.setValue(`llm.${provider}.model`, model);
+  }
+
+  Toast.success('Settings saved!');
+}
+
+/**
+ * Discard settings changes
+ */
+function discardSettings() {
+  loadSettingsData();
+  Toast.info('Changes discarded');
+}
+
+/**
+ * Reset settings to defaults
+ */
+function resetSettings() {
+  if (confirm('Reset all settings to defaults? This cannot be undone.')) {
+    AegisConfig.reset();
+    loadSettingsData();
+    Toast.success('Settings reset to defaults');
+  }
+}
+
+/**
+ * Clear all data
+ */
+function clearData() {
+  if (confirm('Clear all data? This will remove all intents, workflows, and audit logs.')) {
+    localStorage.clear();
+    Toast.success('All data cleared');
+    location.reload();
+  }
+}
+
+/**
+ * Test LLM connection from settings
+ */
+async function testLLMConnection() {
+  const provider = document.getElementById('settings-llm-provider')?.value;
+  const apiKey = document.getElementById('settings-api-key')?.value;
+  const ollamaUrl = document.getElementById('settings-ollama-url')?.value;
+
+  Toast.info('Testing connection...');
+
+  try {
+    const result = await AegisAPI.testLLMConnection(provider, apiKey, null, ollamaUrl);
+    if (result.success) {
+      Toast.success('Connection successful!');
+    } else {
+      Toast.error('Connection failed: ' + (result.message || 'Unknown error'));
+    }
+  } catch (error) {
+    Toast.error('Connection failed: ' + error.message);
+  }
+}
+
+/**
+ * Show notifications
+ */
+function showNotifications() {
+  Toast.info('No new notifications');
+}
+
+/**
+ * Show help
+ */
+function showHelp() {
+  const modal = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+  const modalFooter = document.getElementById('modal-footer');
+
+  modalTitle.textContent = 'Help & Documentation';
+  modalBody.innerHTML = `
+    <div class="help-content">
+      <h4>Quick Start</h4>
+      <p>Type what you want to do in the command bar at the top. For example:</p>
+      <ul>
+        <li><code>Build me a CRUD app for managing tasks</code></li>
+        <li><code>Create a landing page for my startup</code></li>
+        <li><code>Deploy my-app to production</code></li>
+      </ul>
+
+      <h4>Keyboard Shortcuts</h4>
+      <ul>
+        <li><kbd>Ctrl</kbd> + <kbd>K</kbd> - Focus command bar</li>
+        <li><kbd>Escape</kbd> - Close modal</li>
+      </ul>
+
+      <h4>Need More Help?</h4>
+      <p>Visit the <a href="https://github.com/ekuelkpodar/AEGIS-T2A" target="_blank">documentation</a> for more information.</p>
+    </div>
+  `;
+  modalFooter.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">Got it</button>';
+
+  modal.classList.add('active');
+}
+
+/**
+ * Toggle user menu
+ */
+function toggleUserMenu() {
+  Toast.info('User menu coming soon');
+}
+
+/**
+ * Export audit log
+ */
+function exportAudit() {
+  Toast.info('Exporting audit log...');
+  // TODO: Implement audit export
+}
+
+// Utility functions
+
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return 'Unknown';
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-  // Hide loading screen after short delay
   setTimeout(() => {
-    AegisApp.init();
+    initApp();
   }, 500);
 });
 
-// Handle hash navigation
-window.addEventListener('hashchange', () => {
-  const section = window.location.hash.slice(1);
-  if (section) {
-    AegisApp.navigate(section);
+// Handle keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Ctrl/Cmd + K - Focus intent input
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const intentInput = document.getElementById('intent-input');
+    if (intentInput) {
+      intentInput.focus();
+      intentInput.select();
+    }
+  }
+
+  // Escape - Close modals
+  if (e.key === 'Escape') {
+    closeModal();
   }
 });
 
 // Export for modules
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = AegisApp;
+  module.exports = { initApp, initMainApp };
 }
