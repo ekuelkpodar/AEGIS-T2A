@@ -50,7 +50,7 @@ const AegisApp = {
   showSetupWizard() {
     document.getElementById('loading-screen')?.classList.add('hidden');
     document.getElementById('setup-wizard')?.classList.remove('hidden');
-    document.getElementById('main-app')?.classList.add('hidden');
+    document.getElementById('app')?.classList.add('hidden');
 
     // Initialize wizard
     SetupWizard.init();
@@ -63,7 +63,7 @@ const AegisApp = {
   showMainApp() {
     document.getElementById('loading-screen')?.classList.add('hidden');
     document.getElementById('setup-wizard')?.classList.add('hidden');
-    document.getElementById('main-app')?.classList.remove('hidden');
+    document.getElementById('app')?.classList.remove('hidden');
 
     // Initialize dashboard and settings
     Dashboard.init();

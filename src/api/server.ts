@@ -8,6 +8,7 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import { createRouter } from './routes.js';
 import { getConfig } from '../core/config.js';
 import { componentLogger, requestLogger } from '../core/logger.js';
@@ -94,8 +95,19 @@ export function createServer(): Express {
   const app = express();
   const config = getConfig();
 
-  // Security middleware
-  app.use(helmet());
+  // Security middleware - configured for frontend assets
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "http://localhost:*", "ws://localhost:*"],
+      },
+    },
+  }));
   app.use(cors());
 
   // Rate limiting
@@ -118,14 +130,17 @@ export function createServer(): Express {
   // API routes
   app.use('/api/v1', createRouter());
 
-  // Root endpoint
-  app.get('/', (_req, res) => {
-    res.json({
-      name: 'AEGIS-T2A',
-      description: 'Text-to-Action Anywhere Platform',
-      version: process.env['npm_package_version'] ?? '0.1.0',
-      docs: '/api/v1/health',
-    });
+  // Serve static frontend files
+  const frontendPath = path.join(process.cwd(), 'frontend');
+  app.use(express.static(frontendPath));
+
+  // Serve index.html for all non-API routes (SPA support)
+  app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendPath, 'index.html'));
   });
 
   // 404 handler

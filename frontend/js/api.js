@@ -221,37 +221,29 @@ const AegisAPI = {
   },
 
   // ==========================================================================
-  // Configuration Operations
+  // Settings & Configuration Operations
   // ==========================================================================
 
-  async getServerConfig() {
-    return this.get('/api/v1/config');
+  async getSettings() {
+    return this.get('/api/v1/settings');
   },
 
-  async updateServerConfig(config) {
-    return this.put('/api/v1/config', config);
-  },
-
-  async testConnection(provider, config) {
-    return this.post('/api/v1/connections/test', {
+  async testLLMConnection(provider, apiKey, model, ollamaUrl) {
+    return this.post('/api/v1/settings/test-llm', {
       provider,
-      config
+      apiKey,
+      model,
+      ollamaUrl
     });
   },
 
-  // ==========================================================================
-  // LLM Provider Operations
-  // ==========================================================================
-
-  async testLLMConnection(provider, config) {
-    return this.post('/api/v1/llm/test', {
-      provider,
-      ...config
-    });
+  async getOllamaModels(url) {
+    const params = url ? `?url=${encodeURIComponent(url)}` : '';
+    return this.get(`/api/v1/settings/ollama/models${params}`);
   },
 
-  async getLLMProviders() {
-    return this.get('/api/v1/llm/providers');
+  async getModelsForProvider(provider) {
+    return this.get(`/api/v1/settings/models?provider=${encodeURIComponent(provider)}`);
   },
 
   // ==========================================================================

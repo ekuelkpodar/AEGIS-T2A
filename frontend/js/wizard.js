@@ -387,22 +387,49 @@ const SetupWizard = {
    */
   async testLLMConnection(provider, config) {
     try {
-      // Try to make a simple API call
-      const response = await AegisAPI.testLLMConnection(provider, config);
+      // Use the new API endpoint
+      const response = await AegisAPI.testLLMConnection(
+        provider,
+        config.apiKey,
+        config.model,
+        config.baseUrl
+      );
       return response;
     } catch (error) {
-      // Fallback: test locally for Ollama
+      // Fallback: test directly for Ollama
       if (provider === 'ollama') {
         try {
-          const response = await fetch(`${config.baseUrl}/api/tags`);
+          const response = await fetch(`${config.baseUrl || 'http://localhost:11434'}/api/tags`);
           if (response.ok) {
-            return { success: true };
+            return { success: true, message: 'Ollama is running' };
           }
         } catch (e) {
           // Fall through to error
         }
       }
       return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Load Ollama models
+   */
+  async loadOllamaModels(baseUrl) {
+    try {
+      const response = await AegisAPI.getOllamaModels(baseUrl);
+      return response.models || [];
+    } catch (error) {
+      // Fallback: fetch directly
+      try {
+        const response = await fetch(`${baseUrl || 'http://localhost:11434'}/api/tags`);
+        if (response.ok) {
+          const data = await response.json();
+          return (data.models || []).map(m => m.name);
+        }
+      } catch (e) {
+        // Ignore
+      }
+      return [];
     }
   },
 
@@ -603,8 +630,8 @@ const SetupWizard = {
     AegisConfig.markSetupComplete();
 
     // Hide wizard and show app
-    document.getElementById('setup-wizard').style.display = 'none';
-    document.getElementById('main-app').style.display = 'flex';
+    document.getElementById('setup-wizard').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
 
     // Initialize main application
     if (typeof AegisApp !== 'undefined') {

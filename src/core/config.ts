@@ -28,9 +28,13 @@ const ConfigSchema = z.object({
   jwtExpiresIn: z.string().default('1h'),
 
   // LLM
-  llmProvider: z.enum(['anthropic', 'openai', 'openrouter']).default('anthropic'),
+  llmProvider: z.enum(['anthropic', 'openai', 'openrouter', 'ollama']).default('anthropic'),
   anthropicApiKey: z.string().optional(),
   openaiApiKey: z.string().optional(),
+  openrouterApiKey: z.string().optional(),
+  ollamaBaseUrl: z.string().url().optional(),
+  llmModel: z.string().optional(),
+  llmTemperature: z.coerce.number().min(0).max(2).default(0.7),
 
   // Observability
   otelEndpoint: z.string().url().optional(),
@@ -75,6 +79,10 @@ function loadConfig(): Config {
     llmProvider: process.env['LLM_PROVIDER'],
     anthropicApiKey: process.env['ANTHROPIC_API_KEY'],
     openaiApiKey: process.env['OPENAI_API_KEY'],
+    openrouterApiKey: process.env['OPENROUTER_API_KEY'],
+    ollamaBaseUrl: process.env['OLLAMA_BASE_URL'],
+    llmModel: process.env['LLM_MODEL'],
+    llmTemperature: process.env['LLM_TEMPERATURE'],
     otelEndpoint: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'],
     otelServiceName: process.env['OTEL_SERVICE_NAME'],
     rateLimitWindowMs: process.env['RATE_LIMIT_WINDOW_MS'],
