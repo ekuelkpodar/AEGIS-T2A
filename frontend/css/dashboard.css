@@ -741,3 +741,698 @@
         margin-left: auto;
     }
 }
+
+/* =============================================================================
+   Settings Page - Panels & Forms
+   ============================================================================= */
+
+.settings-panel {
+    display: none;
+    animation: fadeIn var(--transition-normal);
+}
+
+.settings-panel.active {
+    display: block;
+}
+
+.settings-panel h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-sm);
+}
+
+.settings-panel h2 i {
+    color: var(--primary);
+}
+
+.settings-desc {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xl);
+}
+
+.settings-form {
+    margin-bottom: var(--spacing-xl);
+}
+
+.settings-form .form-group {
+    margin-bottom: var(--spacing-md);
+}
+
+/* Settings Provider Cards */
+.settings-provider-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+}
+
+.settings-provider-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+
+.settings-provider-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.settings-provider-card.selected {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.settings-provider-card .provider-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.75rem;
+}
+
+.settings-provider-card .provider-icon.anthropic { background: rgba(139, 92, 246, 0.2); color: #8B5CF6; }
+.settings-provider-card .provider-icon.openai { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+.settings-provider-card .provider-icon.openrouter { background: rgba(59, 130, 246, 0.2); color: #3B82F6; }
+.settings-provider-card .provider-icon.ollama { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+
+.settings-provider-card h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.settings-provider-card p {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Cloud Setting Items */
+.cloud-setting-item {
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-md);
+    transition: all var(--transition-fast);
+}
+
+.cloud-setting-item:hover {
+    border-color: var(--border-light);
+}
+
+.cloud-setting-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.cloud-icon {
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.cloud-icon.aws { background: rgba(255, 153, 0, 0.2); color: #FF9900; }
+.cloud-icon.azure { background: rgba(0, 120, 212, 0.2); color: #0078D4; }
+.cloud-icon.gcp { background: rgba(66, 133, 244, 0.2); color: #4285F4; }
+.cloud-icon.onprem { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+
+.cloud-setting-item .cloud-info {
+    flex: 1;
+}
+
+.cloud-setting-item .cloud-info h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.cloud-setting-item .cloud-info p {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.cloud-setting-config {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Channel Setting Items */
+.channel-setting-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-md);
+    transition: all var(--transition-fast);
+}
+
+.channel-setting-item:hover {
+    border-color: var(--border-light);
+}
+
+.channel-setting-item.enabled {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.channel-icon {
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.channel-icon.web { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+.channel-icon.telegram { background: rgba(0, 136, 204, 0.2); color: #0088CC; }
+.channel-icon.slack { background: rgba(74, 21, 75, 0.2); color: #4A154B; }
+.channel-icon.api { background: rgba(59, 130, 246, 0.2); color: #3B82F6; }
+
+.channel-setting-item .channel-info {
+    flex: 1;
+}
+
+.channel-setting-item .channel-info h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.channel-setting-item .channel-info p {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.channel-badge {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+}
+
+.channel-setting-config {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Settings Danger Zone */
+.settings-danger-zone {
+    margin-top: var(--spacing-2xl);
+    padding: var(--spacing-lg);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-lg);
+}
+
+.settings-danger-zone h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--danger);
+    margin-bottom: var(--spacing-md);
+}
+
+.settings-danger-zone .danger-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+/* =============================================================================
+   Settings Page - Tabs & Enhanced UI
+   ============================================================================= */
+
+/* Settings Tabs */
+.settings-tabs {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.settings-tab {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.settings-tab:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.settings-tab.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.settings-tab i {
+    font-size: 1rem;
+}
+
+/* Settings Tab Content */
+.settings-tab-content {
+    display: none;
+    animation: fadeIn var(--transition-normal);
+}
+
+.settings-tab-content.active {
+    display: block;
+}
+
+/* Provider Cards Grid */
+.provider-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+}
+
+.provider-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+
+.provider-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.provider-card.selected {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.provider-card i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.provider-card span {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Cloud Settings Items */
+.cloud-settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.cloud-settings-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-fast);
+}
+
+.cloud-settings-item:hover {
+    border-color: var(--border-light);
+}
+
+.cloud-settings-item.enabled {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.cloud-info {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    flex: 1;
+}
+
+.cloud-icon {
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.cloud-icon.aws { background: rgba(255, 153, 0, 0.2); color: #FF9900; }
+.cloud-icon.gcp { background: rgba(66, 133, 244, 0.2); color: #4285F4; }
+.cloud-icon.azure { background: rgba(0, 120, 212, 0.2); color: #0078D4; }
+
+.cloud-details h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-primary);
+}
+
+.cloud-details p {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.cloud-config {
+    display: none;
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+}
+
+.cloud-config.visible {
+    display: block;
+}
+
+.cloud-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-sm);
+}
+
+/* Channel Settings Items */
+.channel-settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.channel-settings-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-fast);
+}
+
+.channel-settings-item:hover {
+    border-color: var(--border-light);
+}
+
+.channel-settings-item.enabled {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.channel-info {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    flex: 1;
+}
+
+.channel-icon {
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.channel-icon.slack { background: rgba(74, 21, 75, 0.2); color: #4A154B; }
+.channel-icon.teams { background: rgba(69, 90, 200, 0.2); color: #464EB8; }
+.channel-icon.discord { background: rgba(88, 101, 242, 0.2); color: #5865F2; }
+.channel-icon.webhook { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+
+.channel-details h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-primary);
+}
+
+.channel-details p {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.channel-config {
+    display: none;
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+}
+
+.channel-config.visible {
+    display: block;
+}
+
+.channel-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-sm);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 13px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: all var(--transition-fast);
+}
+
+.toggle-switch.active {
+    background: var(--success);
+    border-color: var(--success);
+}
+
+.toggle-switch.active::after {
+    left: 24px;
+    background: white;
+}
+
+/* Settings Form Enhancements */
+.settings-form-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.settings-form-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.settings-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.settings-row.single {
+    grid-template-columns: 1fr;
+}
+
+/* Test Connection Button */
+.test-connection-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.test-connection-btn.testing {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.test-result {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    margin-top: var(--spacing-sm);
+}
+
+.test-result.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.test-result.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+/* Advanced Settings */
+.advanced-settings-group {
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+}
+
+.advanced-settings-group h4 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.advanced-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.advanced-option:last-child {
+    border-bottom: none;
+}
+
+.advanced-option-info h5 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.125rem;
+}
+
+.advanced-option-info p {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.status-badge.connected {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.status-badge.disconnected {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+/* Responsive Settings */
+@media (max-width: 768px) {
+    .settings-tabs {
+        flex-direction: column;
+    }
+
+    .settings-tab {
+        justify-content: flex-start;
+    }
+
+    .provider-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .cloud-settings-item,
+    .channel-settings-item {
+        flex-direction: column;
+    }
+
+    .cloud-controls,
+    .channel-controls {
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .settings-row {
+        grid-template-columns: 1fr;
+    }
+}

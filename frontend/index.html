@@ -489,35 +489,301 @@
                         <p>Configure your AEGIS-T2A instance</p>
                     </div>
 
-                    <div class="settings-container">
-                        <div class="settings-section">
-                            <h2>AI Provider Settings</h2>
-                            <div class="settings-group">
-                                <div class="form-group">
-                                    <label>Provider</label>
-                                    <select id="settings-llm-provider">
-                                        <option value="anthropic">Anthropic Claude</option>
-                                        <option value="openai">OpenAI GPT</option>
-                                        <option value="openrouter">OpenRouter</option>
-                                        <option value="ollama">Ollama (Local)</option>
-                                    </select>
+                    <div class="settings-tabs">
+                        <button class="settings-tab active" data-settings-tab="llm">
+                            <i class="fas fa-brain"></i> AI Provider
+                        </button>
+                        <button class="settings-tab" data-settings-tab="cloud">
+                            <i class="fas fa-cloud"></i> Cloud Services
+                        </button>
+                        <button class="settings-tab" data-settings-tab="channels">
+                            <i class="fas fa-comments"></i> Channels
+                        </button>
+                        <button class="settings-tab" data-settings-tab="advanced">
+                            <i class="fas fa-cog"></i> Advanced
+                        </button>
+                    </div>
+
+                    <div class="settings-content">
+                        <!-- LLM Settings Tab -->
+                        <div class="settings-panel active" id="settings-panel-llm">
+                            <h2><i class="fas fa-brain"></i> AI Provider Settings</h2>
+                            <p class="settings-desc">Configure your LLM provider for intent parsing and code generation</p>
+
+                            <div class="settings-provider-cards" id="settings-provider-cards">
+                                <div class="settings-provider-card" data-settings-provider="anthropic">
+                                    <div class="provider-icon anthropic"><i class="fas fa-robot"></i></div>
+                                    <h3>Anthropic Claude</h3>
+                                    <p>Best for complex reasoning</p>
                                 </div>
-                                <div class="form-group" id="settings-api-key-group">
-                                    <label>API Key</label>
-                                    <input type="password" id="settings-api-key">
+                                <div class="settings-provider-card" data-settings-provider="openai">
+                                    <div class="provider-icon openai"><i class="fas fa-bolt"></i></div>
+                                    <h3>OpenAI GPT</h3>
+                                    <p>Fast and versatile</p>
+                                </div>
+                                <div class="settings-provider-card" data-settings-provider="openrouter">
+                                    <div class="provider-icon openrouter"><i class="fas fa-route"></i></div>
+                                    <h3>OpenRouter</h3>
+                                    <p>Access multiple models</p>
+                                </div>
+                                <div class="settings-provider-card selected" data-settings-provider="ollama">
+                                    <div class="provider-icon ollama"><i class="fas fa-server"></i></div>
+                                    <h3>Ollama (Local)</h3>
+                                    <p>Self-hosted, private</p>
                                 </div>
                             </div>
-                            <button class="btn btn-primary" id="save-settings-btn">
-                                <i class="fas fa-save"></i> Save Settings
-                            </button>
+
+                            <div class="settings-form">
+                                <div class="form-group" id="settings-api-key-group" style="display: none;">
+                                    <label><i class="fas fa-key"></i> API Key</label>
+                                    <div class="input-with-icon">
+                                        <input type="password" id="settings-api-key" placeholder="Enter your API key">
+                                        <button type="button" class="toggle-password" data-target="settings-api-key">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="settings-ollama-url-group">
+                                    <label><i class="fas fa-link"></i> Ollama Server URL</label>
+                                    <input type="text" id="settings-ollama-url" value="http://localhost:11434">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-cube"></i> Model</label>
+                                    <select id="settings-llm-model">
+                                        <option value="llama2">llama2</option>
+                                        <option value="llama3">llama3</option>
+                                        <option value="mistral">mistral</option>
+                                        <option value="codellama">codellama</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="settings-actions">
+                                <button class="btn btn-secondary" id="test-llm-btn">
+                                    <i class="fas fa-vial"></i> Test Connection
+                                </button>
+                                <button class="btn btn-primary" id="save-llm-btn">
+                                    <i class="fas fa-save"></i> Save LLM Settings
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="settings-section">
-                            <h2>Reconfigure Setup</h2>
-                            <p>Run the setup wizard again to reconfigure all settings.</p>
-                            <button class="btn btn-secondary" id="rerun-wizard-btn">
-                                <i class="fas fa-redo"></i> Run Setup Wizard
-                            </button>
+                        <!-- Cloud Settings Tab -->
+                        <div class="settings-panel" id="settings-panel-cloud">
+                            <h2><i class="fas fa-cloud"></i> Cloud Services</h2>
+                            <p class="settings-desc">Configure cloud providers for infrastructure automation</p>
+
+                            <div class="cloud-settings-list">
+                                <div class="cloud-setting-item">
+                                    <div class="cloud-setting-header">
+                                        <div class="cloud-icon aws"><i class="fab fa-aws"></i></div>
+                                        <div class="cloud-info">
+                                            <h3>Amazon Web Services</h3>
+                                            <p>EC2, S3, Lambda, RDS</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="settings-aws-enabled">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="cloud-setting-config" id="settings-aws-config" style="display: none;">
+                                        <div class="form-group">
+                                            <label>Access Key ID</label>
+                                            <input type="text" id="settings-aws-access-key" placeholder="AKIA...">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Secret Access Key</label>
+                                            <input type="password" id="settings-aws-secret-key" placeholder="Secret key">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Region</label>
+                                            <select id="settings-aws-region">
+                                                <option value="us-east-1">US East (N. Virginia)</option>
+                                                <option value="us-west-2">US West (Oregon)</option>
+                                                <option value="eu-west-1">EU (Ireland)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cloud-setting-item">
+                                    <div class="cloud-setting-header">
+                                        <div class="cloud-icon azure"><i class="fab fa-microsoft"></i></div>
+                                        <div class="cloud-info">
+                                            <h3>Microsoft Azure</h3>
+                                            <p>VMs, Storage, Functions</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="settings-azure-enabled">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="cloud-setting-config" id="settings-azure-config" style="display: none;">
+                                        <div class="form-group">
+                                            <label>Tenant ID</label>
+                                            <input type="text" id="settings-azure-tenant" placeholder="Tenant ID">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Client ID</label>
+                                            <input type="text" id="settings-azure-client" placeholder="Client ID">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Client Secret</label>
+                                            <input type="password" id="settings-azure-secret" placeholder="Client Secret">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cloud-setting-item">
+                                    <div class="cloud-setting-header">
+                                        <div class="cloud-icon gcp"><i class="fab fa-google"></i></div>
+                                        <div class="cloud-info">
+                                            <h3>Google Cloud Platform</h3>
+                                            <p>Compute, Storage, Functions</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="settings-gcp-enabled">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="cloud-setting-config" id="settings-gcp-config" style="display: none;">
+                                        <div class="form-group">
+                                            <label>Project ID</label>
+                                            <input type="text" id="settings-gcp-project" placeholder="my-project-id">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cloud-setting-item">
+                                    <div class="cloud-setting-header">
+                                        <div class="cloud-icon onprem"><i class="fas fa-laptop"></i></div>
+                                        <div class="cloud-info">
+                                            <h3>Local Computer</h3>
+                                            <p>Docker, Local Development</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="settings-local-enabled" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="cloud-setting-config" id="settings-local-config">
+                                        <div class="form-group">
+                                            <label>Docker Host</label>
+                                            <input type="text" id="settings-docker-host" value="unix:///var/run/docker.sock">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-actions">
+                                <button class="btn btn-primary" id="save-cloud-btn">
+                                    <i class="fas fa-save"></i> Save Cloud Settings
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Channels Settings Tab -->
+                        <div class="settings-panel" id="settings-panel-channels">
+                            <h2><i class="fas fa-comments"></i> Communication Channels</h2>
+                            <p class="settings-desc">Configure how you interact with AEGIS-T2A</p>
+
+                            <div class="channel-settings-list">
+                                <div class="channel-setting-item enabled">
+                                    <div class="channel-icon web"><i class="fas fa-globe"></i></div>
+                                    <div class="channel-info">
+                                        <h3>Web Interface</h3>
+                                        <p>Browser-based dashboard</p>
+                                    </div>
+                                    <span class="channel-badge">Always enabled</span>
+                                </div>
+
+                                <div class="channel-setting-item">
+                                    <div class="channel-icon telegram"><i class="fab fa-telegram"></i></div>
+                                    <div class="channel-info">
+                                        <h3>Telegram Bot</h3>
+                                        <p>Chat-based interactions</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="settings-telegram-enabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="channel-setting-config" id="settings-telegram-config" style="display: none;">
+                                    <div class="form-group">
+                                        <label>Bot Token</label>
+                                        <input type="password" id="settings-telegram-token" placeholder="123456789:ABCdef...">
+                                    </div>
+                                </div>
+
+                                <div class="channel-setting-item">
+                                    <div class="channel-icon slack"><i class="fab fa-slack"></i></div>
+                                    <div class="channel-info">
+                                        <h3>Slack</h3>
+                                        <p>Team collaboration</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="settings-slack-enabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="channel-setting-config" id="settings-slack-config" style="display: none;">
+                                    <div class="form-group">
+                                        <label>Bot Token</label>
+                                        <input type="password" id="settings-slack-token" placeholder="xoxb-...">
+                                    </div>
+                                </div>
+
+                                <div class="channel-setting-item enabled">
+                                    <div class="channel-icon api"><i class="fas fa-code"></i></div>
+                                    <div class="channel-info">
+                                        <h3>REST API</h3>
+                                        <p>Programmatic access</p>
+                                    </div>
+                                    <span class="channel-badge">Always enabled</span>
+                                </div>
+                            </div>
+
+                            <div class="settings-actions">
+                                <button class="btn btn-primary" id="save-channels-btn">
+                                    <i class="fas fa-save"></i> Save Channel Settings
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Settings Tab -->
+                        <div class="settings-panel" id="settings-panel-advanced">
+                            <h2><i class="fas fa-cog"></i> Advanced Settings</h2>
+                            <p class="settings-desc">Additional configuration options</p>
+
+                            <div class="settings-form">
+                                <div class="form-group">
+                                    <label><i class="fas fa-shield-alt"></i> Require Approval for High-Risk Actions</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="settings-require-approval" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-clock"></i> Session Timeout (minutes)</label>
+                                    <input type="number" id="settings-session-timeout" value="60" min="5" max="480">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-redo"></i> Max Retries</label>
+                                    <input type="number" id="settings-max-retries" value="3" min="0" max="10">
+                                </div>
+                            </div>
+
+                            <div class="settings-danger-zone">
+                                <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+                                <div class="danger-actions">
+                                    <button class="btn btn-secondary" id="rerun-wizard-btn">
+                                        <i class="fas fa-redo"></i> Run Setup Wizard
+                                    </button>
+                                    <button class="btn btn-danger" id="clear-data-btn">
+                                        <i class="fas fa-trash"></i> Clear All Data
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1338,6 +1604,303 @@
         }
 
         // =====================================================================
+        // SETTINGS PAGE FUNCTIONS
+        // =====================================================================
+        var settingsProvider = 'ollama';
+
+        function setupSettingsEventHandlers() {
+            // Settings tab navigation
+            var settingsTabs = $$('.settings-tab');
+            for (var i = 0; i < settingsTabs.length; i++) {
+                settingsTabs[i].addEventListener('click', function(e) {
+                    var tab = e.currentTarget.getAttribute('data-settings-tab');
+                    if (tab) {
+                        // Update tab active state
+                        for (var j = 0; j < settingsTabs.length; j++) {
+                            settingsTabs[j].classList.remove('active');
+                        }
+                        e.currentTarget.classList.add('active');
+
+                        // Show panel
+                        var panels = $$('.settings-panel');
+                        for (var k = 0; k < panels.length; k++) {
+                            panels[k].classList.remove('active');
+                        }
+                        var targetPanel = $('#settings-panel-' + tab);
+                        if (targetPanel) targetPanel.classList.add('active');
+                    }
+                });
+            }
+
+            // Settings provider card selection
+            var settingsProviderCards = $('#settings-provider-cards');
+            if (settingsProviderCards) {
+                settingsProviderCards.addEventListener('click', function(e) {
+                    var card = e.target.closest('.settings-provider-card');
+                    if (card) {
+                        var provider = card.getAttribute('data-settings-provider');
+                        if (provider) {
+                            selectSettingsProvider(provider);
+                        }
+                    }
+                });
+            }
+
+            // Cloud settings toggles
+            var cloudToggles = ['aws', 'azure', 'gcp', 'local'];
+            cloudToggles.forEach(function(cloud) {
+                var toggle = $('#settings-' + cloud + '-enabled');
+                if (toggle) {
+                    toggle.addEventListener('change', function(e) {
+                        var config = $('#settings-' + cloud + '-config');
+                        if (config) {
+                            config.style.display = e.target.checked ? 'block' : 'none';
+                        }
+                    });
+                }
+            });
+
+            // Channel settings toggles
+            var channelToggles = ['telegram', 'slack'];
+            channelToggles.forEach(function(channel) {
+                var toggle = $('#settings-' + channel + '-enabled');
+                if (toggle) {
+                    toggle.addEventListener('change', function(e) {
+                        var config = $('#settings-' + channel + '-config');
+                        if (config) {
+                            config.style.display = e.target.checked ? 'block' : 'none';
+                        }
+                    });
+                }
+            });
+
+            // Test LLM button
+            var testLLMBtn = $('#test-llm-btn');
+            if (testLLMBtn) {
+                testLLMBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    testLLMConnection();
+                });
+            }
+
+            // Save LLM settings button
+            var saveLLMBtn = $('#save-llm-btn');
+            if (saveLLMBtn) {
+                saveLLMBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    saveLLMSettings();
+                });
+            }
+
+            // Save Cloud settings button
+            var saveCloudBtn = $('#save-cloud-btn');
+            if (saveCloudBtn) {
+                saveCloudBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    saveCloudSettings();
+                });
+            }
+
+            // Save Channels settings button
+            var saveChannelsBtn = $('#save-channels-btn');
+            if (saveChannelsBtn) {
+                saveChannelsBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    saveChannelSettings();
+                });
+            }
+
+            // Clear data button
+            var clearDataBtn = $('#clear-data-btn');
+            if (clearDataBtn) {
+                clearDataBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (confirm('Clear all data? This will remove all settings and configuration.')) {
+                        localStorage.clear();
+                        showToast('All data cleared. Reloading...', 'success');
+                        setTimeout(function() { location.reload(); }, 1000);
+                    }
+                });
+            }
+        }
+
+        function selectSettingsProvider(provider) {
+            console.log('[Settings] Selecting provider:', provider);
+            settingsProvider = provider;
+
+            // Update visual selection
+            var cards = $$('.settings-provider-card');
+            for (var i = 0; i < cards.length; i++) {
+                var card = cards[i];
+                if (card.getAttribute('data-settings-provider') === provider) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            }
+
+            // Show/hide API key vs Ollama URL
+            var apiKeyGroup = $('#settings-api-key-group');
+            var ollamaUrlGroup = $('#settings-ollama-url-group');
+
+            if (provider === 'ollama') {
+                hideElement(apiKeyGroup);
+                showElement(ollamaUrlGroup);
+            } else {
+                showElement(apiKeyGroup);
+                hideElement(ollamaUrlGroup);
+            }
+
+            // Update model dropdown
+            updateSettingsModelDropdown(provider);
+        }
+
+        function updateSettingsModelDropdown(provider) {
+            var select = $('#settings-llm-model');
+            if (!select) return;
+
+            var models = {
+                'anthropic': [
+                    ['claude-sonnet-4-20250514', 'Claude Sonnet 4'],
+                    ['claude-3-5-sonnet-20241022', 'Claude 3.5 Sonnet'],
+                    ['claude-3-opus-20240229', 'Claude 3 Opus']
+                ],
+                'openai': [
+                    ['gpt-4-turbo', 'GPT-4 Turbo'],
+                    ['gpt-4o', 'GPT-4o'],
+                    ['gpt-4o-mini', 'GPT-4o Mini']
+                ],
+                'openrouter': [
+                    ['anthropic/claude-sonnet-4', 'Claude Sonnet 4'],
+                    ['openai/gpt-4-turbo', 'GPT-4 Turbo']
+                ],
+                'ollama': [
+                    ['llama2', 'Llama 2'],
+                    ['llama3', 'Llama 3'],
+                    ['mistral', 'Mistral'],
+                    ['codellama', 'Code Llama']
+                ]
+            };
+
+            var list = models[provider] || models['ollama'];
+            select.innerHTML = '';
+            for (var i = 0; i < list.length; i++) {
+                var opt = document.createElement('option');
+                opt.value = list[i][0];
+                opt.textContent = list[i][1];
+                select.appendChild(opt);
+            }
+        }
+
+        function testLLMConnection() {
+            showToast('Testing connection...', 'info');
+
+            if (settingsProvider === 'ollama') {
+                var ollamaUrl = $('#settings-ollama-url');
+                var url = ollamaUrl ? ollamaUrl.value : 'http://localhost:11434';
+
+                fetch(url + '/api/tags', { signal: AbortSignal.timeout(5000) })
+                    .then(function(r) {
+                        if (r.ok) {
+                            showToast('Connected to Ollama!', 'success');
+                        } else {
+                            throw new Error('Connection failed');
+                        }
+                    })
+                    .catch(function() {
+                        showToast('Cannot connect to Ollama. Make sure it is running.', 'error');
+                    });
+            } else {
+                var apiKey = $('#settings-api-key');
+                if (apiKey && apiKey.value && apiKey.value.length > 10) {
+                    showToast('API key looks valid!', 'success');
+                } else {
+                    showToast('Please enter a valid API key', 'error');
+                }
+            }
+        }
+
+        function saveLLMSettings() {
+            var apiKey = $('#settings-api-key');
+            var model = $('#settings-llm-model');
+            var ollamaUrl = $('#settings-ollama-url');
+
+            wizardState.config.llm.provider = settingsProvider;
+            if (settingsProvider === 'ollama') {
+                wizardState.config.llm.ollamaUrl = ollamaUrl ? ollamaUrl.value : 'http://localhost:11434';
+            } else {
+                wizardState.config.llm.apiKey = apiKey ? apiKey.value : '';
+            }
+            wizardState.config.llm.model = model ? model.value : '';
+
+            saveConfig();
+            showToast('LLM settings saved!', 'success');
+        }
+
+        function saveCloudSettings() {
+            var clouds = ['aws', 'azure', 'gcp', 'local'];
+            clouds.forEach(function(c) {
+                var toggle = $('#settings-' + c + '-enabled');
+                wizardState.config.cloud[c] = { enabled: toggle ? toggle.checked : false };
+            });
+
+            saveConfig();
+            showToast('Cloud settings saved!', 'success');
+        }
+
+        function saveChannelSettings() {
+            var channels = ['telegram', 'slack'];
+            channels.forEach(function(ch) {
+                var toggle = $('#settings-' + ch + '-enabled');
+                wizardState.config.channels[ch] = { enabled: toggle ? toggle.checked : false };
+            });
+
+            saveConfig();
+            showToast('Channel settings saved!', 'success');
+        }
+
+        function loadSettingsFromConfig() {
+            // Load LLM settings
+            if (wizardState.config.llm) {
+                settingsProvider = wizardState.config.llm.provider || 'ollama';
+                selectSettingsProvider(settingsProvider);
+
+                if (wizardState.config.llm.apiKey) {
+                    var apiKeyInput = $('#settings-api-key');
+                    if (apiKeyInput) apiKeyInput.value = wizardState.config.llm.apiKey;
+                }
+                if (wizardState.config.llm.ollamaUrl) {
+                    var ollamaInput = $('#settings-ollama-url');
+                    if (ollamaInput) ollamaInput.value = wizardState.config.llm.ollamaUrl;
+                }
+            }
+
+            // Load cloud settings
+            if (wizardState.config.cloud) {
+                ['aws', 'azure', 'gcp', 'local'].forEach(function(c) {
+                    var toggle = $('#settings-' + c + '-enabled');
+                    var config = $('#settings-' + c + '-config');
+                    if (toggle && wizardState.config.cloud[c]) {
+                        toggle.checked = wizardState.config.cloud[c].enabled;
+                        if (config) config.style.display = toggle.checked ? 'block' : 'none';
+                    }
+                });
+            }
+
+            // Load channel settings
+            if (wizardState.config.channels) {
+                ['telegram', 'slack'].forEach(function(ch) {
+                    var toggle = $('#settings-' + ch + '-enabled');
+                    var config = $('#settings-' + ch + '-config');
+                    if (toggle && wizardState.config.channels[ch]) {
+                        toggle.checked = wizardState.config.channels[ch].enabled;
+                        if (config) config.style.display = toggle.checked ? 'block' : 'none';
+                    }
+                });
+            }
+        }
+
+        // =====================================================================
         // INITIALIZATION
         // =====================================================================
         function init() {
@@ -1348,6 +1911,10 @@
 
             // Setup event handlers
             setupEventHandlers();
+            setupSettingsEventHandlers();
+
+            // Load settings from config
+            loadSettingsFromConfig();
 
             // Check if setup is complete
             var setupComplete = localStorage.getItem('aegis-setup-complete') === 'true';
