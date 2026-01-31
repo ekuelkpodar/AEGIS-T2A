@@ -249,6 +249,37 @@ export class OpenRouterProvider implements LLMProvider {
 }
 
 // =============================================================================
+// Ollama Types
+// =============================================================================
+
+export interface OllamaModelInfo {
+  name: string;
+  displayName: string;
+  size: number;
+  sizeFormatted: string;
+  modifiedAt: string;
+  digest: string;
+  family: string;
+  parameterSize: string;
+  quantizationLevel: string;
+  capabilities: {
+    chat: boolean;
+    embedding: boolean;
+    vision: boolean;
+    functionCalling: boolean;
+  };
+}
+
+export interface OllamaDiscoveryResult {
+  available: boolean;
+  url: string;
+  version?: string;
+  models: OllamaModelInfo[];
+  error?: string;
+  timestamp: string;
+}
+
+// =============================================================================
 // Ollama Provider
 // =============================================================================
 
@@ -319,7 +350,7 @@ export class OllamaProvider implements LLMProvider {
   }
 
   /**
-   * List available models
+   * List available models (simple name list)
    */
   async listModels(): Promise<string[]> {
     try {
@@ -334,20 +365,295 @@ export class OllamaProvider implements LLMProvider {
   }
 
   /**
-   * Pull a model
+   * Get detailed model information for all available models
    */
-  async pullModel(model: string): Promise<void> {
+  async listModelsDetailed(): Promise<OllamaModelInfo[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/tags`);
+      if (!response.ok) return [];
+
+      const data = await response.json();
+      const models: OllamaModelInfo[] = [];
+
+      for (const model of data.models || []) {
+        const info = this.parseModelInfo(model);
+        models.push(info);
+      }
+
+      return models;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Full discovery endpoint - includes server version and connectivity status
+   */
+  async discover(): Promise<OllamaDiscoveryResult> {
+    const timestamp = new Date().toISOString();
+
+    try {
+      // Check connectivity first
+      const versionResponse = await fetch(`${this.baseUrl}/api/version`, {
+        signal: AbortSignal.timeout(5000),
+      });
+
+      let version: string | undefined;
+      if (versionResponse.ok) {
+        const versionData = await versionResponse.json();
+        version = versionData.version;
+      }
+
+      // Get models
+      const models = await this.listModelsDetailed();
+
+      return {
+        available: true,
+        url: this.baseUrl,
+        version,
+        models,
+        timestamp,
+      };
+    } catch (error) {
+      return {
+        available: false,
+        url: this.baseUrl,
+        models: [],
+        error: error instanceof Error ? error.message : 'Connection failed',
+        timestamp,
+      };
+    }
+  }
+
+  /**
+   * Get detailed information for a specific model
+   */
+  async getModelInfo(modelName: string): Promise<OllamaModelInfo | null> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/show`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: modelName }),
+      });
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+
+      // Extract model details from the show response
+      const details = data.details || {};
+      const modelfile = data.modelfile || '';
+
+      return {
+        name: modelName,
+        displayName: this.formatDisplayName(modelName),
+        size: data.size || 0,
+        sizeFormatted: this.formatSize(data.size || 0),
+        modifiedAt: data.modified_at || new Date().toISOString(),
+        digest: data.digest || '',
+        family: details.family || this.extractFamily(modelName),
+        parameterSize: details.parameter_size || this.extractParameterSize(modelName),
+        quantizationLevel: details.quantization_level || this.extractQuantization(modelName),
+        capabilities: this.detectCapabilities(modelName, modelfile, details),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Pull a model with progress callback
+   */
+  async pullModel(model: string, onProgress?: (status: string, completed: number, total: number) => void): Promise<void> {
     const response = await fetch(`${this.baseUrl}/api/pull`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name: model, stream: false }),
+      body: JSON.stringify({ name: model, stream: true }),
     });
 
     if (!response.ok) {
       throw new Error(`Failed to pull model: ${await response.text()}`);
     }
+
+    // Process streaming response if callback provided
+    if (onProgress && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split('\n').filter(l => l.trim());
+
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line);
+            onProgress(
+              json.status || 'downloading',
+              json.completed || 0,
+              json.total || 0
+            );
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Delete a model
+   */
+  async deleteModel(model: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: model }),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // Helper Methods
+  // =========================================================================
+
+  private parseModelInfo(model: {
+    name: string;
+    size?: number;
+    modified_at?: string;
+    digest?: string;
+    details?: {
+      family?: string;
+      parameter_size?: string;
+      quantization_level?: string;
+    };
+  }): OllamaModelInfo {
+    const details = model.details || {};
+
+    return {
+      name: model.name,
+      displayName: this.formatDisplayName(model.name),
+      size: model.size || 0,
+      sizeFormatted: this.formatSize(model.size || 0),
+      modifiedAt: model.modified_at || new Date().toISOString(),
+      digest: model.digest || '',
+      family: details.family || this.extractFamily(model.name),
+      parameterSize: details.parameter_size || this.extractParameterSize(model.name),
+      quantizationLevel: details.quantization_level || this.extractQuantization(model.name),
+      capabilities: this.detectCapabilities(model.name, '', details),
+    };
+  }
+
+  private formatDisplayName(name: string): string {
+    // Convert "llama3.2:latest" to "Llama 3.2"
+    const baseName = name.split(':')[0];
+    return baseName
+      .replace(/([a-z])(\d)/gi, '$1 $2')
+      .replace(/[-_]/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  private formatSize(bytes: number): string {
+    if (bytes === 0) return 'Unknown';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+  }
+
+  private extractFamily(name: string): string {
+    const families: Record<string, string> = {
+      'llama': 'Llama',
+      'mistral': 'Mistral',
+      'mixtral': 'Mixtral',
+      'qwen': 'Qwen',
+      'phi': 'Phi',
+      'gemma': 'Gemma',
+      'codellama': 'Code Llama',
+      'deepseek': 'DeepSeek',
+      'yi': 'Yi',
+      'vicuna': 'Vicuna',
+      'openchat': 'OpenChat',
+      'neural-chat': 'Neural Chat',
+      'starling': 'Starling',
+      'orca': 'Orca',
+      'dolphin': 'Dolphin',
+      'nous-hermes': 'Nous Hermes',
+      'solar': 'Solar',
+      'command-r': 'Command R',
+    };
+
+    const lowerName = name.toLowerCase();
+    for (const [key, value] of Object.entries(families)) {
+      if (lowerName.includes(key)) return value;
+    }
+    return 'Unknown';
+  }
+
+  private extractParameterSize(name: string): string {
+    // Match patterns like "7b", "70b", "8x7b", "3.2"
+    const match = name.match(/(\d+(?:\.\d+)?x?\d*)b/i);
+    if (match) return match[1].toUpperCase() + 'B';
+
+    // Check for specific patterns
+    const sizePatterns: Record<string, string> = {
+      'small': '1-3B',
+      'medium': '7B',
+      'large': '13B',
+      'xl': '30-40B',
+      'xxl': '65-70B',
+    };
+
+    const lowerName = name.toLowerCase();
+    for (const [key, value] of Object.entries(sizePatterns)) {
+      if (lowerName.includes(key)) return value;
+    }
+
+    return 'Unknown';
+  }
+
+  private extractQuantization(name: string): string {
+    const quantPatterns = ['q2_k', 'q3_k', 'q4_0', 'q4_1', 'q4_k', 'q5_0', 'q5_1', 'q5_k', 'q6_k', 'q8_0', 'fp16', 'fp32'];
+    const lowerName = name.toLowerCase();
+
+    for (const pattern of quantPatterns) {
+      if (lowerName.includes(pattern)) {
+        return pattern.toUpperCase().replace('_', ' ');
+      }
+    }
+
+    // Default assumption based on common naming
+    if (lowerName.includes(':latest')) return 'Q4 K M';
+    return 'Unknown';
+  }
+
+  private detectCapabilities(
+    name: string,
+    modelfile: string,
+    details: { family?: string; parameter_size?: string }
+  ): OllamaModelInfo['capabilities'] {
+    const lowerName = name.toLowerCase();
+    const lowerModelfile = modelfile.toLowerCase();
+
+    return {
+      chat: true, // All Ollama models support chat
+      embedding: lowerName.includes('embed') || lowerName.includes('nomic'),
+      vision: lowerName.includes('vision') || lowerName.includes('llava') || lowerModelfile.includes('image'),
+      functionCalling:
+        lowerName.includes('hermes') ||
+        lowerName.includes('functionary') ||
+        lowerName.includes('openhermes') ||
+        details.family === 'llama' && parseInt(details.parameter_size || '0') >= 70,
+    };
   }
 }
 

@@ -510,6 +510,82 @@ export function createRouter(): Router {
     }
   });
 
+  // Enhanced Ollama discovery endpoint with full model details
+  router.get('/settings/ollama/discover', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ollamaUrl = (req.query['url'] as string) || process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
+
+      const ollamaProvider = new OllamaProvider({ baseUrl: ollamaUrl });
+      const discovery = await ollamaProvider.discover();
+
+      res.json(discovery);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get detailed info for a specific Ollama model
+  router.get('/settings/ollama/models/:modelName', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ollamaUrl = (req.query['url'] as string) || process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
+      const modelName = req.params['modelName']!;
+
+      const ollamaProvider = new OllamaProvider({ baseUrl: ollamaUrl });
+      const modelInfo = await ollamaProvider.getModelInfo(modelName);
+
+      if (!modelInfo) {
+        res.status(404).json({ error: 'Model not found' });
+        return;
+      }
+
+      res.json({ model: modelInfo });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Pull an Ollama model
+  router.post('/settings/ollama/pull', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { model, url } = req.body;
+
+      if (!model) {
+        res.status(400).json({ error: 'Model name is required' });
+        return;
+      }
+
+      const ollamaUrl = url || process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
+      const ollamaProvider = new OllamaProvider({ baseUrl: ollamaUrl });
+
+      // Start the pull (this is async and may take time)
+      await ollamaProvider.pullModel(model);
+
+      res.json({ success: true, message: `Model ${model} pulled successfully` });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Delete an Ollama model
+  router.delete('/settings/ollama/models/:modelName', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ollamaUrl = (req.query['url'] as string) || process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
+      const modelName = req.params['modelName']!;
+
+      const ollamaProvider = new OllamaProvider({ baseUrl: ollamaUrl });
+      const success = await ollamaProvider.deleteModel(modelName);
+
+      if (!success) {
+        res.status(500).json({ error: 'Failed to delete model' });
+        return;
+      }
+
+      res.json({ success: true, message: `Model ${modelName} deleted` });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get('/settings/models', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const provider = (req.query['provider'] as string) || process.env['LLM_PROVIDER'] || 'anthropic';
@@ -549,7 +625,7 @@ export function createRouter(): Router {
   });
 
   // ==========================================================================
-  // Cloud Provider Testing
+  // Cloud Provider Testing & Validation
   // ==========================================================================
 
   router.post('/cloud/test', async (req: Request, res: Response, next: NextFunction) => {
@@ -563,42 +639,23 @@ export function createRouter(): Router {
         return;
       }
 
-      // For now, return a simulated test result
-      // In a real implementation, this would test actual cloud connectivity
-      let testResult = { success: false, message: '' };
+      let testResult: { success: boolean; message: string; details?: Record<string, unknown> } = {
+        success: false,
+        message: '',
+      };
 
       switch (provider) {
         case 'aws':
-          if (config?.accessKeyId && config?.secretAccessKey) {
-            testResult = { success: true, message: 'AWS credentials validated' };
-          } else {
-            testResult = { success: false, message: 'Missing AWS credentials' };
-          }
+          testResult = await testAWSConnection(config);
           break;
         case 'azure':
-          if (config?.tenantId && config?.clientId && config?.clientSecret) {
-            testResult = { success: true, message: 'Azure credentials validated' };
-          } else {
-            testResult = { success: false, message: 'Missing Azure credentials' };
-          }
+          testResult = await testAzureConnection(config);
           break;
         case 'gcp':
-          if (config?.projectId && config?.keyFile) {
-            testResult = { success: true, message: 'GCP credentials validated' };
-          } else {
-            testResult = { success: false, message: 'Missing GCP credentials' };
-          }
+          testResult = await testGCPConnection(config);
           break;
         case 'onprem':
-          if (config?.type === 'ssh' && config?.host) {
-            testResult = { success: true, message: 'SSH host validated' };
-          } else if (config?.type === 'docker' && config?.host) {
-            testResult = { success: true, message: 'Docker host validated' };
-          } else if (config?.type === 'kubernetes' && config?.kubeconfig) {
-            testResult = { success: true, message: 'Kubernetes config validated' };
-          } else {
-            testResult = { success: false, message: 'Missing on-premises configuration' };
-          }
+          testResult = await testOnPremConnection(config);
           break;
       }
 
@@ -607,6 +664,467 @@ export function createRouter(): Router {
       next(error);
     }
   });
+
+  // Get cloud provider status - checks all configured providers
+  router.get('/cloud/status', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const awsStatus: { configured: boolean; connected?: boolean; error?: string } = { configured: false };
+      const azureStatus: { configured: boolean; connected?: boolean; error?: string } = { configured: false };
+      const gcpStatus: { configured: boolean; connected?: boolean; error?: string } = { configured: false };
+      const onpremStatus: { configured: boolean; connected?: boolean; error?: string } = { configured: false };
+
+      // Check AWS
+      if (process.env['AWS_ACCESS_KEY_ID'] && process.env['AWS_SECRET_ACCESS_KEY']) {
+        awsStatus.configured = true;
+        try {
+          const result = await testAWSConnection({
+            accessKeyId: process.env['AWS_ACCESS_KEY_ID'],
+            secretAccessKey: process.env['AWS_SECRET_ACCESS_KEY'],
+            region: process.env['AWS_REGION'],
+          });
+          awsStatus.connected = result.success;
+          if (!result.success) awsStatus.error = result.message;
+        } catch (e) {
+          awsStatus.connected = false;
+          awsStatus.error = e instanceof Error ? e.message : 'Unknown error';
+        }
+      }
+
+      // Check Azure
+      if (process.env['AZURE_TENANT_ID'] && process.env['AZURE_CLIENT_ID']) {
+        azureStatus.configured = true;
+        try {
+          const result = await testAzureConnection({
+            tenantId: process.env['AZURE_TENANT_ID'],
+            clientId: process.env['AZURE_CLIENT_ID'],
+            clientSecret: process.env['AZURE_CLIENT_SECRET'],
+          });
+          azureStatus.connected = result.success;
+          if (!result.success) azureStatus.error = result.message;
+        } catch (e) {
+          azureStatus.connected = false;
+          azureStatus.error = e instanceof Error ? e.message : 'Unknown error';
+        }
+      }
+
+      // Check GCP
+      if (process.env['GCP_PROJECT_ID'] || process.env['GOOGLE_APPLICATION_CREDENTIALS']) {
+        gcpStatus.configured = true;
+        try {
+          const result = await testGCPConnection({
+            projectId: process.env['GCP_PROJECT_ID'],
+            keyFile: process.env['GOOGLE_APPLICATION_CREDENTIALS'],
+          });
+          gcpStatus.connected = result.success;
+          if (!result.success) gcpStatus.error = result.message;
+        } catch (e) {
+          gcpStatus.connected = false;
+          gcpStatus.error = e instanceof Error ? e.message : 'Unknown error';
+        }
+      }
+
+      // Check Docker (local)
+      try {
+        const dockerResult = await testDockerLocal();
+        if (dockerResult.success) {
+          onpremStatus.configured = true;
+          onpremStatus.connected = true;
+        }
+      } catch {
+        // Docker not available
+      }
+
+      res.json({
+        providers: {
+          aws: awsStatus,
+          azure: azureStatus,
+          gcp: gcpStatus,
+          onprem: onpremStatus,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Test AWS connection
+  async function testAWSConnection(config: Record<string, unknown>): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    if (!config?.accessKeyId || !config?.secretAccessKey) {
+      return { success: false, message: 'Missing AWS credentials (accessKeyId, secretAccessKey)' };
+    }
+
+    try {
+      // Use AWS STS GetCallerIdentity to verify credentials
+      const region = (config.region as string) || 'us-east-1';
+
+      // For a proper test, we'd need to implement AWS Signature V4
+      // For now, verify the credential format
+      const accessKeyId = config.accessKeyId as string;
+      const secretAccessKey = config.secretAccessKey as string;
+
+      if (!accessKeyId.startsWith('AKIA') && !accessKeyId.startsWith('ASIA')) {
+        return { success: false, message: 'Invalid AWS access key format' };
+      }
+
+      if (secretAccessKey.length < 20) {
+        return { success: false, message: 'Invalid AWS secret key format' };
+      }
+
+      return {
+        success: true,
+        message: 'AWS credentials format validated',
+        details: {
+          region,
+          accessKeyId: `${accessKeyId.slice(0, 4)}...${accessKeyId.slice(-4)}`,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'AWS connection test failed',
+      };
+    }
+  }
+
+  // Test Azure connection
+  async function testAzureConnection(config: Record<string, unknown>): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    if (!config?.tenantId || !config?.clientId || !config?.clientSecret) {
+      return { success: false, message: 'Missing Azure credentials (tenantId, clientId, clientSecret)' };
+    }
+
+    try {
+      const tenantId = config.tenantId as string;
+      const clientId = config.clientId as string;
+      const clientSecret = config.clientSecret as string;
+
+      // Try to get an access token
+      const response = await fetch(
+        `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            scope: 'https://management.azure.com/.default',
+            grant_type: 'client_credentials',
+          }),
+          signal: AbortSignal.timeout(10000),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})) as { error_description?: string };
+        return {
+          success: false,
+          message: errorData.error_description || 'Azure authentication failed',
+        };
+      }
+
+      const data = await response.json() as { token_type: string; expires_in: number };
+
+      return {
+        success: true,
+        message: 'Azure connection successful',
+        details: {
+          tenantId: `${tenantId.slice(0, 8)}...`,
+          tokenType: data.token_type,
+          expiresIn: data.expires_in,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Azure connection test failed',
+      };
+    }
+  }
+
+  // Test GCP connection
+  async function testGCPConnection(config: Record<string, unknown>): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    if (!config?.projectId) {
+      return { success: false, message: 'Missing GCP project ID' };
+    }
+
+    const projectId = config.projectId as string;
+
+    // If running on GCP, try metadata server
+    try {
+      const metadataResponse = await fetch(
+        'http://metadata.google.internal/computeMetadata/v1/project/project-id',
+        {
+          headers: { 'Metadata-Flavor': 'Google' },
+          signal: AbortSignal.timeout(2000),
+        }
+      );
+
+      if (metadataResponse.ok) {
+        const metadataProjectId = await metadataResponse.text();
+        return {
+          success: true,
+          message: 'GCP metadata server accessible (running on GCP)',
+          details: { projectId: metadataProjectId },
+        };
+      }
+    } catch {
+      // Not on GCP, continue with other checks
+    }
+
+    // Check if key file exists
+    if (config.keyFile) {
+      const fs = await import('fs/promises');
+      try {
+        await fs.access(config.keyFile as string);
+        return {
+          success: true,
+          message: 'GCP service account key file found',
+          details: { projectId, keyFile: config.keyFile },
+        };
+      } catch {
+        return {
+          success: false,
+          message: 'GCP service account key file not found',
+        };
+      }
+    }
+
+    return {
+      success: true,
+      message: 'GCP project ID configured (authentication will be attempted at runtime)',
+      details: { projectId },
+    };
+  }
+
+  // Test on-premises connection
+  async function testOnPremConnection(config: Record<string, unknown>): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    const type = config?.type as string;
+
+    if (!type) {
+      return { success: false, message: 'Missing on-premises type (ssh, docker, kubernetes)' };
+    }
+
+    switch (type) {
+      case 'ssh':
+        return testSSHConnection(config);
+      case 'docker':
+        return testDockerConnection(config);
+      case 'kubernetes':
+        return testKubernetesConnection(config);
+      default:
+        return { success: false, message: `Unknown on-premises type: ${type}` };
+    }
+  }
+
+  async function testSSHConnection(config: Record<string, unknown>): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    const host = config.host as string;
+    const port = (config.port as number) || 22;
+
+    if (!host) {
+      return { success: false, message: 'Missing SSH host' };
+    }
+
+    // Test TCP connectivity to SSH port
+    try {
+      const net = await import('net');
+      const connected = await new Promise<boolean>((resolve) => {
+        const socket = new net.Socket();
+        socket.setTimeout(5000);
+
+        socket.on('connect', () => {
+          socket.destroy();
+          resolve(true);
+        });
+
+        socket.on('error', () => {
+          socket.destroy();
+          resolve(false);
+        });
+
+        socket.on('timeout', () => {
+          socket.destroy();
+          resolve(false);
+        });
+
+        socket.connect(port, host);
+      });
+
+      if (connected) {
+        return {
+          success: true,
+          message: `SSH port ${port} reachable on ${host}`,
+          details: { host, port },
+        };
+      } else {
+        return {
+          success: false,
+          message: `Cannot connect to SSH port ${port} on ${host}`,
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'SSH connection test failed',
+      };
+    }
+  }
+
+  async function testDockerConnection(config: Record<string, unknown>): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    const host = (config.host as string) || 'localhost';
+    const port = (config.port as number) || 2375;
+    const useTls = !!(config.tlsCert || config.useTls);
+
+    const protocol = useTls ? 'https' : 'http';
+    const url = `${protocol}://${host}:${port}/version`;
+
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+
+      if (response.ok) {
+        const data = await response.json() as { Version: string; ApiVersion: string; Os: string; Arch: string };
+        return {
+          success: true,
+          message: 'Docker API accessible',
+          details: {
+            host,
+            port,
+            version: data.Version,
+            apiVersion: data.ApiVersion,
+            os: data.Os,
+            arch: data.Arch,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          message: `Docker API returned status ${response.status}`,
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Docker connection test failed',
+      };
+    }
+  }
+
+  async function testDockerLocal(): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    // Try Unix socket first (common on Linux/macOS)
+    try {
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+
+      const { stdout } = await execAsync('docker version --format "{{.Server.Version}}"', {
+        timeout: 5000,
+      });
+
+      const version = stdout.trim();
+      return {
+        success: true,
+        message: 'Local Docker available',
+        details: { version, type: 'local' },
+      };
+    } catch {
+      return { success: false, message: 'Local Docker not available' };
+    }
+  }
+
+  async function testKubernetesConnection(config: Record<string, unknown>): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    const apiServer = config.apiServer as string;
+    const token = config.token as string;
+    const kubeconfig = config.kubeconfig as string;
+
+    // If kubeconfig provided, try to use kubectl
+    if (kubeconfig) {
+      try {
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
+
+        const { stdout } = await execAsync('kubectl cluster-info', {
+          timeout: 10000,
+          env: { ...process.env, KUBECONFIG: kubeconfig },
+        });
+
+        return {
+          success: true,
+          message: 'Kubernetes cluster accessible via kubeconfig',
+          details: { clusterInfo: stdout.split('\n')[0] },
+        };
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : 'kubectl test failed',
+        };
+      }
+    }
+
+    // If API server and token provided
+    if (apiServer && token) {
+      try {
+        const response = await fetch(`${apiServer}/api/v1/namespaces`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (response.ok) {
+          return {
+            success: true,
+            message: 'Kubernetes API accessible',
+            details: { apiServer },
+          };
+        } else {
+          return {
+            success: false,
+            message: `Kubernetes API returned status ${response.status}`,
+          };
+        }
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : 'Kubernetes connection test failed',
+        };
+      }
+    }
+
+    return {
+      success: false,
+      message: 'Missing Kubernetes configuration (apiServer+token or kubeconfig)',
+    };
+  }
 
   // ==========================================================================
   // Channel Testing

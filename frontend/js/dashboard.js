@@ -7,6 +7,11 @@
 const Dashboard = {
   refreshInterval: null,
   charts: {},
+  healthData: {
+    llm: null,
+    cloud: null,
+    channels: null,
+  },
 
   /**
    * Initialize dashboard
@@ -14,6 +19,7 @@ const Dashboard = {
   init() {
     this.bindEvents();
     this.loadDashboardData();
+    this.loadHealthPanels();
     this.startAutoRefresh();
   },
 
@@ -77,6 +83,298 @@ const Dashboard = {
       console.error('Failed to load dashboard data:', error);
       Toast.error('Failed to load dashboard data');
     }
+  },
+
+  /**
+   * Load health panels data
+   */
+  async loadHealthPanels() {
+    try {
+      await Promise.all([
+        this.loadLLMHealth(),
+        this.loadCloudHealth(),
+        this.loadChannelHealth()
+      ]);
+    } catch (error) {
+      console.error('Failed to load health panels:', error);
+    }
+  },
+
+  /**
+   * Load LLM provider health
+   */
+  async loadLLMHealth() {
+    try {
+      const settings = await AegisAPI.getSettings();
+      this.healthData.llm = settings;
+      this.renderLLMHealth(settings);
+
+      // If Ollama, try to discover models
+      if (settings.llm?.provider === 'ollama') {
+        try {
+          const discovery = await AegisAPI.discoverOllama(settings.llm.ollamaUrl);
+          this.renderOllamaModels(discovery);
+        } catch (e) {
+          console.warn('Ollama discovery failed:', e);
+        }
+      }
+    } catch (error) {
+      this.renderLLMHealth({ error: error.message });
+    }
+  },
+
+  /**
+   * Render LLM health panel
+   */
+  renderLLMHealth(settings) {
+    const container = document.getElementById('llm-health');
+    if (!container) return;
+
+    const provider = settings.llm?.provider || 'unknown';
+    const currentProvider = settings.currentProvider || provider;
+    const hasKey = this.getLLMKeyStatus(settings);
+
+    const providerIcons = {
+      anthropic: { icon: 'fa-robot', color: '#8B5CF6' },
+      openai: { icon: 'fa-brain', color: '#10B981' },
+      openrouter: { icon: 'fa-network-wired', color: '#3B82F6' },
+      ollama: { icon: 'fa-server', color: '#F59E0B' },
+    };
+
+    const { icon, color } = providerIcons[provider] || { icon: 'fa-question', color: '#6B7280' };
+
+    container.innerHTML = `
+      <div class="health-panel">
+        <div class="health-panel-header">
+          <div class="health-panel-icon" style="color: ${color}">
+            <i class="fas ${icon}"></i>
+          </div>
+          <div class="health-panel-info">
+            <h4>LLM Provider</h4>
+            <span class="health-panel-provider">${this.formatProviderName(provider)}</span>
+          </div>
+          <div class="health-panel-status ${hasKey ? 'connected' : 'disconnected'}">
+            <span class="status-dot"></span>
+            <span>${hasKey ? 'Connected' : 'Not Configured'}</span>
+          </div>
+        </div>
+        <div class="health-panel-details">
+          <div class="health-detail">
+            <span class="label">Model</span>
+            <span class="value">${settings.llm?.model || 'Default'}</span>
+          </div>
+          <div class="health-detail">
+            <span class="label">Temperature</span>
+            <span class="value">${settings.llm?.temperature || 0.7}</span>
+          </div>
+          ${provider === 'ollama' ? `
+            <div class="health-detail">
+              <span class="label">Ollama URL</span>
+              <span class="value">${settings.llm?.ollamaUrl || 'localhost:11434'}</span>
+            </div>
+          ` : ''}
+        </div>
+        <div id="ollama-models-section"></div>
+      </div>
+    `;
+  },
+
+  /**
+   * Render Ollama models when discovered
+   */
+  renderOllamaModels(discovery) {
+    const container = document.getElementById('ollama-models-section');
+    if (!container || !discovery.available) return;
+
+    const modelsHtml = discovery.models.slice(0, 5).map(model => `
+      <div class="ollama-model-item">
+        <span class="model-name">${model.displayName}</span>
+        <span class="model-size">${model.sizeFormatted}</span>
+      </div>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="health-panel-models">
+        <h5><i class="fas fa-cube"></i> Available Models (${discovery.models.length})</h5>
+        <div class="models-list">
+          ${modelsHtml || '<span class="no-models">No models installed</span>'}
+        </div>
+        ${discovery.models.length > 5 ? `<span class="more-models">+${discovery.models.length - 5} more</span>` : ''}
+      </div>
+    `;
+  },
+
+  /**
+   * Load cloud provider health
+   */
+  async loadCloudHealth() {
+    try {
+      const status = await AegisAPI.getCloudStatus();
+      this.healthData.cloud = status;
+      this.renderCloudHealth(status);
+    } catch (error) {
+      this.renderCloudHealth({ providers: {}, error: error.message });
+    }
+  },
+
+  /**
+   * Render cloud health panel
+   */
+  renderCloudHealth(status) {
+    const container = document.getElementById('cloud-health');
+    if (!container) return;
+
+    const providers = status.providers || {};
+    const configuredCount = Object.values(providers).filter(p => p.configured).length;
+    const connectedCount = Object.values(providers).filter(p => p.connected).length;
+
+    const providerItems = Object.entries(providers).map(([name, info]) => {
+      const icons = {
+        aws: { icon: 'fa-aws', color: '#FF9900' },
+        azure: { icon: 'fa-microsoft', color: '#0078D4' },
+        gcp: { icon: 'fa-google', color: '#4285F4' },
+        onprem: { icon: 'fa-server', color: '#6B7280' },
+      };
+      const { icon, color } = icons[name] || { icon: 'fa-cloud', color: '#6B7280' };
+
+      return `
+        <div class="cloud-provider-item ${info.configured ? 'configured' : ''} ${info.connected ? 'connected' : ''}">
+          <i class="fab ${icon}" style="color: ${color}"></i>
+          <span class="provider-name">${name.toUpperCase()}</span>
+          <span class="provider-status ${info.connected ? 'connected' : info.configured ? 'pending' : 'disabled'}">
+            ${info.connected ? 'Connected' : info.configured ? 'Configured' : 'Disabled'}
+          </span>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="health-panel">
+        <div class="health-panel-header">
+          <div class="health-panel-icon" style="color: #3B82F6">
+            <i class="fas fa-cloud"></i>
+          </div>
+          <div class="health-panel-info">
+            <h4>Cloud Providers</h4>
+            <span class="health-panel-summary">${connectedCount}/${configuredCount} Active</span>
+          </div>
+          <div class="health-panel-status ${connectedCount > 0 ? 'connected' : configuredCount > 0 ? 'pending' : 'disconnected'}">
+            <span class="status-dot"></span>
+            <span>${connectedCount > 0 ? 'Active' : configuredCount > 0 ? 'Configured' : 'None'}</span>
+          </div>
+        </div>
+        <div class="health-panel-providers">
+          ${providerItems}
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Load channel health
+   */
+  async loadChannelHealth() {
+    try {
+      const status = await AegisAPI.getChannelStatus();
+      this.healthData.channels = status;
+      this.renderChannelHealth(status);
+    } catch (error) {
+      this.renderChannelHealth({ channels: {}, error: error.message });
+    }
+  },
+
+  /**
+   * Render channel health panel
+   */
+  renderChannelHealth(status) {
+    const container = document.getElementById('channel-health');
+    if (!container) return;
+
+    const channels = status.channels || {};
+    const activeCount = Object.values(channels).filter(c => c.status === 'active').length;
+
+    const channelItems = Object.entries(channels).map(([name, info]) => {
+      const icons = {
+        web: { icon: 'fa-globe', color: '#6366F1' },
+        telegram: { icon: 'fa-telegram', color: '#0088CC' },
+        slack: { icon: 'fa-slack', color: '#4A154B' },
+        whatsapp: { icon: 'fa-whatsapp', color: '#25D366' },
+        api: { icon: 'fa-code', color: '#3B82F6' },
+      };
+      const { icon, color } = icons[name] || { icon: 'fa-plug', color: '#6B7280' };
+
+      return `
+        <div class="channel-item ${info.status === 'active' ? 'active' : ''}">
+          <i class="fab ${icon}" style="color: ${color}"></i>
+          <span class="channel-name">${this.formatChannelName(name)}</span>
+          <span class="channel-status ${info.status}">
+            ${info.status === 'active' ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="health-panel">
+        <div class="health-panel-header">
+          <div class="health-panel-icon" style="color: #10B981">
+            <i class="fas fa-comments"></i>
+          </div>
+          <div class="health-panel-info">
+            <h4>Communication Channels</h4>
+            <span class="health-panel-summary">${activeCount} Active</span>
+          </div>
+          <div class="health-panel-status ${activeCount > 0 ? 'connected' : 'disconnected'}">
+            <span class="status-dot"></span>
+            <span>${activeCount > 0 ? 'Active' : 'Inactive'}</span>
+          </div>
+        </div>
+        <div class="health-panel-channels">
+          ${channelItems}
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Get LLM key status
+   */
+  getLLMKeyStatus(settings) {
+    const provider = settings.llm?.provider;
+    switch (provider) {
+      case 'anthropic': return settings.llm?.hasAnthropicKey;
+      case 'openai': return settings.llm?.hasOpenaiKey;
+      case 'openrouter': return settings.llm?.hasOpenrouterKey;
+      case 'ollama': return true; // Ollama doesn't need a key
+      default: return false;
+    }
+  },
+
+  /**
+   * Format provider name
+   */
+  formatProviderName(provider) {
+    const names = {
+      anthropic: 'Anthropic Claude',
+      openai: 'OpenAI GPT',
+      openrouter: 'OpenRouter',
+      ollama: 'Ollama Local',
+    };
+    return names[provider] || provider;
+  },
+
+  /**
+   * Format channel name
+   */
+  formatChannelName(channel) {
+    const names = {
+      web: 'Web Dashboard',
+      telegram: 'Telegram',
+      slack: 'Slack',
+      whatsapp: 'WhatsApp',
+      api: 'REST API',
+    };
+    return names[channel] || channel;
   },
 
   /**

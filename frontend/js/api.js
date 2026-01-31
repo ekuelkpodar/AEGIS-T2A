@@ -242,6 +242,25 @@ const AegisAPI = {
     return this.get(`/api/v1/settings/ollama/models${params}`);
   },
 
+  async discoverOllama(url) {
+    const params = url ? `?url=${encodeURIComponent(url)}` : '';
+    return this.get(`/api/v1/settings/ollama/discover${params}`);
+  },
+
+  async getOllamaModelInfo(modelName, url) {
+    const params = url ? `?url=${encodeURIComponent(url)}` : '';
+    return this.get(`/api/v1/settings/ollama/models/${encodeURIComponent(modelName)}${params}`);
+  },
+
+  async pullOllamaModel(model, url) {
+    return this.post('/api/v1/settings/ollama/pull', { model, url });
+  },
+
+  async deleteOllamaModel(modelName, url) {
+    const params = url ? `?url=${encodeURIComponent(url)}` : '';
+    return this.delete(`/api/v1/settings/ollama/models/${encodeURIComponent(modelName)}${params}`);
+  },
+
   async getModelsForProvider(provider) {
     return this.get(`/api/v1/settings/models?provider=${encodeURIComponent(provider)}`);
   },
@@ -255,6 +274,10 @@ const AegisAPI = {
       provider,
       config
     });
+  },
+
+  async getCloudStatus() {
+    return this.get('/api/v1/cloud/status');
   },
 
   async getCloudResources(provider) {

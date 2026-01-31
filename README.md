@@ -1,517 +1,516 @@
 # AEGIS-T2A
 
-**Text-to-Action Anywhere Platform** - A governed multi-agent system for safe, auditable automation.
+**Text-to-Action Anywhere** — Enterprise-grade governed automation from natural language.
 
-AEGIS-T2A converts natural language intents into executable, traceable actions across cloud, SaaS, CI/CD, edge, and local systems with enterprise-grade safety controls.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-green.svg)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 
-## Features
+Transform natural language into safe, auditable, compensatable actions across any infrastructure — cloud, SaaS, CI/CD, edge, or local systems. Built with defense-in-depth security and SOC 2 compliance in mind.
 
-- **Intent Parsing**: Natural language to typed intent conversion using LLM
-- **Multi-LLM Support**: Anthropic Claude, OpenAI, OpenRouter, or local Ollama
-- **Policy Engine**: Policy-as-code enforcement with risk classification
-- **Plan Generation**: Automatic decomposition into idempotent, compensatable steps
-- **Simulation**: Dry-run execution with risk scoring and blast radius analysis
-- **Durable Workflow Engine**: Checkpointed execution with retry and compensation
-- **Human-in-the-Loop**: Hybrid approval model (auto/async/multi-signer)
-- **Audit Ledger**: Immutable, hash-chained event logging
-- **Ephemeral Secrets**: Short-lived credentials with zero-trust enforcement
-- **Tool Registry**: Versioned adapters with SBOM and capability enforcement
-- **Multi-Channel**: Web, Terminal, Telegram, WhatsApp, Slack, API
-- **Cloud Providers**: AWS, Azure, GCP, On-premises (SSH/K8s/Docker)
+---
+
+## Quick Start (90 Seconds)
+
+```bash
+# Clone and install
+git clone https://github.com/your-org/aegis-t2a.git && cd aegis-t2a
+npm install
+
+# Launch with setup wizard
+npm start
+# Open http://localhost:3000 → Complete 4-step wizard → Done!
+```
+
+**That's it.** The web wizard guides you through LLM provider selection, cloud connections, and security settings.
+
+### CLI Alternative
+
+```bash
+npm run setup          # Interactive terminal wizard
+npm run dev            # Development mode with hot reload
+npm run cli -- intent "List all S3 buckets" --execute
+```
+
+---
+
+## Supported Providers
+
+### LLM Providers (2026 Models)
+
+| Provider | Models | Best For | Setup |
+|----------|--------|----------|-------|
+| **Anthropic** | Claude Opus 4.5, Claude Sonnet 4.0, Claude Haiku 4.0 | Complex reasoning, tool use | API key |
+| **OpenAI** | GPT-4o, o3-mini, GPT-4 Turbo | Fast responses, wide compatibility | API key |
+| **OpenRouter** | 200+ models (DeepSeek, Llama 4, Gemini 2) | Model variety, cost optimization | API key |
+| **Ollama** | Llama 3.2, Mistral, Qwen 2.5, DeepSeek-R1 | Privacy, offline, no API costs | Local install |
+
+### Cloud Providers
+
+| Provider | Services | Authentication |
+|----------|----------|----------------|
+| **AWS** | EC2, S3, Lambda, RDS, ECS, CloudFormation | Access Key / IAM Role / SSO |
+| **Azure** | VMs, Blob Storage, Functions, AKS | Service Principal / Managed Identity |
+| **GCP** | Compute, GCS, Cloud Functions, GKE | Service Account / ADC |
+| **On-Premises** | Docker, Kubernetes, SSH, Terraform | Kubeconfig / SSH Keys |
+
+### Communication Channels
+
+| Channel | Status | Use Case |
+|---------|--------|----------|
+| **Web Dashboard** | Full | Primary interface with real-time monitoring |
+| **REST API** | Full | Programmatic automation |
+| **Terminal CLI** | Full | DevOps and scripting |
+| **Telegram** | Full | Mobile notifications and commands |
+| **Slack** | Full | Team collaboration |
+| **WhatsApp** | Full | Business communications |
+
+---
+
+## Dashboard Highlights
+
+The AEGIS-T2A web dashboard provides comprehensive visibility and control:
+
+- **Real-time Health Monitoring** — Live status of LLM providers, cloud connections, and system components
+- **Workflow Commander** — Natural language input with instant plan preview and execution
+- **Active Workflow Tracker** — Monitor running workflows with step-by-step progress
+- **Audit Timeline** — Hash-chained event log with forensic search capabilities
+- **Risk Visualization** — Blast radius analysis and confidence scoring
+- **One-Click Approval** — Human-in-the-loop controls for sensitive operations
+
+---
+
+## Security Guarantees
+
+AEGIS-T2A implements defense-in-depth security across every layer:
+
+### Core Security Features
+
+| Feature | Protection | Implementation |
+|---------|------------|----------------|
+| **Hash-Chained Audit** | Tamper-evident logging | SHA-256 chain with digital signatures |
+| **Memory Isolation** | Cross-tenant data separation | HKDF-SHA256 cryptographic namespaces |
+| **Runtime Policy Enforcement** | Real-time execution control | FAIL-CLOSED mode, circuit breakers |
+| **Compensation Validation** | Safe rollback verification | Semantic matching before execution |
+| **Blast Radius Analysis** | Quantitative impact assessment | 15+ risk metrics per operation |
+| **Deterministic Replay** | SOC 2 CC7.2 compliance | Merkle tree audit trail, time travel |
+
+### Security Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      SECURITY LAYERS                            │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │   Intent    │  │   Policy    │  │   Confidence-Aware     │ │
+│  │   Gateway   │→ │   Engine    │→ │   Parser (≥8/10)       │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │   Plan      │  │  Blast     │  │   Compensation         │ │
+│  │  Generator  │→ │  Radius    │→ │   Validator            │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │  Runtime    │  │  Circuit   │  │   DLP Memory           │ │
+│  │  Interceptor│→ │  Breakers  │→ │   Filter               │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │  Audit     │  │  Merkle    │  │   Deterministic        │ │
+│  │  Ledger    │→ │  Proofs    │→ │   Replay Engine        │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Security Properties
+
+- **FAIL-CLOSED Mode** — Any policy evaluation error halts execution immediately
+- **Zero Cross-Tenant Access** — Cryptographic memory isolation prevents data leaks
+- **25+ DLP Patterns** — Automatic detection of SSN, credit cards, AWS keys, passwords
+- **Parameter Drift Detection** — >30% drift from baseline triggers automatic block
+- **Immutable Audit Trail** — Every action cryptographically signed and hash-chained
+
+---
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Channels["Input Channels"]
-        WEB[Web UI]
+    subgraph Channels["📱 Input Channels"]
+        WEB[Web Dashboard]
         CLI[Terminal CLI]
-        TG[Telegram Bot]
+        TG[Telegram]
         WA[WhatsApp]
-        SLACK[Slack Bot]
+        SLACK[Slack]
         API[REST API]
     end
 
-    subgraph LLMProviders["LLM Providers"]
+    subgraph LLM["🧠 LLM Providers"]
         ANTH[Anthropic Claude]
         OAI[OpenAI GPT]
         OR[OpenRouter]
         OLL[Ollama Local]
     end
 
-    subgraph Gateway["Intent Gateway"]
-        IP[Intent Parser]
-        PE[Policy Engine]
-        RC[Risk Classifier]
+    subgraph Gateway["🔐 Intent Gateway"]
+        PARSE[Confidence-Aware Parser]
+        POLICY[Policy Engine]
+        DISAMB[Disambiguation Engine]
     end
 
-    subgraph Planning["Planning Layer"]
-        PA[Planner Agent]
+    subgraph Planning["📋 Planning Layer"]
+        PLANNER[Plan Generator]
+        BLAST[Blast Radius Analyzer]
+        COMP_VAL[Compensation Validator]
         SIM[Simulation Engine]
-        RA[Risk Analyzer]
     end
 
-    subgraph Execution["Execution Layer"]
-        WE[Workflow Engine]
-        EX[Executor]
-        CP[Checkpoint Manager]
-        CS[Compensation Stack]
+    subgraph Security["🛡️ Security Layer"]
+        RUNTIME[Runtime Interceptor]
+        CIRCUIT[Circuit Breakers]
+        MEMORY[Memory Isolation]
+        DLP[DLP Filter]
     end
 
-    subgraph Adapters["Tool Adapters"]
-        AWS[AWS Adapter]
-        AZ[Azure Adapter]
-        GCP[GCP Adapter]
+    subgraph Execution["⚡ Execution Layer"]
+        WORKFLOW[Workflow Engine]
+        EXECUTOR[Sandboxed Executor]
+        CHECKPOINT[Checkpoint Manager]
+    end
+
+    subgraph Adapters["🔌 Tool Adapters"]
+        AWS[AWS]
+        AZ[Azure]
+        GCP[GCP]
         K8S[Kubernetes]
         DOCKER[Docker]
-        SSH[SSH Remote]
+        SSH[SSH]
         GH[GitHub]
         TF[Terraform]
     end
 
-    subgraph Infrastructure["Infrastructure"]
-        DB[(SQLite DB)]
-        AL[Audit Ledger]
-        SV[Secrets Vault]
-        REG[Tool Registry]
+    subgraph Audit["📊 Audit & Compliance"]
+        LEDGER[Hash-Chain Ledger]
+        MERKLE[Merkle Tree]
+        REPLAY[Replay Engine]
+        FORENSIC[Forensic Index]
     end
 
-    subgraph Approval["Human Approval"]
+    subgraph Approval["✅ Human Approval"]
         AUTO[Auto-Approve<br/>Low Risk]
         ASYNC[Async Approve<br/>Medium Risk]
-        SYNC[Sync Multi-Signer<br/>High Risk]
+        SYNC[Multi-Signer<br/>High Risk]
     end
 
-    %% Channel connections
-    WEB --> API
-    CLI --> API
-    TG --> API
-    WA --> API
-    SLACK --> API
-
+    %% Flow connections
+    Channels --> API
     API --> Gateway
+    Gateway <--> LLM
+    Gateway --> Planning
+    Planning --> Approval
+    Approval --> Security
+    Security --> Execution
+    Execution --> Adapters
 
-    %% Gateway flow
-    IP --> PE
-    PE --> RC
-    Gateway --> LLMProviders
+    %% Audit connections
+    Gateway --> Audit
+    Planning --> Audit
+    Execution --> Audit
 
-    %% Planning flow
-    Gateway --> PA
-    PA --> SIM
-    SIM --> RA
+    %% Security integration
+    MEMORY -.-> Execution
+    DLP -.-> Execution
+    RUNTIME -.-> Adapters
 
-    %% Approval routing
-    RA --> AUTO
-    RA --> ASYNC
-    RA --> SYNC
-
-    AUTO --> WE
-    ASYNC --> WE
-    SYNC --> WE
-
-    %% Execution flow
-    WE --> CP
-    WE --> EX
-    EX --> CS
-
-    %% Adapter connections
-    EX --> Adapters
-
-    %% Infrastructure connections
-    WE --> DB
-    EX --> AL
-    EX --> SV
-    EX --> REG
-
-    %% Styling
-    classDef channel fill:#e1f5fe,stroke:#01579b
-    classDef llm fill:#f3e5f5,stroke:#4a148c
-    classDef gateway fill:#fff3e0,stroke:#e65100
-    classDef planning fill:#e8f5e9,stroke:#1b5e20
-    classDef execution fill:#fce4ec,stroke:#880e4f
-    classDef adapter fill:#e0f2f1,stroke:#004d40
-    classDef infra fill:#f5f5f5,stroke:#212121
-    classDef approval fill:#fff8e1,stroke:#ff6f00
+    classDef channel fill:#e3f2fd,stroke:#1565c0
+    classDef llm fill:#f3e5f5,stroke:#7b1fa2
+    classDef gateway fill:#fff3e0,stroke:#ef6c00
+    classDef planning fill:#e8f5e9,stroke:#2e7d32
+    classDef security fill:#ffebee,stroke:#c62828
+    classDef execution fill:#fce4ec,stroke:#ad1457
+    classDef adapter fill:#e0f2f1,stroke:#00695c
+    classDef audit fill:#eceff1,stroke:#37474f
+    classDef approval fill:#fff8e1,stroke:#f57f17
 
     class WEB,CLI,TG,WA,SLACK,API channel
     class ANTH,OAI,OR,OLL llm
-    class IP,PE,RC gateway
-    class PA,SIM,RA planning
-    class WE,EX,CP,CS execution
+    class PARSE,POLICY,DISAMB gateway
+    class PLANNER,BLAST,COMP_VAL,SIM planning
+    class RUNTIME,CIRCUIT,MEMORY,DLP security
+    class WORKFLOW,EXECUTOR,CHECKPOINT execution
     class AWS,AZ,GCP,K8S,DOCKER,SSH,GH,TF adapter
-    class DB,AL,SV,REG infra
+    class LEDGER,MERKLE,REPLAY,FORENSIC audit
     class AUTO,ASYNC,SYNC approval
 ```
+
+---
 
 ## System Flow
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant C as Channel
     participant G as Gateway
-    participant L as LLM
-    participant P as Planner
-    participant S as Simulator
+    participant P as Parser
+    participant PL as Planner
+    participant S as Security
     participant A as Approver
-    participant W as Workflow
     participant E as Executor
-    participant T as Tool
+    participant AU as Audit
 
-    U->>C: Natural Language Intent
-    C->>G: Parse Request
-    G->>L: Extract Intent
-    L-->>G: Typed Intent
-    G->>G: Policy Check
-    G->>P: Generate Plan
-    P->>L: Decompose Steps
-    L-->>P: Plan Steps
-    P->>S: Simulate
-    S-->>P: Risk Score
+    U->>G: "Deploy my-app to staging"
+    G->>P: Parse Intent
+    P->>P: Confidence Check (≥8/10?)
+
+    alt Low Confidence
+        P->>U: Request Disambiguation
+        U->>P: Clarified Intent
+    end
+
+    P->>G: Typed Intent
+    G->>G: Policy Validation
+    G->>PL: Generate Plan
+    PL->>PL: Blast Radius Analysis
+    PL->>PL: Validate Compensations
 
     alt High Risk
-        P->>A: Request Approval
-        A-->>P: Approve/Reject
+        PL->>A: Request Approval
+        A->>PL: Approve/Reject
     end
 
-    P->>W: Create Workflow
+    PL->>S: Runtime Policy Check
+    S->>S: Circuit Breaker OK?
+    S->>S: Parameter Drift Check
+    S->>E: Execute Steps
 
     loop Each Step
-        W->>E: Execute Step
-        E->>T: Call Tool
-        T-->>E: Result
-        E->>W: Checkpoint
+        E->>E: DLP Scan
+        E->>E: Execute in Sandbox
+        E->>AU: Record + Sign
     end
 
-    W-->>C: Final Result
-    C-->>U: Response
+    E->>U: Result
+    AU->>AU: Merkle Commit
 ```
 
-## Component Architecture
-
-```mermaid
-graph LR
-    subgraph Core["Core Services"]
-        CONFIG[Config Manager]
-        CRYPTO[Crypto Utils]
-        DB[Database]
-        LOG[Logger]
-        IDS[ID Generator]
-    end
-
-    subgraph Gateway["Intent Gateway"]
-        PARSE[Intent Parser]
-        POLICY[Policy Engine]
-    end
-
-    subgraph Planner["Planner"]
-        PLAN[Plan Generator]
-        DECOMP[Step Decomposer]
-    end
-
-    subgraph Simulation["Simulation"]
-        DRY[Dry-Run Engine]
-        BLAST[Blast Radius]
-        RISK[Risk Scorer]
-    end
-
-    subgraph Workflow["Workflow Engine"]
-        ORCH[Orchestrator]
-        STATE[State Machine]
-        RETRY[Retry Handler]
-        COMP[Compensation]
-    end
-
-    subgraph Executor["Executor"]
-        ADAPT[Adapter Manager]
-        DLP[DLP Filter]
-        SANDBOX[Sandbox]
-    end
-
-    subgraph Registry["Registry"]
-        TOOLS[Tool Registry]
-        VERS[Version Manager]
-        SBOM[SBOM Tracker]
-    end
-
-    subgraph Audit["Audit"]
-        LEDGER[Hash-Chain Ledger]
-        SIGN[Signature Verify]
-        QUERY[Event Query]
-    end
-
-    subgraph Secrets["Secrets"]
-        VAULT[Credential Vault]
-        TTL[TTL Manager]
-        ENCRYPT[Encryption]
-    end
-
-    PARSE --> POLICY
-    POLICY --> PLAN
-    PLAN --> DRY
-    DRY --> ORCH
-    ORCH --> ADAPT
-    ADAPT --> TOOLS
-
-    ORCH --> LEDGER
-    ADAPT --> VAULT
-```
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 20+
-- One of: Anthropic API key, OpenAI API key, OpenRouter API key, or Ollama
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/your-org/aegis-t2a.git
-cd aegis-t2a
-
-# Install dependencies
-npm install
-
-# Run the setup wizard (interactive)
-npm run setup
-
-# Or manually configure
-cp .env.example .env
-# Edit .env with your settings
-
-# Build the project
-npm run build
-
-# Start the server
-npm start
-```
-
-### Setup Wizard
-
-AEGIS-T2A includes an interactive setup wizard for easy configuration:
-
-**Terminal Setup:**
-```bash
-npm run setup
-```
-
-**Browser Setup:**
-```bash
-npm start
-# Open http://localhost:3000 in your browser
-# Follow the guided setup wizard
-```
-
-The wizard helps you configure:
-1. **LLM Provider** - Choose Anthropic, OpenAI, OpenRouter, or Ollama
-2. **Cloud Services** - Connect AWS, Azure, GCP, or on-premises environments
-3. **Channels** - Enable Telegram, WhatsApp, Slack integrations
-4. **Security** - Set approval thresholds and policies
-
-### Using the CLI
-
-```bash
-# Process an intent
-npm run cli -- intent "Create a new S3 bucket called my-data-bucket"
-
-# With execution
-npm run cli -- intent "List all EC2 instances in us-east-1" --execute
-
-# View audit logs
-npm run cli -- audit --limit 10
-
-# View registered adapters
-npm run cli -- registry
-```
-
-### Using Channels
-
-**Telegram:**
-1. Create a bot via @BotFather
-2. Set `TELEGRAM_BOT_TOKEN` in .env
-3. Start chatting with your bot
-
-**WhatsApp:**
-1. Set up WhatsApp Business API
-2. Configure `WHATSAPP_PHONE_NUMBER_ID` and `WHATSAPP_ACCESS_TOKEN`
-3. Set up webhook endpoint
-
-**Slack:**
-1. Create a Slack app at api.slack.com
-2. Set `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET`
-3. Install app to workspace
-
-### Using the API
-
-```bash
-# Create an intent
-curl -X POST http://localhost:3000/api/v1/intents \
-  -H "Content-Type: application/json" \
-  -H "X-User-Id: user-123" \
-  -d '{"text": "Deploy the latest version of my-app to staging"}'
-
-# Generate a plan
-curl -X POST http://localhost:3000/api/v1/intents/{intentId}/plan
-
-# Simulate the plan
-curl -X POST http://localhost:3000/api/v1/plans/{planId}/simulate
-
-# Execute the plan
-curl -X POST http://localhost:3000/api/v1/plans/{planId}/execute
-```
+---
 
 ## Project Structure
 
 ```
 aegis-t2a/
 ├── src/
-│   ├── core/           # Types, crypto, logging, database
-│   ├── gateway/        # Intent parsing and policy engine
-│   ├── planner/        # Plan generation
-│   ├── simulation/     # Dry-run and risk analysis
-│   ├── workflow/       # Durable workflow engine
-│   ├── executor/       # Tool adapters and execution
-│   ├── registry/       # Agent/adapter registry
-│   ├── audit/          # Audit ledger
-│   ├── secrets/        # Ephemeral credentials
-│   ├── api/            # REST API server
-│   ├── cli/            # Command-line interface
-│   ├── channels/       # Telegram, WhatsApp, Slack
-│   └── providers/      # LLM and cloud providers
+│   ├── core/                    # Core infrastructure
+│   │   ├── memory-isolation/    # HKDF-SHA256 namespace isolation
+│   │   └── runtime-guard/       # Policy interceptors, circuit breakers
+│   ├── gateway/                 # Intent parsing, policy engine
+│   │   └── confidence-aware-parser.ts
+│   ├── planner/                 # Plan generation
+│   │   ├── compensation-feasibility-validator.ts
+│   │   └── blast-radius-analyzer.ts
+│   ├── simulation/              # Dry-run and risk analysis
+│   ├── workflow/                # Durable workflow engine
+│   ├── executor/                # Sandboxed tool execution
+│   ├── audit/                   # Audit ledger
+│   │   ├── queryable-audit-index.ts
+│   │   └── replay/              # Deterministic replay engine
+│   ├── registry/                # Tool/adapter registry
+│   ├── secrets/                 # Ephemeral credentials
+│   ├── api/                     # REST API server
+│   ├── cli/                     # Command-line interface
+│   ├── channels/                # Telegram, WhatsApp, Slack
+│   └── providers/               # LLM and cloud providers
 ├── frontend/
-│   ├── index.html      # Web UI entry point
-│   ├── css/            # Stylesheets
-│   └── js/             # Frontend JavaScript
-├── tests/              # Test files
+│   ├── index.html               # Web dashboard
+│   ├── css/                     # Stylesheets
+│   └── js/                      # Frontend modules
+├── tests/
+│   └── security/                # Security component tests
 ├── docs/
-│   └── constraints/    # System constraint documentation
-└── config/             # Configuration files
+│   └── constraints/             # System constraint documentation
+└── config/                      # Configuration files
 ```
+
+---
 
 ## Configuration
 
-### Environment Variables
+### Essential Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | 3000 |
-| `NODE_ENV` | Environment | development |
-| `DATABASE_PATH` | SQLite database path | ./data/aegis.db |
-| `LLM_PROVIDER` | LLM provider (anthropic/openai/openrouter/ollama) | anthropic |
-| `ANTHROPIC_API_KEY` | Anthropic API key | - |
-| `OPENAI_API_KEY` | OpenAI API key | - |
-| `OPENROUTER_API_KEY` | OpenRouter API key | - |
-| `OLLAMA_BASE_URL` | Ollama server URL | http://localhost:11434 |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token | - |
-| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp phone number ID | - |
-| `WHATSAPP_ACCESS_TOKEN` | WhatsApp access token | - |
-| `SLACK_BOT_TOKEN` | Slack bot token | - |
-| `AWS_ACCESS_KEY_ID` | AWS access key | - |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key | - |
-| `AZURE_TENANT_ID` | Azure tenant ID | - |
-| `AZURE_CLIENT_ID` | Azure client ID | - |
-| `GCP_PROJECT_ID` | GCP project ID | - |
-| `JWT_SECRET` | JWT signing secret | - |
-| `SECRETS_ENCRYPTION_KEY` | 32-byte hex encryption key | - |
-| `REQUIRE_APPROVAL` | Require human approval | true |
-| `APPROVAL_THRESHOLD` | Min risk for approval | medium |
+```bash
+# Server
+PORT=3000
+NODE_ENV=production
 
-## Constraint Documentation
+# LLM Provider (choose one)
+LLM_PROVIDER=anthropic           # anthropic | openai | openrouter | ollama
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+OPENROUTER_API_KEY=sk-or-...
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2           # Auto-discovered from Ollama
 
-See [`docs/constraints/`](./docs/constraints/) for detailed constraint documentation:
+# Cloud Providers (optional)
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AZURE_TENANT_ID=...
+GCP_PROJECT_ID=...
 
-- [Failure Modes](./docs/constraints/FAILURE_MODES.md) - System fault tolerance requirements
-- [Human Override](./docs/constraints/HUMAN_OVERRIDE.md) - Approval workflow semantics
-- [Observability](./docs/constraints/OBSERVABILITY.md) - Audit and tracing requirements
-- [Rollback](./docs/constraints/ROLLBACK.md) - Compensation and recovery strategies
+# Security
+JWT_SECRET=your-secret-key
+SECRETS_ENCRYPTION_KEY=32-byte-hex-key
+
+# Enterprise Security (optional)
+MEMORY_ISOLATION_ENABLED=true
+RUNTIME_POLICY_ENFORCEMENT=true
+DETERMINISTIC_REPLAY_ENABLED=true
+```
+
+### Configuration File
+
+Create `config/aegis.json` for advanced settings:
+
+```json
+{
+  "security": {
+    "confidenceThreshold": 8,
+    "maxBlastRadiusScore": 70,
+    "requireApprovalAbove": "medium",
+    "dlpEnabled": true,
+    "memoryIsolation": true
+  },
+  "execution": {
+    "maxRetries": 3,
+    "checkpointInterval": "1m",
+    "compensationTimeout": "5m"
+  },
+  "audit": {
+    "merkleCommitInterval": "5m",
+    "retentionDays": 365
+  }
+}
+```
+
+---
+
+## API Reference
+
+### Core Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/health` | System health check |
+| `POST` | `/api/v1/intents` | Create intent from natural language |
+| `GET` | `/api/v1/intents/:id` | Get intent details |
+| `POST` | `/api/v1/intents/:id/plan` | Generate execution plan |
+| `GET` | `/api/v1/plans/:id` | Get plan with blast radius |
+| `POST` | `/api/v1/plans/:id/simulate` | Simulate execution |
+| `POST` | `/api/v1/plans/:id/execute` | Execute plan |
+| `GET` | `/api/v1/workflows/:id` | Get workflow status |
+| `POST` | `/api/v1/workflows/:id/approve` | Approve workflow |
+| `POST` | `/api/v1/workflows/:id/cancel` | Cancel workflow |
+
+### Audit & Forensics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/audit/events` | Query audit events |
+| `GET` | `/api/v1/audit/verify` | Verify chain integrity |
+| `GET` | `/api/v1/audit/forensic/:workflowId` | Generate forensic report |
+| `POST` | `/api/v1/audit/replay` | Replay execution |
+| `GET` | `/api/v1/audit/merkle/:commitId` | Get Merkle proof |
+
+### Settings & Discovery
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/settings/llm/models` | List available LLM models |
+| `GET` | `/api/v1/settings/ollama/discover` | Discover Ollama models |
+| `POST` | `/api/v1/test/llm` | Test LLM connection |
+| `POST` | `/api/v1/test/cloud` | Validate cloud credentials |
+| `GET` | `/api/v1/registry/adapters` | List tool adapters |
+
+### Example: Create and Execute Intent
+
+```bash
+# Create intent
+INTENT=$(curl -s -X POST http://localhost:3000/api/v1/intents \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: user-123" \
+  -d '{"text": "Create an S3 bucket named my-data-bucket in us-east-1"}')
+
+INTENT_ID=$(echo $INTENT | jq -r '.intentId')
+
+# Generate plan
+PLAN=$(curl -s -X POST http://localhost:3000/api/v1/intents/$INTENT_ID/plan)
+PLAN_ID=$(echo $PLAN | jq -r '.planId')
+
+# Review blast radius
+curl -s http://localhost:3000/api/v1/plans/$PLAN_ID | jq '.blastRadius'
+
+# Execute (auto-approves if low risk)
+curl -s -X POST http://localhost:3000/api/v1/plans/$PLAN_ID/execute
+```
+
+---
 
 ## Development
 
 ```bash
-# Run in development mode
+# Development mode with hot reload
 npm run dev
 
-# Run tests
+# Run all tests
 npm test
 
-# Run tests with coverage
-npm run test:coverage
+# Run security tests
+npm test -- --grep "security"
 
-# Type check
+# Type checking
 npm run typecheck
 
-# Lint
+# Lint and format
 npm run lint
+npm run format
+
+# Build for production
+npm run build
 ```
 
-## API Reference
+### Testing Security Components
 
-### Endpoints
+```bash
+# Memory isolation tests
+npm test -- tests/security/enterprise-security.test.ts
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/health` | Health check |
-| POST | `/api/v1/intents` | Create intent from natural language |
-| GET | `/api/v1/intents/:id` | Get intent by ID |
-| POST | `/api/v1/intents/:id/plan` | Generate plan for intent |
-| GET | `/api/v1/plans/:id` | Get plan by ID |
-| POST | `/api/v1/plans/:id/simulate` | Simulate plan execution |
-| POST | `/api/v1/plans/:id/execute` | Create and start workflow |
-| GET | `/api/v1/workflows/:id` | Get workflow status |
-| POST | `/api/v1/workflows/:id/approve` | Approve/reject workflow |
-| POST | `/api/v1/workflows/:id/cancel` | Cancel workflow |
-| GET | `/api/v1/audit/events` | Query audit events |
-| GET | `/api/v1/audit/verify` | Verify audit chain |
-| GET | `/api/v1/registry/adapters` | List tool adapters |
-| GET | `/api/v1/policy/rules` | List policy rules |
-| POST | `/api/v1/test/llm` | Test LLM connection |
-| POST | `/api/v1/test/cloud` | Test cloud provider connection |
-| POST | `/api/v1/test/channel` | Test channel connection |
+# Phase 2 security tests
+npm test -- tests/security/phase2-components.test.ts
+```
 
-### Webhook Endpoints
+---
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/webhooks/telegram` | Telegram bot webhook |
-| GET/POST | `/webhooks/whatsapp` | WhatsApp webhook |
-| POST | `/webhooks/slack/events` | Slack events webhook |
-| POST | `/webhooks/slack/interactions` | Slack interactions webhook |
+## Constraint Documentation
 
-## Security
+Detailed system constraints are documented in [`docs/constraints/`](./docs/constraints/):
 
-- **Authentication**: JWT-based with OIDC support
-- **Authorization**: Role-based access control (RBAC)
-- **Secrets**: Ephemeral credentials with short TTL, HSM/KMS integration
-- **Audit**: Immutable, hash-chained event log with signatures
-- **Isolation**: Sandboxed executor with DLP filtering
-- **Policy**: Deny-by-default with explicit allowlists
-- **Approval**: Risk-based human-in-the-loop enforcement
+- [Failure Modes](./docs/constraints/FAILURE_MODES.md) — Fault tolerance and recovery
+- [Human Override](./docs/constraints/HUMAN_OVERRIDE.md) — Approval workflow semantics
+- [Observability](./docs/constraints/OBSERVABILITY.md) — Audit and tracing requirements
+- [Rollback](./docs/constraints/ROLLBACK.md) — Compensation and recovery strategies
 
-## Supported Integrations
-
-### Cloud Providers
-- **AWS**: EC2, S3, Lambda, and more
-- **Azure**: VMs, Storage, Functions
-- **GCP**: Compute Engine, Cloud Storage, Cloud Functions
-- **On-Premises**: SSH, Kubernetes, Docker
-
-### LLM Providers
-- **Anthropic**: Claude 3.5 Sonnet, Opus, Haiku
-- **OpenAI**: GPT-4, GPT-4 Turbo, GPT-3.5
-- **OpenRouter**: Access to multiple providers
-- **Ollama**: Local open-source models (Llama, Mistral, etc.)
-
-### Communication Channels
-- **Web UI**: Browser-based dashboard
-- **Terminal**: Interactive CLI with setup wizard
-- **Telegram**: Bot integration
-- **WhatsApp**: Business API integration
-- **Slack**: Workspace bot
-- **REST API**: Programmatic access
+---
 
 ## License
 
-MIT
+MIT License — See [LICENSE](./LICENSE) for details.
+
+---
+
+<div align="center">
+
+**Built with defense-in-depth security for enterprise automation.**
+
+[Documentation](./docs/) · [API Reference](#api-reference) · [Report Issue](https://github.com/your-org/aegis-t2a/issues)
+
+</div>
