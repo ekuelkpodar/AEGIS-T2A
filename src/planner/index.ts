@@ -630,3 +630,42 @@ export async function initializePlanner(): Promise<PlannerAgent> {
   await p.initialize();
   return p;
 }
+
+// Compensation Feasibility Validation
+export {
+  CompensationFeasibilityValidator,
+  getCompensationFeasibilityValidator,
+  initializeCompensationFeasibilityValidator,
+  defaultFeasibilityConfig,
+  SEMANTIC_PAIRS,
+  CRITICAL_IDENTIFIER_KEYS,
+} from './compensation-feasibility-validator.js';
+export type {
+  CompensationFeasibilityConfig,
+  CompensationValidationReport,
+  StepCompensationAnalysis,
+  SemanticValidation,
+  IdentifierValidation,
+  PermissionValidation,
+  DryRunValidation,
+  FeasibilityScore,
+  ValidationContext,
+} from './compensation-feasibility-validator.js';
+
+// Blast Radius Analysis
+export {
+  BlastRadiusAnalyzer,
+  getBlastRadiusAnalyzer,
+  initializeBlastRadiusAnalyzer,
+  defaultBlastRadiusConfig,
+} from './blast-radius-analyzer.js';
+export type {
+  BlastRadiusConfig,
+  BlastRadiusAnalysisReport,
+  StepBlastRadius,
+  BlastRadiusMetrics,
+  CascadingFailurePath,
+  ResourceMetadata,
+  BlastRadiusThresholds,
+  AnalysisContext,
+} from './blast-radius-analyzer.js';

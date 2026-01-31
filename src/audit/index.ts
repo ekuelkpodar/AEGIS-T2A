@@ -408,3 +408,25 @@ export async function recordAuditEvent(input: AuditEventInput): Promise<AuditEve
   const auditLedger = getAuditLedger();
   return auditLedger.record(input);
 }
+
+// Queryable Audit Index
+export {
+  QueryableAuditIndex,
+  getQueryableAuditIndex,
+  initializeQueryableAuditIndex,
+  defaultAuditIndexConfig,
+} from './queryable-audit-index.js';
+export type {
+  IndexedAuditEntry,
+  AuditQueryFilter,
+  AuditQueryOptions,
+  AuditQueryResult,
+  QueryAggregations,
+  ChainIntegrityResult,
+  BrokenChainLink,
+  ChainAttestation,
+  ForensicTimelineEntry,
+  ForensicReport,
+  StreamSubscription,
+  AuditIndexConfig,
+} from './queryable-audit-index.js';

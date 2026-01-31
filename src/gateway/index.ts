@@ -291,3 +291,20 @@ export type {
   RiskAssessment,
   SandboxContext,
 } from './intent-sandbox.js';
+
+// Confidence-Aware Parsing
+export {
+  ConfidenceAwareParser,
+  getConfidenceAwareParser,
+  initializeConfidenceAwareParser,
+  defaultConfidenceParserConfig,
+} from './confidence-aware-parser.js';
+export type {
+  InterpretationOption,
+  DisambiguationSession,
+  ConfidenceAwareParseResult,
+  ParsingMetadata,
+  AmbiguityFactor,
+  DisambiguationAuditRecord,
+  ConfidenceParserConfig,
+} from './confidence-aware-parser.js';
