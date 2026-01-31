@@ -19,6 +19,25 @@ import { execute, queryOne, queryAll, transaction } from '../core/database.js';
 import { getConfig } from '../core/config.js';
 import { hashObject } from '../core/crypto.js';
 
+// Re-export Compensation Verifier
+export {
+  CompensationVerifier,
+  getCompensationVerifier,
+  initializeCompensationVerifier,
+  defaultVerifierConfig,
+} from './compensation-verifier.js';
+export type {
+  CompensationVerifierConfig,
+  CompensationRule,
+  VerificationResult,
+  StepVerificationResult,
+  CompensationGap,
+  VerificationIssue,
+  VerificationRecommendation,
+  CompensationCoverage,
+  CompensationRiskAssessment,
+} from './compensation-verifier.js';
+
 const logger = componentLogger('workflow');
 
 // =============================================================================

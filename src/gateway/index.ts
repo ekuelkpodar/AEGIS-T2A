@@ -272,3 +272,22 @@ export async function initializeGateway(): Promise<IntentGateway> {
 export { parseIntent, parseIntentHeuristic } from './intent-parser.js';
 export { PolicyEngine, getPolicyEngine, initializePolicyEngine } from './policy-engine.js';
 export type { PolicyEvaluationResult, PolicyContext, PolicyViolation } from './policy-engine.js';
+
+// Security Components
+export {
+  IntentValidationSandbox,
+  getIntentSandbox,
+  initializeIntentSandbox,
+  defaultSandboxConfig,
+} from './intent-sandbox.js';
+export type {
+  SandboxConfig,
+  DangerousPattern,
+  PatternCategory,
+  ValidationResult,
+  ValidationCheck,
+  ValidationViolation,
+  ValidationWarning,
+  RiskAssessment,
+  SandboxContext,
+} from './intent-sandbox.js';

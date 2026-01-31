@@ -15,6 +15,27 @@ import { hashInputs, hashOutputs } from '../core/crypto.js';
 import { generateId } from '../core/ids.js';
 import type { ExecutionContext } from '../workflow/index.js';
 
+// Re-export DLP Filter
+export {
+  DLPFilter,
+  getDLPFilter,
+  initializeDLPFilter,
+  defaultDLPConfig,
+} from './dlp-filter.js';
+export type {
+  DLPConfig,
+  RedactionMethod,
+  DataSchema,
+  SensitivePath,
+  DataType,
+  DataClassification,
+  DLPPattern,
+  DLPScanResult,
+  DLPFinding,
+  FilteredOutput,
+  FilterContext,
+} from './dlp-filter.js';
+
 const logger = componentLogger('executor');
 
 // =============================================================================

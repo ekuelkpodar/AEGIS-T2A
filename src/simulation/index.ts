@@ -15,6 +15,41 @@ import { componentLogger } from '../core/logger.js';
 import { execute, queryOne } from '../core/database.js';
 import { getConfig } from '../core/config.js';
 
+// Re-export security components
+export {
+  AdversarialSimulator,
+  getAdversarialSimulator,
+  initializeAdversarialSimulator,
+  defaultAdversarialConfig,
+} from './adversarial-simulator.js';
+export type {
+  AdversarialConfig,
+  FailureScenario,
+  FailureCategory,
+  AdversarialSimulationResult,
+  SimulationStatistics,
+  IterationResult,
+  FailureAnalysis,
+  ResilienceAssessment,
+  AdversarialRiskAssessment,
+} from './adversarial-simulator.js';
+
+export {
+  DynamicRiskScorer,
+  getDynamicRiskScorer,
+  initializeDynamicRiskScorer,
+  defaultRiskScorerConfig,
+} from './dynamic-risk-scorer.js';
+export type {
+  RiskScorerConfig,
+  ScoringContext,
+  RiskScore,
+  ScoreFactor,
+  ScoreAdjustment,
+  RiskFeatures,
+  HistoricalAnalysis,
+} from './dynamic-risk-scorer.js';
+
 const logger = componentLogger('simulation');
 
 // =============================================================================
