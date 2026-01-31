@@ -430,3 +430,32 @@ export type {
   StreamSubscription,
   AuditIndexConfig,
 } from './queryable-audit-index.js';
+
+// Deterministic Replay Engine
+export {
+  ExecutionArtifactRecorder,
+  ReplayEngine,
+  getExecutionArtifactRecorder,
+  getReplayEngine,
+  initializeReplaySystem,
+  defaultReplayEngineConfig,
+} from './replay/index.js';
+export type {
+  ExecutionArtifact,
+  LLMInteractionCapture,
+  ToolCallCapture,
+  EnvironmentSnapshot,
+  DependencyState,
+  PolicyDecisionCapture,
+  MerkleNode,
+  MerkleRootCommit,
+  PromptCacheEntry,
+  ReplayRequest,
+  ReplayResult,
+  ReplayTimelineEntry,
+  IntegrityVerification,
+  ReplayError,
+  ReplayEngineConfig,
+  TimeTravelQuery,
+  TimeTravelSnapshot,
+} from './replay/index.js';
