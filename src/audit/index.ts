@@ -8,7 +8,7 @@ import { AuditEvent, EventType, ActorType, RiskLevel } from '../core/types.js';
 import { generateEventId } from '../core/ids.js';
 import { componentLogger } from '../core/logger.js';
 import { execute, queryOne, queryAll } from '../core/database.js';
-import { sha256, signObject, hashObject, chainHash } from '../core/crypto.js';
+import { signObject, hashObject, chainHash } from '../core/crypto.js';
 
 const logger = componentLogger('audit');
 
@@ -262,7 +262,7 @@ export class AuditLedger {
   /**
    * Verify chain integrity
    */
-  async verifyChain(startEventId?: string, endEventId?: string): Promise<{
+  async verifyChain(_startEventId?: string, _endEventId?: string): Promise<{
     valid: boolean;
     errors: string[];
     eventsChecked: number;
@@ -302,7 +302,6 @@ export class AuditLedger {
    * Get event by ID
    */
   async getEvent(eventId: string): Promise<AuditEvent | null> {
-    const events = await this.query({ limit: 1 });
     const row = queryOne<{
       event_id: string;
       timestamp: string;

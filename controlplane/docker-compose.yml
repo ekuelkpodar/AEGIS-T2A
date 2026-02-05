@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aegis-postgres
+    environment:
+      POSTGRES_DB: aegis_controlplane
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: aegis_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Open Policy Agent
+  opa:
+    image: openpolicyagent/opa:latest
+    container_name: aegis-opa
+    command:
+      - "run"
+      - "--server"
+      - "--log-level=info"
+    ports:
+      - "8181:8181"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8181/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # HashiCorp Vault (for PKI)
+  vault:
+    image: vault:latest
+    container_name: aegis-vault
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO (S3-compatible storage for Event Store)
+  minio:
+    image: minio/minio:latest
+    container_name: aegis-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Identity Service
+  identity-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    container_name: aegis-identity-service
+    environment:
+      - DATABASE_URL=postgresql://aegis:aegis_dev_password@postgres:5432/aegis_controlplane
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=dev-root-token
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - ENVIRONMENT=development
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    command: ["python", "-m", "uvicorn", "controlplane.identity_service.app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  # Event Store
+  event-store:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    container_name: aegis-event-store
+    environment:
+      - DATABASE_URL=postgresql://aegis:aegis_dev_password@postgres:5432/aegis_controlplane
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - S3_BUCKET=aegis-events
+      - API_HOST=0.0.0.0
+      - API_PORT=8001
+      - ENVIRONMENT=development
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    command: ["python", "-m", "uvicorn", "controlplane.eventstore.app:app", "--host", "0.0.0.0", "--port", "8001"]
+
+  # Policy Engine
+  policy-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    container_name: aegis-policy-engine
+    environment:
+      - DATABASE_URL=postgresql://aegis:aegis_dev_password@postgres:5432/aegis_controlplane
+      - OPA_URL=http://opa:8181
+      - API_HOST=0.0.0.0
+      - API_PORT=8002
+      - ENVIRONMENT=development
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opa:
+        condition: service_healthy
+    command: ["python", "-m", "uvicorn", "controlplane.policyengine.app:app", "--host", "0.0.0.0", "--port", "8002"]
+
+  # Autonomy Manager
+  autonomy-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    container_name: aegis-autonomy-manager
+    environment:
+      - DATABASE_URL=postgresql://aegis:aegis_dev_password@postgres:5432/aegis_controlplane
+      - API_HOST=0.0.0.0
+      - API_PORT=8003
+      - ENVIRONMENT=development
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "-m", "uvicorn", "controlplane.autonomy.app:app", "--host", "0.0.0.0", "--port", "8003"]
+
+  # Approval System
+  approval-system:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    container_name: aegis-approval-system
+    environment:
+      - DATABASE_URL=postgresql://aegis:aegis_dev_password@postgres:5432/aegis_controlplane
+      - API_HOST=0.0.0.0
+      - API_PORT=8004
+      - ENVIRONMENT=development
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "-m", "uvicorn", "controlplane.approval.app:app", "--host", "0.0.0.0", "--port", "8004"]
+
+volumes:
+  postgres_data:
+  minio_data:

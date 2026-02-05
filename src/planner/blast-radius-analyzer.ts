@@ -749,7 +749,6 @@ export class BlastRadiusAnalyzer extends EventEmitter {
 // =============================================================================
 
 class BlastRadiusMetricsBuilder {
-  private config: BlastRadiusConfig;
   private affectedUserCount = 0;
   private affectedSystemCount = 0;
   private dataSensitivityTiers: DataSensitivityTier[] = [];
@@ -758,8 +757,8 @@ class BlastRadiusMetricsBuilder {
   private recoveryTimes: number[] = [];
   private dataVolumeBytes = 0;
 
-  constructor(config: BlastRadiusConfig) {
-    this.config = config;
+  constructor(_config: BlastRadiusConfig) {
+    // Config stored for future enhancements
   }
 
   accumulate(metrics: BlastRadiusMetrics): void {

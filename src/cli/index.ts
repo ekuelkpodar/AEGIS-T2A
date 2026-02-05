@@ -9,7 +9,6 @@ import { Command } from 'commander';
 import { getConfig } from '../core/config.js';
 import { runMigrations } from '../core/database.js';
 import { initializeSigningKey, initializeEncryptionKey } from '../core/crypto.js';
-import { logger } from '../core/logger.js';
 
 // Component imports
 import { initializeGateway, getGateway } from '../gateway/index.js';

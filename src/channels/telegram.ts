@@ -182,7 +182,7 @@ export class TelegramBot {
   private async handleCommand(message: TelegramMessage, command: string): Promise<void> {
     const chatId = message.chat.id;
     const parts = command.split(' ');
-    const cmd = parts[0].toLowerCase();
+    const cmd = (parts[0] ?? '').toLowerCase();
 
     switch (cmd) {
       case '/start':
@@ -225,7 +225,7 @@ export class TelegramBot {
         break;
 
       case '/cancel':
-        if (parts.length < 2) {
+        if (parts.length < 2 || !parts[1]) {
           await this.sendMessage(chatId, 'Usage: /cancel <workflow-id>');
           return;
         }
@@ -291,7 +291,7 @@ export class TelegramBot {
       // Show plan summary
       const planSummary = this.formatPlanSummary(planResult.plan, simResult);
 
-      if (planResult.plan.requiresApproval) {
+      if (planResult.plan.approvalRequired) {
         // Send approval request
         const approvalMsg = await this.editMessage(
           chatId,
@@ -354,7 +354,7 @@ export class TelegramBot {
     if (!query.data || !query.message) return;
 
     const [action, planId] = query.data.split(':');
-    const pending = this.pendingApprovals.get(planId);
+    const pending = planId ? this.pendingApprovals.get(planId) : undefined;
 
     if (!pending) {
       await this.answerCallbackQuery(query.id, 'This action has expired.');
@@ -563,7 +563,7 @@ export class TelegramBot {
       body: JSON.stringify(params),
     });
 
-    const data = await response.json();
+    const data = await response.json() as { ok: boolean; description?: string; result: unknown };
 
     if (!data.ok) {
       throw new Error(`Telegram API error: ${data.description}`);

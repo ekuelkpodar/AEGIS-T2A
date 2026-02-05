@@ -5,9 +5,8 @@
  */
 
 import { TypedIntent, PolicyRule, RiskLevel, PlanStep } from '../core/types.js';
-import { getDatabase, queryAll, queryOne, execute, transaction } from '../core/database.js';
+import { queryAll, queryOne, execute, transaction } from '../core/database.js';
 import { componentLogger, logPolicyViolation } from '../core/logger.js';
-import { generateId } from '../core/ids.js';
 
 const logger = componentLogger('policy-engine');
 

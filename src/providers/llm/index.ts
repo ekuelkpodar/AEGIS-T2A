@@ -82,11 +82,16 @@ export class AnthropicProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
+      const error = await response.json().catch(() => ({})) as { error?: { message?: string } };
       throw new Error(`Anthropic API error: ${error.error?.message || response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      content: Array<{ text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+      model: string;
+      stop_reason?: string;
+    };
 
     return {
       content: data.content[0]?.text || '',
@@ -149,11 +154,15 @@ export class OpenAIProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
+      const error = await response.json().catch(() => ({})) as { error?: { message?: string } };
       throw new Error(`OpenAI API error: ${error.error?.message || response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      choices: Array<{ message?: { content?: string }; finish_reason?: string }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+      model: string;
+    };
 
     return {
       content: data.choices[0]?.message?.content || '',
@@ -218,11 +227,15 @@ export class OpenRouterProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
+      const error = await response.json().catch(() => ({})) as { error?: { message?: string } };
       throw new Error(`OpenRouter API error: ${error.error?.message || response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      choices: Array<{ message?: { content?: string }; finish_reason?: string }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+      model: string;
+    };
 
     return {
       content: data.choices[0]?.message?.content || '',
@@ -327,7 +340,13 @@ export class OllamaProvider implements LLMProvider {
       throw new Error(`Ollama API error: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      message?: { content?: string };
+      prompt_eval_count?: number;
+      eval_count?: number;
+      model: string;
+      done?: boolean;
+    };
 
     return {
       content: data.message?.content || '',
@@ -357,8 +376,8 @@ export class OllamaProvider implements LLMProvider {
       const response = await fetch(`${this.baseUrl}/api/tags`);
       if (!response.ok) return [];
 
-      const data = await response.json();
-      return (data.models || []).map((m: { name: string }) => m.name);
+      const data = await response.json() as { models?: Array<{ name: string }> };
+      return (data.models || []).map((m) => m.name);
     } catch {
       return [];
     }
@@ -372,7 +391,19 @@ export class OllamaProvider implements LLMProvider {
       const response = await fetch(`${this.baseUrl}/api/tags`);
       if (!response.ok) return [];
 
-      const data = await response.json();
+      const data = await response.json() as {
+        models?: Array<{
+          name: string;
+          size?: number;
+          modified_at?: string;
+          digest?: string;
+          details?: {
+            family?: string;
+            parameter_size?: string;
+            quantization_level?: string;
+          };
+        }>;
+      };
       const models: OllamaModelInfo[] = [];
 
       for (const model of data.models || []) {
@@ -400,7 +431,7 @@ export class OllamaProvider implements LLMProvider {
 
       let version: string | undefined;
       if (versionResponse.ok) {
-        const versionData = await versionResponse.json();
+        const versionData = await versionResponse.json() as { version?: string };
         version = versionData.version;
       }
 
@@ -438,7 +469,13 @@ export class OllamaProvider implements LLMProvider {
 
       if (!response.ok) return null;
 
-      const data = await response.json();
+      const data = await response.json() as {
+        details?: { family?: string; parameter_size?: string; quantization_level?: string };
+        modelfile?: string;
+        size?: number;
+        modified_at?: string;
+        digest?: string;
+      };
 
       // Extract model details from the show response
       const details = data.details || {};

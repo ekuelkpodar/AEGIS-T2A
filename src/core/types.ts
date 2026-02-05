@@ -22,6 +22,7 @@ export type RiskLevel = typeof RiskLevel[keyof typeof RiskLevel];
 
 export const Sensitivity = {
   PUBLIC: 'public',
+  INTERNAL: 'internal',
   CONFIDENTIAL: 'confidential',
   RESTRICTED: 'restricted',
 } as const;
@@ -125,7 +126,7 @@ export const TypedIntentSchema = z.object({
   nlText: z.string().min(1),
   actionType: z.string(),
   riskLevel: z.enum(['low', 'medium', 'high', 'destructive']),
-  sensitivity: z.enum(['public', 'confidential', 'restricted']),
+  sensitivity: z.enum(['public', 'internal', 'confidential', 'restricted']),
   budget: BudgetSchema,
   requiredCapabilities: z.array(z.string()),
   requiredInfra: z.array(ResourceRequirementSchema).optional(),

@@ -10,7 +10,6 @@ import {
   PlanManifest,
   PlanStep,
   CompensationAction,
-  RiskLevel,
 } from '../core/types.js';
 import { componentLogger } from '../core/logger.js';
 import { hashObject } from '../core/crypto.js';
@@ -295,7 +294,7 @@ export class CompensationFeasibilityValidator extends EventEmitter {
    */
   private async validateStepCompensation(
     step: PlanStep,
-    plan: PlanManifest,
+    _plan: PlanManifest,
     context: SimulationContext
   ): Promise<CompensationValidationResult> {
     const timestamp = new Date().toISOString();
@@ -552,7 +551,7 @@ export class CompensationFeasibilityValidator extends EventEmitter {
    * Dry-run compensation in sandbox environment
    */
   private async dryRunCompensation(
-    step: PlanStep,
+    _step: PlanStep,
     compensation: CompensationAction,
     context: SimulationContext
   ): Promise<SimulationResult> {
@@ -667,7 +666,7 @@ export class CompensationFeasibilityValidator extends EventEmitter {
     if (key in obj) return obj[key];
 
     // Check nested paths
-    for (const [k, v] of Object.entries(obj)) {
+    for (const [_k, v] of Object.entries(obj)) {
       if (typeof v === 'object' && v !== null) {
         const nested = this.getNestedValue(v as Record<string, unknown>, key);
         if (nested !== undefined) return nested;

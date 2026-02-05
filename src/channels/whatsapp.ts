@@ -155,7 +155,7 @@ export class WhatsAppClient {
    */
   private async handleCommand(phoneNumber: string, command: string): Promise<void> {
     const parts = command.split(' ');
-    const cmd = parts[0].toLowerCase();
+    const cmd = (parts[0] ?? '').toLowerCase();
 
     switch (cmd) {
       case '/start':
@@ -180,7 +180,7 @@ export class WhatsAppClient {
         break;
 
       case '/cancel':
-        if (parts.length < 2) {
+        if (parts.length < 2 || !parts[1]) {
           await this.sendText(phoneNumber, 'Usage: /cancel <workflow-id>');
           return;
         }
@@ -245,7 +245,7 @@ export class WhatsAppClient {
         `*Steps:* ${planResult.plan.steps.length}\n` +
         `*Simulation Score:* ${simResult.riskScore}/100`;
 
-      if (planResult.plan.requiresApproval) {
+      if (planResult.plan.approvalRequired) {
         // Send approval request with buttons
         await this.sendInteractiveButtons(
           phoneNumber,
@@ -283,7 +283,7 @@ export class WhatsAppClient {
    */
   private async handleInteractive(
     phoneNumber: string,
-    userId: string,
+    _userId: string,
     interactive: WhatsAppMessage['interactive']
   ): Promise<void> {
     if (!interactive) return;
@@ -299,7 +299,7 @@ export class WhatsAppClient {
     if (!buttonId) return;
 
     const [action, planId] = buttonId.split(':');
-    const pending = this.pendingApprovals.get(planId);
+    const pending = planId ? this.pendingApprovals.get(planId) : undefined;
 
     if (!pending) {
       await this.sendText(phoneNumber, 'This action has expired.');

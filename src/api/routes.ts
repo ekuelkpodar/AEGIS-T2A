@@ -385,7 +385,7 @@ export function createRouter(): Router {
     }
   });
 
-  router.get('/audit/verify', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/audit/verify', async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const auditLedger = getAuditLedger();
       const result = await auditLedger.verifyChain();
@@ -1342,7 +1342,11 @@ export function createRouter(): Router {
       const llmProvider = getLLMProvider();
       const prompt = generateBuildPrompt(config);
 
-      const codeResponse = await llmProvider.complete(prompt);
+      const codeResponse = await llmProvider.complete({
+        messages: [{ role: 'user', content: prompt }],
+        maxTokens: 4096,
+        temperature: 0.7
+      });
       build.progress = 30;
       build.logs.push('Code generation complete');
 
@@ -1355,7 +1359,7 @@ export function createRouter(): Router {
       build.progress = 40;
       build.logs.push('Writing project files...');
 
-      const files = parseGeneratedCode(codeResponse);
+      const files = parseGeneratedCode(codeResponse.content);
       for (const [filename, content] of Object.entries(files)) {
         const filePath = path.join(projectDir, filename);
         const dir = path.dirname(filePath);
@@ -1479,8 +1483,8 @@ Make the application functional and visually appealing.`;
 
     let match;
     while ((match = fileRegex.exec(response)) !== null) {
-      const filename = match[1].trim();
-      const content = match[2].trim();
+      const filename = match[1]?.trim();
+      const content = match[2]?.trim();
       if (filename && content && filename !== 'end') {
         files[filename] = content;
       }

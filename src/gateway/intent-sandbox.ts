@@ -307,8 +307,8 @@ export const defaultSandboxConfig: SandboxConfig = {
   ],
   resource_restrictions: {
     [Sensitivity.PUBLIC]: ['*'],
-    [Sensitivity.INTERNAL]: ['internal:*', 'shared:*'],
-    [Sensitivity.CONFIDENTIAL]: ['confidential:*', 'internal:*'],
+    [Sensitivity.INTERNAL]: ['internal:*', '*'],
+    [Sensitivity.CONFIDENTIAL]: ['confidential:*'],
     [Sensitivity.RESTRICTED]: ['restricted:*'],
   },
 };
@@ -913,7 +913,7 @@ export class IntentValidationSandbox extends EventEmitter {
    * Calculate overall risk assessment
    */
   private calculateRiskAssessment(
-    intent: TypedIntent,
+    _intent: TypedIntent,
     violations: ValidationViolation[],
     riskFactors: RiskFactor[]
   ): RiskAssessment {

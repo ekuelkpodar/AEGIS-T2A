@@ -7,7 +7,6 @@
 import * as readline from 'readline';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getConfig } from '../core/config.js';
 
 // =============================================================================
 // Types
@@ -175,7 +174,7 @@ export class SetupWizard {
       const answer = await this.prompt('Enter number');
       const num = parseInt(answer, 10);
       if (num >= 1 && num <= options.length) {
-        return options[num - 1];
+        return options[num - 1] ?? options[0] ?? '';
       }
       console.log('Invalid selection. Please try again.');
     }
@@ -212,11 +211,12 @@ export class SetupWizard {
       'Ollama (Local, open-source)': 'ollama',
     };
 
+    const selectedProvider = providerMap[provider] ?? 'anthropic';
     this.config.llm = {
-      provider: providerMap[provider],
+      provider: selectedProvider,
     };
 
-    switch (this.config.llm.provider) {
+    switch (selectedProvider) {
       case 'anthropic':
         this.config.llm.apiKey = await this.promptSecret(
           'Enter your Anthropic API key'
@@ -337,11 +337,12 @@ export class SetupWizard {
           Docker: 'docker',
         };
 
+        const onpremTypeValue = typeMap[onpremType] ?? 'ssh';
         this.config.cloud.onprem = {
-          type: typeMap[onpremType],
+          type: onpremTypeValue,
         };
 
-        if (this.config.cloud.onprem.type === 'ssh') {
+        if (onpremTypeValue === 'ssh') {
           this.config.cloud.onprem.host = await this.prompt('SSH Host');
           this.config.cloud.onprem.port = parseInt(
             await this.prompt('SSH Port', '22'),
@@ -431,7 +432,7 @@ export class SetupWizard {
         'Critical only': 'critical',
       };
 
-      this.config.security.approvalThreshold = thresholdMap[threshold];
+      this.config.security.approvalThreshold = thresholdMap[threshold] ?? 'medium';
     }
   }
 

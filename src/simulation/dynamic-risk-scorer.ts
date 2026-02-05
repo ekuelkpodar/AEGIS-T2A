@@ -523,7 +523,7 @@ export class DynamicRiskScorer extends EventEmitter {
    * Calculate data sensitivity factor
    */
   private calculateDataSensitivityFactor(context: ScoringContext): ScoreFactor {
-    let sensitivity = Sensitivity.PUBLIC;
+    let sensitivity: Sensitivity = Sensitivity.PUBLIC;
     let rawValue = SENSITIVITY_SCORES[Sensitivity.PUBLIC];
 
     if (context.intent) {

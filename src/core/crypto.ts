@@ -149,16 +149,16 @@ export function generateNonce(length: number = 32): string {
  * Compute a checksum for a plan manifest
  */
 export function computePlanChecksum(plan: {
-  planId: string;
-  intentId: string;
-  version: number;
-  steps: unknown[];
+  planId?: string;
+  intentId?: string;
+  version?: number;
+  steps?: unknown[];
 }): string {
   const data = {
-    planId: plan.planId,
-    intentId: plan.intentId,
-    version: plan.version,
-    stepsHash: hashObject(plan.steps),
+    planId: plan.planId ?? '',
+    intentId: plan.intentId ?? '',
+    version: plan.version ?? 0,
+    stepsHash: hashObject(plan.steps ?? []),
   };
   return hashObject(data);
 }
@@ -171,7 +171,6 @@ import { createCipheriv, createDecipheriv } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
 
 let encryptionKey: Buffer | null = null;
 

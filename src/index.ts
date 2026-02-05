@@ -98,13 +98,16 @@ main();
 // Exports for library usage
 // =============================================================================
 
+// Core exports (primary module)
 export * from './core/index.js';
-export * from './gateway/index.js';
-export * from './planner/index.js';
-export * from './simulation/index.js';
-export * from './workflow/index.js';
-export * from './executor/index.js';
-export * from './registry/index.js';
-export * from './audit/index.js';
-export * from './secrets/index.js';
-export * from './api/index.js';
+
+// Individual module exports - import directly from modules to avoid conflicts
+export { initializeGateway, getGateway, IntentGateway } from './gateway/index.js';
+export { initializePlanner, getPlanner, PlannerAgent } from './planner/index.js';
+export { initializeSimulator, getSimulator, SimulationEngine } from './simulation/index.js';
+export { initializeWorkflowEngine, getWorkflowEngine, WorkflowEngine } from './workflow/index.js';
+export { initializeExecutor, getExecutor, Executor, DLPFilter, getDLPFilter } from './executor/index.js';
+export { initializeRegistry, getRegistry, AgentRegistry } from './registry/index.js';
+export { initializeAuditLedger, getAuditLedger, AuditLedger } from './audit/index.js';
+export { initializeSecretsVault, getSecretsVault, SecretsVault } from './secrets/index.js';
+export { createRouter, createServer, ApiError } from './api/index.js';

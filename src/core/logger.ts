@@ -163,8 +163,15 @@ export function logAnomaly(
   severity: 'low' | 'medium' | 'high',
   data: Record<string, unknown>
 ): void {
-  const logFn = severity === 'high' ? logger.error : severity === 'medium' ? logger.warn : logger.info;
-  logFn.call(logger, { anomalyType, severity, anomaly: true, ...data }, `Anomaly: ${anomalyType}`);
+  const logData = { anomalyType, severity, anomaly: true, ...data };
+  const message = `Anomaly: ${anomalyType}`;
+  if (severity === 'high') {
+    logger.error(logData, message);
+  } else if (severity === 'medium') {
+    logger.warn(logData, message);
+  } else {
+    logger.info(logData, message);
+  }
 }
 
 // =============================================================================

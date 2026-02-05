@@ -132,7 +132,7 @@ const LLMPlanStepSchema = z.object({
   description: z.string(),
   toolAdapter: z.string(),
   parameters: z.record(z.unknown()),
-  targetResource: z.string().nullable().optional(),
+  targetResource: z.string().optional().transform(v => v ?? undefined),
   hasSideEffects: z.boolean(),
   estimatedCost: z.number().min(0),
   estimatedDurationSeconds: z.number().int().min(0),
@@ -141,7 +141,7 @@ const LLMPlanStepSchema = z.object({
   compensationAction: z.object({
     action: z.string(),
     parameters: z.record(z.unknown()),
-  }).nullable().optional(),
+  }).optional(),
 });
 
 const LLMPlanResponseSchema = z.array(LLMPlanStepSchema);
@@ -336,18 +336,18 @@ ${JSON.stringify(intent.metadata ?? {}, null, 2)}
     });
 
     const content = response.content[0];
-    if (content.type !== 'text') {
+    if (!content || content.type !== 'text') {
       throw new Error('Unexpected response type from LLM');
     }
 
     // Extract JSON array from response
-    const jsonMatch = content.text.match(/\[[\s\S]*\]/);
+    const jsonMatch = (content as { type: 'text'; text: string }).text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       throw new Error('No valid JSON array found in LLM response');
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    return LLMPlanResponseSchema.parse(parsed);
+    return LLMPlanResponseSchema.parse(parsed) as LLMPlanStep[];
   }
 
   /**
@@ -372,7 +372,7 @@ ${JSON.stringify(intent.metadata ?? {}, null, 2)}
   /**
    * Calculate total duration considering parallelism
    */
-  private calculateTotalDuration(steps: PlanStep[], llmSteps: LLMPlanStep[]): number {
+  private calculateTotalDuration(steps: PlanStep[], _llmSteps: LLMPlanStep[]): number {
     // Simple calculation: sum of all durations (conservative)
     // A more sophisticated version would analyze the dependency graph
     return steps.reduce((sum, s) => sum + s.estimatedDuration, 0);
@@ -510,7 +510,7 @@ ${JSON.stringify(intent.metadata ?? {}, null, 2)}
     const steps = modifications.steps ?? basePlan.steps;
 
     // Update step IDs and idempotency keys for new version
-    const updatedSteps = steps.map((step, index) => ({
+    const updatedSteps = steps.map((step, _index) => ({
       ...step,
       planId: newPlanId,
       idempotencyKey: generateStepIdempotencyKey(newPlanId, step.stepId, newVersion),
@@ -637,19 +637,15 @@ export {
   getCompensationFeasibilityValidator,
   initializeCompensationFeasibilityValidator,
   defaultFeasibilityConfig,
-  SEMANTIC_PAIRS,
-  CRITICAL_IDENTIFIER_KEYS,
+  UnrecoverablePlanError,
 } from './compensation-feasibility-validator.js';
 export type {
-  CompensationFeasibilityConfig,
+  FeasibilityValidatorConfig,
+  CompensationValidationResult,
   CompensationValidationReport,
-  StepCompensationAnalysis,
-  SemanticValidation,
-  IdentifierValidation,
-  PermissionValidation,
-  DryRunValidation,
-  FeasibilityScore,
-  ValidationContext,
+  SimulationContext,
+  SimulationResult,
+  SemanticPair,
 } from './compensation-feasibility-validator.js';
 
 // Blast Radius Analysis
@@ -658,14 +654,18 @@ export {
   getBlastRadiusAnalyzer,
   initializeBlastRadiusAnalyzer,
   defaultBlastRadiusConfig,
+  formatBlastRadiusSummary,
 } from './blast-radius-analyzer.js';
 export type {
   BlastRadiusConfig,
   BlastRadiusAnalysisReport,
   StepBlastRadius,
   BlastRadiusMetrics,
-  CascadingFailurePath,
+  CascadingPath,
   ResourceMetadata,
-  BlastRadiusThresholds,
+  BlastRadiusThreshold,
   AnalysisContext,
+  BlastRadiusSize,
+  DataSensitivityTier,
+  SystemCriticalityTier,
 } from './blast-radius-analyzer.js';

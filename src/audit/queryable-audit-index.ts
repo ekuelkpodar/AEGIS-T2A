@@ -16,7 +16,6 @@
  */
 
 import { EventEmitter } from 'events';
-import { z } from 'zod';
 import {
   AuditEvent,
   EventType,
@@ -614,6 +613,7 @@ export class QueryableAuditIndex extends EventEmitter {
 
     for (let i = 0; i < sorted.length; i++) {
       const entry = sorted[i];
+      if (!entry) continue;
 
       if (entry.event.previousEventHash !== expectedHash && i > 0) {
         brokenLinks.push({
@@ -660,12 +660,14 @@ export class QueryableAuditIndex extends EventEmitter {
     }
 
     const sorted = [...entries].sort((a, b) => a.chainPosition - b.chainPosition);
+    const firstEntry = sorted[0];
+    const lastEntry = sorted[sorted.length - 1];
 
     const attestation: ChainAttestation = {
       attestationId,
       attestedAt: new Date().toISOString(),
-      firstEventId: sorted[0].event.eventId,
-      lastEventId: sorted[sorted.length - 1].event.eventId,
+      firstEventId: firstEntry?.event.eventId ?? '',
+      lastEventId: lastEntry?.event.eventId ?? '',
       eventCount: entries.length,
       chainValid,
       attestorId,
@@ -762,13 +764,13 @@ export class QueryableAuditIndex extends EventEmitter {
     let candidates = this.entries;
 
     // Use indexes for common filters
-    if (filter.workflowIds?.length === 1) {
+    if (filter.workflowIds?.length === 1 && filter.workflowIds[0]) {
       candidates = this.byWorkflowId.get(filter.workflowIds[0]) ?? [];
-    } else if (filter.intentIds?.length === 1) {
+    } else if (filter.intentIds?.length === 1 && filter.intentIds[0]) {
       candidates = this.byIntentId.get(filter.intentIds[0]) ?? [];
-    } else if (filter.actorIds?.length === 1) {
+    } else if (filter.actorIds?.length === 1 && filter.actorIds[0]) {
       candidates = this.byActorId.get(filter.actorIds[0]) ?? [];
-    } else if (filter.eventTypes?.length === 1) {
+    } else if (filter.eventTypes?.length === 1 && filter.eventTypes[0]) {
       candidates = this.byEventType.get(filter.eventTypes[0]) ?? [];
     }
 

@@ -7,12 +7,8 @@
 import {
   PlanStep,
   StepExecutionResult,
-  ToolAdapter,
-  StepStatus,
 } from '../core/types.js';
 import { componentLogger, logStep } from '../core/logger.js';
-import { hashInputs, hashOutputs } from '../core/crypto.js';
-import { generateId } from '../core/ids.js';
 import type { ExecutionContext } from '../workflow/index.js';
 
 // Re-export DLP Filter
@@ -115,7 +111,6 @@ export class Executor {
     context: ExecutionContext
   ): Promise<StepExecutionResult> {
     const startTime = Date.now();
-    const executionId = generateId();
 
     logStep(step.stepId, context.workflowId, 'executing', {
       action: step.action,
@@ -247,7 +242,7 @@ export class Executor {
     });
 
     // Database handler (mock)
-    this.registerHandler('database', async (params) => {
+    this.registerHandler('database', async (_params) => {
       logger.warn('Database operation is mocked');
       return {
         rowCount: 0,

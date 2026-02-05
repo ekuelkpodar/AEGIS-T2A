@@ -24,6 +24,25 @@ npm start
 
 **That's it.** The web wizard guides you through LLM provider selection, cloud connections, and security settings.
 
+### Enterprise Control Plane (Optional)
+
+For enterprise deployments with advanced governance requirements:
+
+```bash
+# Start the enterprise control plane
+cd controlplane
+docker-compose up -d
+
+# Services available at:
+# - Identity Service: http://localhost:8000
+# - Event Store: http://localhost:8001
+# - Policy Engine: http://localhost:8002
+# - Autonomy Manager: http://localhost:8003
+# - Approval System: http://localhost:8004
+```
+
+See [controlplane/README.md](./controlplane/README.md) for full documentation.
+
 ### CLI Alternative
 
 ```bash
@@ -94,6 +113,18 @@ AEGIS-T2A implements defense-in-depth security across every layer:
 | **Compensation Validation** | Safe rollback verification | Semantic matching before execution |
 | **Blast Radius Analysis** | Quantitative impact assessment | 15+ risk metrics per operation |
 | **Deterministic Replay** | SOC 2 CC7.2 compliance | Merkle tree audit trail, time travel |
+
+### Enterprise Control Plane (Optional)
+
+For organizations requiring advanced governance:
+
+| Component | Capability | Benefit |
+|-----------|-----------|---------|
+| **Identity Service** | Agent registration with DID, PKI, SPIFFE/SPIRE | Workload identity and mTLS |
+| **Event Store** | Immutable audit log with S3 Object Lock | Regulatory compliance, forensics |
+| **Policy Engine** | OPA-based policy enforcement | Fine-grained authorization |
+| **Autonomy Manager** | Time-limited leases with TTL | Controlled autonomous operation |
+| **Approval System** | Multi-level escalation workflows | Human oversight for high-risk actions |
 
 ### Security Architecture
 
@@ -300,7 +331,7 @@ sequenceDiagram
 
 ```
 aegis-t2a/
-├── src/
+├── src/                         # Main application
 │   ├── core/                    # Core infrastructure
 │   │   ├── memory-isolation/    # HKDF-SHA256 namespace isolation
 │   │   └── runtime-guard/       # Policy interceptors, circuit breakers
@@ -321,6 +352,13 @@ aegis-t2a/
 │   ├── cli/                     # Command-line interface
 │   ├── channels/                # Telegram, WhatsApp, Slack
 │   └── providers/               # LLM and cloud providers
+├── controlplane/                # Enterprise control plane (optional)
+│   ├── identity_service/        # Agent identity and PKI
+│   ├── eventstore/              # Immutable event logging
+│   ├── policyengine/            # OPA policy enforcement
+│   ├── autonomy/                # Lease-based autonomy control
+│   ├── approval/                # Human approval workflows
+│   └── docker-compose.yml       # Infrastructure orchestration
 ├── frontend/
 │   ├── index.html               # Web dashboard
 │   ├── css/                     # Stylesheets

@@ -20,7 +20,6 @@ import { z } from 'zod';
 import { componentLogger } from '../../core/logger.js';
 import { generateId } from '../../core/ids.js';
 import { hashObject, signObject, chainHash } from '../../core/crypto.js';
-import type { PlanStep, RiskLevel, AuditEvent } from '../../core/types.js';
 
 const logger = componentLogger('replay-engine');
 
@@ -37,11 +36,6 @@ const MERKLE_COMMIT_INTERVAL_MS = 5 * 60 * 1000;
  * Default artifact retention (90 days)
  */
 const DEFAULT_RETENTION_DAYS = 90;
-
-/**
- * Maximum artifacts per query
- */
-const MAX_ARTIFACTS_PER_QUERY = 10000;
 
 /**
  * Prompt cache TTL (7 days)
@@ -638,11 +632,14 @@ export class ExecutionArtifactRecorder extends EventEmitter {
 
     if (artifacts.length === 0) return { valid: true };
 
+    const firstArtifact = artifacts[0];
+    if (!firstArtifact) return { valid: true };
+
     // First artifact should reference genesis
-    if (artifacts[0].previousArtifactHash !== 'genesis') {
+    if (firstArtifact.previousArtifactHash !== 'genesis') {
       // Check if it chains from a previous workflow
       const prevArtifact = this.artifacts.find(
-        (a) => a.hash === artifacts[0].previousArtifactHash
+        (a) => a.hash === firstArtifact.previousArtifactHash
       );
 
       if (!prevArtifact) {
@@ -652,7 +649,10 @@ export class ExecutionArtifactRecorder extends EventEmitter {
 
     // Check chain continuity
     for (let i = 1; i < artifacts.length; i++) {
-      if (artifacts[i].previousArtifactHash !== artifacts[i - 1].hash) {
+      const current = artifacts[i];
+      const previous = artifacts[i - 1];
+      if (!current || !previous) continue;
+      if (current.previousArtifactHash !== previous.hash) {
         return { valid: false, brokenAt: i };
       }
     }
@@ -830,8 +830,8 @@ export class ExecutionArtifactRecorder extends EventEmitter {
       const nextLevel: string[] = [];
 
       for (let i = 0; i < level.length; i += 2) {
-        const left = level[i];
-        const right = level[i + 1] ?? level[i]; // Duplicate if odd
+        const left = level[i] ?? '';
+        const right = level[i + 1] ?? left; // Duplicate if odd
 
         nextLevel.push(chainHash(left, right));
       }
@@ -874,7 +874,7 @@ export class ExecutionArtifactRecorder extends EventEmitter {
  */
 export class ReplayEngine extends EventEmitter {
   private recorder: ExecutionArtifactRecorder;
-  private config: ReplayEngineConfig;
+  private _config: ReplayEngineConfig;
   private initialized = false;
 
   constructor(
@@ -883,7 +883,11 @@ export class ReplayEngine extends EventEmitter {
   ) {
     super();
     this.recorder = recorder;
-    this.config = { ...defaultReplayEngineConfig, ...config };
+    this._config = { ...defaultReplayEngineConfig, ...config };
+  }
+
+  get config(): ReplayEngineConfig {
+    return this._config;
   }
 
   /**
@@ -1186,6 +1190,8 @@ export class ReplayEngine extends EventEmitter {
 
     for (let i = 0; i < artifacts.length; i++) {
       const artifact = artifacts[i];
+      if (!artifact) continue;
+
       const integrity = this.recorder.verifyArtifactIntegrity(artifact);
 
       if (!integrity.valid) {
@@ -1194,7 +1200,8 @@ export class ReplayEngine extends EventEmitter {
 
       // Check chain continuity
       if (i > 0) {
-        if (artifact.previousArtifactHash !== artifacts[i - 1].hash) {
+        const prevArtifact = artifacts[i - 1];
+        if (prevArtifact && artifact.previousArtifactHash !== prevArtifact.hash) {
           chainBreaks.push(i);
         }
       }

@@ -10,7 +10,6 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from '../core/logger.js';
-import { getConfig } from '../core/config.js';
 
 // =============================================================================
 // Types
@@ -83,12 +82,12 @@ export class AnthropicProvider implements LLMProvider {
     });
 
     const content = response.content[0];
-    if (content.type !== 'text') {
+    if (!content || content.type !== 'text') {
       throw new Error('Unexpected response type from Anthropic');
     }
 
     return {
-      content: content.text,
+      content: (content as { type: 'text'; text: string }).text,
       model: response.model,
       usage: {
         inputTokens: response.usage.input_tokens,
@@ -173,10 +172,14 @@ export class OpenAIProvider implements LLMProvider {
       throw new Error(`OpenAI API error: ${JSON.stringify(error)}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      choices: Array<{ message: { content: string } }>;
+      model: string;
+      usage?: { prompt_tokens: number; completion_tokens: number };
+    };
 
     return {
-      content: data.choices[0].message.content,
+      content: data.choices[0]?.message.content ?? '',
       model: data.model,
       usage: {
         inputTokens: data.usage?.prompt_tokens || 0,
@@ -256,10 +259,14 @@ export class OpenRouterProvider implements LLMProvider {
       throw new Error(`OpenRouter API error: ${JSON.stringify(error)}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      choices: Array<{ message: { content: string } }>;
+      model: string;
+      usage?: { prompt_tokens: number; completion_tokens: number };
+    };
 
     return {
-      content: data.choices[0].message.content,
+      content: data.choices[0]?.message.content ?? '',
       model: data.model,
       usage: {
         inputTokens: data.usage?.prompt_tokens || 0,
@@ -334,7 +341,11 @@ export class OllamaProvider implements LLMProvider {
       throw new Error(`Ollama API error: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      response: string;
+      prompt_eval_count?: number;
+      eval_count?: number;
+    };
 
     return {
       content: data.response,
@@ -365,8 +376,8 @@ export class OllamaProvider implements LLMProvider {
       throw new Error('Failed to list Ollama models');
     }
 
-    const data = await response.json();
-    return data.models?.map((m: any) => m.name) || [];
+    const data = await response.json() as { models?: Array<{ name: string }> };
+    return data.models?.map((m) => m.name) || [];
   }
 
   /**

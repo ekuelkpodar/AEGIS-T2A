@@ -5,7 +5,7 @@
  */
 
 import { EphemeralCredential } from '../core/types.js';
-import { generateCredentialId, generateNonce } from '../core/ids.js';
+import { generateCredentialId } from '../core/ids.js';
 import { componentLogger } from '../core/logger.js';
 import { execute, queryOne, queryAll } from '../core/database.js';
 import { encrypt, decrypt, signObject, generateNonce as cryptoNonce } from '../core/crypto.js';

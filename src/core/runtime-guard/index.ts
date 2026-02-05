@@ -18,8 +18,8 @@ import { EventEmitter } from 'events';
 import { z } from 'zod';
 import { componentLogger } from '../logger.js';
 import { generateId } from '../ids.js';
-import { hashObject, signObject } from '../crypto.js';
-import type { PlanStep, RiskLevel, WorkflowState } from '../types.js';
+import { hashObject } from '../crypto.js';
+import type { RiskLevel } from '../types.js';
 
 const logger = componentLogger('runtime-guard');
 
@@ -343,7 +343,6 @@ export class CircuitBreaker extends EventEmitter {
     failureCount: 0,
   };
   private config: RuntimeGuardConfig;
-  private resetTimer: NodeJS.Timeout | null = null;
 
   constructor(config: RuntimeGuardConfig) {
     super();
@@ -815,6 +814,7 @@ export class RuntimePolicyInterceptor extends EventEmitter {
 
     for (let i = 0; i < this.auditChain.length; i++) {
       const record = this.auditChain[i];
+      if (!record) continue;
 
       if (record.previousRecordHash !== expectedPreviousHash) {
         return { valid: false, brokenAt: i };
@@ -892,7 +892,6 @@ export class RuntimePolicyInterceptor extends EventEmitter {
     context: RuntimePolicyContext
   ): Promise<PolicyEvaluationResult> {
     const startTime = Date.now();
-    const evaluationId = generateId();
 
     const timeoutPromise = new Promise<PolicyEvaluationResult>((_, reject) => {
       setTimeout(() => {
@@ -1010,7 +1009,7 @@ export class RuntimePolicyInterceptor extends EventEmitter {
   private conditionMatches(
     condition: PolicyCondition,
     context: RuntimePolicyContext,
-    currentRisk: number
+    _currentRisk: number
   ): boolean {
     let fieldValue: unknown;
 
@@ -1022,7 +1021,7 @@ export class RuntimePolicyInterceptor extends EventEmitter {
     if (condition.field === '_recentHighRiskCount') {
       fieldValue = 0; // Handled by risk scorer
     } else {
-      fieldValue = (context as Record<string, unknown>)[condition.field];
+      fieldValue = (context as unknown as Record<string, unknown>)[condition.field];
     }
 
     switch (condition.operator) {

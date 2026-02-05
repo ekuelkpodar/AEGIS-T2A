@@ -4,14 +4,12 @@
  * Entry point for intent processing and policy validation.
  */
 
-import { TypedIntent, Result } from '../core/types.js';
-import { execute, queryOne, transaction } from '../core/database.js';
+import { TypedIntent } from '../core/types.js';
+import { execute, queryOne } from '../core/database.js';
 import { componentLogger, logIntent } from '../core/logger.js';
-import { hashObject } from '../core/crypto.js';
 import { parseIntent, parseIntentHeuristic, IntentParseResult } from './intent-parser.js';
 import {
   PolicyEngine,
-  getPolicyEngine,
   initializePolicyEngine,
   PolicyEvaluationResult,
   PolicyContext,

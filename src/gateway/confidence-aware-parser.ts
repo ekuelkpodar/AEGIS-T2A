@@ -24,7 +24,7 @@ import {
 import { generateIntentId, generateIdempotencyKey, generateId } from '../core/ids.js';
 import { componentLogger } from '../core/logger.js';
 import { getConfig } from '../core/config.js';
-import { hashObject, hashChain } from '../core/crypto.js';
+import { hashObject } from '../core/crypto.js';
 import Anthropic from '@anthropic-ai/sdk';
 
 const logger = componentLogger('confidence-aware-parser');
@@ -552,6 +552,7 @@ export class ConfidenceAwareParser extends EventEmitter {
 
     for (let i = 0; i < this.auditChain.length; i++) {
       const record = this.auditChain[i];
+      if (!record) continue;
 
       if (record.previousRecordHash !== expectedPreviousHash) {
         return { valid: false, brokenAt: i };
@@ -595,11 +596,11 @@ export class ConfidenceAwareParser extends EventEmitter {
     });
 
     const content = response.content[0];
-    if (content.type !== 'text') {
+    if (!content || content.type !== 'text') {
       throw new Error('Unexpected response type from LLM');
     }
 
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = (content as { type: 'text'; text: string }).text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error('No valid JSON found in LLM response');
     }
@@ -686,7 +687,7 @@ export class ConfidenceAwareParser extends EventEmitter {
     userId: string,
     nlText: string,
     llmResult: z.infer<typeof LLMParseResponseSchema>,
-    metadata: ParsingMetadata
+    _metadata: ParsingMetadata
   ): Promise<DisambiguationSession> {
     const sessionId = generateId();
     const now = new Date();
@@ -697,7 +698,7 @@ export class ConfidenceAwareParser extends EventEmitter {
       {
         optionId: generateId(),
         ...llmResult.primaryInterpretation,
-      },
+      } as InterpretationOption,
     ];
 
     // Add alternative interpretations
@@ -706,7 +707,7 @@ export class ConfidenceAwareParser extends EventEmitter {
         options.push({
           optionId: generateId(),
           ...alt,
-        });
+        } as InterpretationOption);
       }
     }
 

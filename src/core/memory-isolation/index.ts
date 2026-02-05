@@ -20,8 +20,7 @@ import { EventEmitter } from 'events';
 import { z } from 'zod';
 import { componentLogger } from '../logger.js';
 import { generateId } from '../ids.js';
-import { hashObject, signObject } from '../crypto.js';
-import { getConfig } from '../config.js';
+import { hashObject } from '../crypto.js';
 
 const logger = componentLogger('memory-isolation');
 
@@ -1327,6 +1326,7 @@ export class SessionMemoryManager extends EventEmitter {
 
     for (let i = 0; i < this.auditChain.length; i++) {
       const event = this.auditChain[i];
+      if (!event) continue;
 
       if (event.previousEventHash !== expectedPreviousHash) {
         return { valid: false, brokenAt: i };

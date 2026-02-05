@@ -63,8 +63,6 @@ interface PendingApproval {
 
 export class SlackBot {
   private botToken: string;
-  private signingSecret: string;
-  private appToken?: string;
   private baseUrl = 'https://slack.com/api';
   private pendingApprovals: Map<string, PendingApproval> = new Map();
   private authorizedUsers: Set<string> = new Set();
@@ -78,8 +76,8 @@ export class SlackBot {
     authorizedChannels?: string[];
   }) {
     this.botToken = config.botToken;
-    this.signingSecret = config.signingSecret || '';
-    this.appToken = config.appToken;
+    // signingSecret and appToken are used for Slack Events API signature verification
+    // They're stored in config but we use simple webhook-based interaction for now
 
     if (config.authorizedUsers) {
       config.authorizedUsers.forEach(id => this.authorizedUsers.add(id));
@@ -169,8 +167,9 @@ export class SlackBot {
     }
 
     const action = interaction.actions[0];
+    if (!action) return;
     const [actionType, planId] = action.action_id.split(':');
-    const pending = this.pendingApprovals.get(planId);
+    const pending = planId ? this.pendingApprovals.get(planId) : undefined;
 
     if (!pending) {
       if (interaction.response_url) {
@@ -249,7 +248,7 @@ export class SlackBot {
       // Format plan summary
       const blocks = this.formatPlanBlocks(planResult.plan, simResult);
 
-      if (planResult.plan.requiresApproval) {
+      if (planResult.plan.approvalRequired) {
         // Add approval buttons
         blocks.push({
           type: 'actions',
@@ -311,7 +310,7 @@ export class SlackBot {
   private async approveAndExecute(
     pending: PendingApproval,
     userId: string,
-    responseUrl?: string
+    _responseUrl?: string
   ): Promise<void> {
     try {
       const workflowEngine = getWorkflowEngine();
@@ -344,7 +343,7 @@ export class SlackBot {
   private async rejectWorkflow(
     pending: PendingApproval,
     userId: string,
-    responseUrl?: string
+    _responseUrl?: string
   ): Promise<void> {
     try {
       const workflowEngine = getWorkflowEngine();
@@ -361,7 +360,7 @@ export class SlackBot {
   /**
    * Show plan details
    */
-  private async showPlanDetails(pending: PendingApproval, responseUrl?: string): Promise<void> {
+  private async showPlanDetails(pending: PendingApproval, _responseUrl?: string): Promise<void> {
     const planner = getPlanner();
     const plan = await planner.getPlan(pending.planId);
 
@@ -483,7 +482,7 @@ export class SlackBot {
       body: JSON.stringify(params),
     });
 
-    const data = await response.json();
+    const data = await response.json() as { ok: boolean; error?: string };
 
     if (!data.ok) {
       throw new Error(`Slack API error: ${data.error}`);

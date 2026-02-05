@@ -31,8 +31,6 @@ export interface CloudProviderConfig {
 
 export class AWSProvider implements CloudProvider {
   name = 'aws';
-  private accessKeyId: string;
-  private secretAccessKey: string;
   private region: string;
   private sessionToken?: string;
 
@@ -42,8 +40,7 @@ export class AWSProvider implements CloudProvider {
     region?: string;
     sessionToken?: string;
   }) {
-    this.accessKeyId = config.accessKeyId || process.env['AWS_ACCESS_KEY_ID'] || '';
-    this.secretAccessKey = config.secretAccessKey || process.env['AWS_SECRET_ACCESS_KEY'] || '';
+    // AWS credentials are read from environment or config when needed
     this.region = config.region || process.env['AWS_REGION'] || 'us-east-1';
     this.sessionToken = config.sessionToken || process.env['AWS_SESSION_TOKEN'];
   }
@@ -51,7 +48,7 @@ export class AWSProvider implements CloudProvider {
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
       // Test STS GetCallerIdentity
-      const response = await this.makeRequest('sts', 'GetCallerIdentity', {});
+      await this.makeRequest('sts', 'GetCallerIdentity', {});
       return { success: true };
     } catch (error) {
       return {
@@ -62,7 +59,13 @@ export class AWSProvider implements CloudProvider {
   }
 
   async executeAction(action: string, params: Record<string, any>): Promise<any> {
-    const [service, operation] = action.split(':');
+    const parts = action.split(':');
+    const service = parts[0];
+    const operation = parts[1];
+
+    if (!service || !operation) {
+      throw new Error(`Invalid action format: ${action}. Expected format: service:operation`);
+    }
 
     switch (service) {
       case 'ec2':
@@ -93,9 +96,9 @@ export class AWSProvider implements CloudProvider {
     // For now, we'll use environment credentials with AWS SDK
     // This is a simplified implementation
 
-    const endpoint = `https://${service}.${this.region}.amazonaws.com`;
+    const _endpoint = `https://${service}.${this.region}.amazonaws.com`;
     const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
-    const date = timestamp.slice(0, 8);
+    const _date = timestamp.slice(0, 8);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -107,8 +110,8 @@ export class AWSProvider implements CloudProvider {
       headers['X-Amz-Security-Token'] = this.sessionToken;
     }
 
-    // Build query string
-    const queryParams = new URLSearchParams({
+    // Build query string (used for actual API calls in production)
+    const _queryParams = new URLSearchParams({
       Action: action,
       Version: this.getServiceVersion(service),
       ...params,
@@ -116,7 +119,7 @@ export class AWSProvider implements CloudProvider {
 
     // In production, implement proper AWS Signature V4
     // For now, return a mock response indicating this needs SDK integration
-    logger.info({ service, action, params }, 'AWS request (SDK integration required)');
+    logger.info({ service, action, params, headers }, 'AWS request (SDK integration required)');
 
     return {
       _notice: 'Full AWS SDK integration required for production use',
@@ -176,7 +179,13 @@ export class AzureProvider implements CloudProvider {
 
   async executeAction(action: string, params: Record<string, any>): Promise<any> {
     const token = await this.getAccessToken();
-    const [resourceType, operation] = action.split(':');
+    const parts = action.split(':');
+    const resourceType = parts[0];
+    const operation = parts[1];
+
+    if (!resourceType || !operation) {
+      throw new Error(`Invalid action format: ${action}. Expected format: resourceType:operation`);
+    }
 
     const baseUrl = 'https://management.azure.com';
     let url: string;
@@ -240,7 +249,7 @@ export class AzureProvider implements CloudProvider {
       throw new Error('Failed to get Azure access token');
     }
 
-    const data = await response.json();
+    const data = await response.json() as { access_token: string; expires_in: number };
     this.accessToken = data.access_token;
     this.tokenExpiry = new Date(Date.now() + data.expires_in * 1000);
 
@@ -482,7 +491,7 @@ export class GCPProvider implements CloudProvider {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as { access_token: string; expires_in: number };
         this.accessToken = data.access_token;
         this.tokenExpiry = new Date(Date.now() + data.expires_in * 1000);
         return this.accessToken!;
@@ -736,13 +745,13 @@ export function createCloudProvider(
 ): CloudProvider {
   switch (type) {
     case 'aws':
-      return new AWSProvider(config);
+      return new AWSProvider(config ?? {});
     case 'azure':
-      return new AzureProvider(config);
+      return new AzureProvider(config ?? {});
     case 'gcp':
-      return new GCPProvider(config);
+      return new GCPProvider(config ?? {});
     case 'onprem':
-      return new OnPremProvider(config as any);
+      return new OnPremProvider((config ?? {}) as any);
     default:
       throw new Error(`Unknown cloud provider: ${type}`);
   }
