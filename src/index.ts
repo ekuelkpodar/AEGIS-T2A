@@ -20,6 +20,9 @@ import { initializeRegistry } from './registry/index.js';
 import { initializeAuditLedger } from './audit/index.js';
 import { initializeSecretsVault } from './secrets/index.js';
 
+// Identity & Zero-Trust initialization
+import { initializeIdentitySystem, shutdownIdentitySystem } from './identity/initialization.js';
+
 // =============================================================================
 // Application Startup
 // =============================================================================
@@ -40,6 +43,9 @@ async function initialize(): Promise<void> {
 
   // Initialize components in order
   logger.info('Initializing components...');
+
+  // Initialize identity & zero-trust first (foundational security layer)
+  await initializeIdentitySystem();
 
   await initializeRegistry();
   await initializeSecretsVault();
@@ -76,6 +82,9 @@ async function main(): Promise<void> {
         logger.info('HTTP server closed');
       });
 
+      // Shutdown identity system
+      await shutdownIdentitySystem();
+
       closeDatabase();
       logger.info('Database connection closed');
 
@@ -111,3 +120,15 @@ export { initializeRegistry, getRegistry, AgentRegistry } from './registry/index
 export { initializeAuditLedger, getAuditLedger, AuditLedger } from './audit/index.js';
 export { initializeSecretsVault, getSecretsVault, SecretsVault } from './secrets/index.js';
 export { createRouter, createServer, ApiError } from './api/index.js';
+
+// Identity & Zero-Trust exports
+export {
+  initializeIdentitySystem,
+  shutdownIdentitySystem,
+  getIdentitySystemHealth,
+  getSPIREClient,
+  getWorkloadIAM,
+  getScopeManager,
+  getDelegationManager,
+  getNHILifecycleManager,
+} from './identity/index.js';

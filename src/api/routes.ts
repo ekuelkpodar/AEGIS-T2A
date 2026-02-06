@@ -19,6 +19,7 @@ import {
   getLLMProvider,
   OllamaProvider
 } from '../providers/llm/index.js';
+import { getIdentitySystemHealth } from '../identity/initialization.js';
 
 // =============================================================================
 // Request Schemas
@@ -53,6 +54,19 @@ export function createRouter(): Router {
       timestamp: new Date().toISOString(),
       version: process.env['npm_package_version'] ?? '0.1.0',
     });
+  });
+
+  router.get('/health/identity', async (_req: Request, res: Response) => {
+    try {
+      const health = await getIdentitySystemHealth();
+      res.json(health);
+    } catch (error) {
+      res.status(500).json({
+        status: 'unhealthy',
+        error: 'Failed to get identity system health',
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   // ==========================================================================
