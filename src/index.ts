@@ -132,3 +132,20 @@ export {
   getDelegationManager,
   getNHILifecycleManager,
 } from './identity/index.js';
+
+// Control Plane Integration exports
+export {
+  getApprovalClient,
+  getAutonomyClient,
+  ApprovalStatus,
+  RiskLevel,
+  AutonomyLevel,
+} from './controlplane/index.js';
+
+// Security exports
+export {
+  getPromptInjectionDetector,
+  getLLMGuardrails,
+  ThreatLevel,
+  SafetyViolationType,
+} from './security/index.js';

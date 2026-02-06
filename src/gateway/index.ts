@@ -14,6 +14,8 @@ import {
   PolicyEvaluationResult,
   PolicyContext,
 } from './policy-engine.js';
+import { getPromptInjectionDetector, ThreatLevel } from '../security/prompt-injection-detector.js';
+import { getLLMGuardrails } from '../security/llm-guardrails.js';
 
 const logger = componentLogger('gateway');
 
@@ -73,6 +75,34 @@ export class IntentGateway {
     });
 
     try {
+      // Step 0: Security checks - Prompt injection detection
+      const injectionDetector = getPromptInjectionDetector();
+      const injectionResult = await injectionDetector.analyzePrompt(request.text, {
+        userId: request.userId,
+      });
+
+      if (injectionResult.blocked) {
+        logger.warn('Request blocked by prompt injection detector', {
+          userId: request.userId,
+          threatLevel: injectionResult.threatLevel,
+          confidence: injectionResult.confidence,
+          patterns: injectionResult.detectedPatterns.length,
+        });
+
+        return {
+          success: false,
+          error: injectionResult.reason || 'Request blocked due to security concerns',
+        };
+      }
+
+      if (injectionResult.threatLevel !== ThreatLevel.SAFE) {
+        logger.info('Suspicious prompt detected but allowed', {
+          userId: request.userId,
+          threatLevel: injectionResult.threatLevel,
+          confidence: injectionResult.confidence,
+        });
+      }
+
       // Step 1: Parse the intent
       let parseResult: IntentParseResult;
 
