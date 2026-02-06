@@ -149,3 +149,10 @@ export {
   ThreatLevel,
   SafetyViolationType,
 } from './security/index.js';
+
+// Compliance exports
+export {
+  getSOC2Reporter,
+  SOC2Report,
+  CriteriaReport,
+} from './compliance/index.js';

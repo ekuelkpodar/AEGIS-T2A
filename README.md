@@ -99,6 +99,52 @@ The AEGIS-T2A web dashboard provides comprehensive visibility and control:
 
 ---
 
+## 🔒 Three-Tier Security Architecture
+
+AEGIS-T2A implements a comprehensive three-tier security model for production-ready AI automation:
+
+### **TIER 1: Identity & Zero-Trust Foundation** ✅
+
+Complete SPIFFE/SPIRE-based workload identity with zero-trust principles:
+
+| Component | Description | Status |
+|-----------|-------------|--------|
+| **SPIRE Agent Integration** | X.509-SVID and JWT-SVID issuance with automatic rotation | ✅ Implemented |
+| **Workload Attestation** | Docker, Kubernetes, Unix process identity verification | ✅ Implemented |
+| **Node Attestation** | AWS, Azure, GCP cloud provider verification | ✅ Implemented |
+| **Workload IAM** | Context-aware access policies (time, location, risk) | ✅ Implemented |
+| **Scope Authorization** | Hierarchical permission model with delegation | ✅ Implemented |
+| **Trust Federation** | Multi-org identity verification across trust domains | ✅ Implemented |
+| **NHI Lifecycle** | Automated rotation, expiration alerts, full lifecycle management | ✅ Implemented |
+
+### **TIER 2: LLM Security & Control Plane** ✅
+
+Advanced security features specifically designed for LLM-based systems:
+
+| Component | Description | Coverage |
+|-----------|-------------|----------|
+| **Prompt Injection Detection** | 30+ attack patterns, 3-layer defense, auto-blocking | OWASP LLM01 |
+| **Output Guardrails** | PII/secret redaction, harmful content filtering | OWASP LLM02, LLM06 |
+| **Rate Limiting** | Request throttling and cost controls | OWASP LLM10 |
+| **Approval System** | Risk-based human-in-the-loop workflows | OWASP LLM09 |
+| **Autonomy Manager** | Time-limited leases (6 levels: 0-5) with automatic expiration | SOC 2 CC6.1 |
+| **Emergency Stop** | Instant revocation of all agent permissions | Incident Response |
+
+### **TIER 3: Enterprise Compliance & Audit** ✅
+
+SOC 2 compliance features with immutable audit logs and policy enforcement:
+
+| Component | Description | Compliance |
+|-----------|-------------|------------|
+| **Event Store** | Immutable append-only log with hash-chaining | SOC 2 CC7.2 |
+| **Merkle Proofs** | Cryptographic verification of audit trail integrity | CC7.2 |
+| **Policy Engine** | OPA-based Rego policies with versioning | CC6.1, CC8.1 |
+| **SOC 2 Reporter** | Automated compliance reports for 5 TSC criteria | All TSC |
+| **Chain Verification** | Real-time tamper detection in audit logs | CC7.3 |
+| **S3 Archival** | Long-term immutable storage with Object Lock | Retention |
+
+---
+
 ## Security Guarantees
 
 AEGIS-T2A implements defense-in-depth security across every layer:
@@ -489,6 +535,102 @@ curl -s http://localhost:3000/api/v1/plans/$PLAN_ID | jq '.blastRadius'
 
 # Execute (auto-approves if low risk)
 curl -s -X POST http://localhost:3000/api/v1/plans/$PLAN_ID/execute
+```
+
+---
+
+## Enterprise Features
+
+### SOC 2 Compliance Reporting
+
+Generate automated compliance reports for auditors:
+
+```typescript
+import { getSOC2Reporter } from 'aegis-t2a';
+
+const reporter = getSOC2Reporter();
+
+const report = await reporter.generateReport({
+  start: new Date('2025-01-01'),
+  end: new Date('2025-12-31'),
+});
+
+console.log(`Overall Compliance: ${report.overallCompliance}%`);
+console.log(`Compliant Criteria: ${Object.values(report.criteria).filter(c => c.compliant).length}/5`);
+console.log(`Findings: ${report.findings.length}`);
+
+// Export for auditors
+const json = reporter.exportToJSON(report);
+const summary = reporter.generateExecutiveSummary(report);
+```
+
+### Immutable Audit Logging
+
+Append events to tamper-evident audit log:
+
+```typescript
+import { getEventStoreClient } from 'aegis-t2a';
+
+const eventStore = getEventStoreClient();
+
+// Log an action
+await eventStore.appendEvent({
+  eventType: 'workflow.executed',
+  actorId: 'agent-123',
+  actorType: 'agent',
+  workflowId: 'wf-456',
+  action: 'execute_terraform_apply',
+  resource: 'arn:aws:ec2:us-east-1:*',
+  success: true,
+});
+
+// Verify chain integrity
+const verification = await eventStore.verifyChain('event-1', 'event-1000');
+console.log(`Chain valid: ${verification.valid}`);
+
+// Get Merkle proof
+const proof = await eventStore.getMerkleProof('event-123');
+console.log(`Verified: ${proof.verified}`);
+```
+
+### Policy-Based Access Control
+
+Define and enforce OPA policies:
+
+```typescript
+import { getPolicyEngineClient, PolicyVerdict } from 'aegis-t2a';
+
+const policyEngine = getPolicyEngineClient();
+
+// Create a policy
+await policyEngine.createPolicy({
+  name: 'Production Database Protection',
+  rego: `
+    package aegis
+
+    default verdict = "allow"
+
+    verdict = "deny" {
+      input.resource == "prod-database"
+      input.action == "delete"
+      input.context.environment == "production"
+    }
+  `,
+  priority: 500,
+});
+
+// Evaluate
+const result = await policyEngine.evaluate({
+  workflowId: 'wf-789',
+  action: 'delete',
+  resource: 'prod-database',
+  actor: { id: 'agent-123', type: 'agent' },
+  context: { environment: 'production', riskScore: 85 },
+});
+
+if (result.verdict === PolicyVerdict.DENY) {
+  console.log(`Blocked: ${result.reason}`);
+}
 ```
 
 ---
