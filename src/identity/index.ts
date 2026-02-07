@@ -24,5 +24,7 @@ export * from './rate-limiter.js';
 export * from './revocation.js';
 export * from './svid-rotation.js';
 export * from './bilateral-auth.js';
+export * from './capabilities.js';
+export * from './observability.js';
 export * from './attestors/workload-attestation.js';
 export * from './initialization.js';

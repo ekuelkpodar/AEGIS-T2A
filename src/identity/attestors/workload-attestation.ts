@@ -5,6 +5,9 @@
  * - Docker: Container ID, image hash, labels
  * - Kubernetes: Pod name, namespace, service account
  * - Unix: PID, UID, binary hash, environment
+ * - AWS: EC2 instance ID, IAM role, region, account
+ * - GCP: Compute Engine instance ID, project, zone
+ * - Azure: VM ID, subscription, resource group
  *
  * References:
  * - SPIRE Workload Attestation: https://spiffe.io/docs/latest/spire/using/
@@ -20,7 +23,7 @@ import { randomUUID } from 'crypto';
  */
 export interface AttestationResult {
   success: boolean;
-  attestorType: 'docker' | 'kubernetes' | 'unix' | 'unknown';
+  attestorType: 'docker' | 'kubernetes' | 'unix' | 'aws' | 'gcp' | 'azure' | 'unknown';
   workloadId: string;
   selectors: string[];
   metadata: Record<string, unknown>;
@@ -133,6 +136,28 @@ export async function initializeWorkloadAttestation(): Promise<AttestationResult
     manager.registerAttestor(new UnixAttestor());
   } catch {
     logger.debug('Unix attestor not available');
+  }
+
+  // Cloud attestors
+  try {
+    const { AWSAttestor } = await import('./aws-attestor.js');
+    manager.registerAttestor(new AWSAttestor());
+  } catch {
+    logger.debug('AWS attestor not available');
+  }
+
+  try {
+    const { GCPAttestor } = await import('./gcp-attestor.js');
+    manager.registerAttestor(new GCPAttestor());
+  } catch {
+    logger.debug('GCP attestor not available');
+  }
+
+  try {
+    const { AzureAttestor } = await import('./azure-attestor.js');
+    manager.registerAttestor(new AzureAttestor());
+  } catch {
+    logger.debug('Azure attestor not available');
   }
 
   // Perform attestation
