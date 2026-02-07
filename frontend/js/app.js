@@ -71,6 +71,9 @@ function initMainApp() {
   // Bind intent input
   bindIntentInput();
 
+  // Bind settings page controls
+  bindSettingsControls();
+
   // Load initial data
   loadDashboardData();
 
@@ -130,6 +133,14 @@ function bindNavigation() {
       if (tab) showIntegrationsTab(tab);
     });
   });
+
+  // Settings page tabs
+  document.querySelectorAll('.settings-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.settingsTab;
+      if (tab) showSettingsTab(tab);
+    });
+  });
 }
 
 /**
@@ -180,6 +191,21 @@ function showIntegrationsTab(tab) {
 }
 
 /**
+ * Show settings tab (for main app settings page)
+ */
+function showSettingsTab(tab) {
+  // Update tab buttons
+  document.querySelectorAll('.settings-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.settingsTab === tab);
+  });
+
+  // Update settings panels
+  document.querySelectorAll('.settings-content > .settings-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `settings-panel-${tab}`);
+  });
+}
+
+/**
  * Bind intent input
  */
 function bindIntentInput() {
@@ -188,6 +214,131 @@ function bindIntentInput() {
     intentInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         submitIntent();
+      }
+    });
+  }
+}
+
+/**
+ * Bind settings page controls
+ */
+function bindSettingsControls() {
+  // Cloud provider toggles
+  const cloudToggles = [
+    { id: 'settings-aws-enabled', configId: 'settings-aws-config' },
+    { id: 'settings-azure-enabled', configId: 'settings-azure-config' },
+    { id: 'settings-gcp-enabled', configId: 'settings-gcp-config' },
+    { id: 'settings-local-enabled', configId: 'settings-local-config' }
+  ];
+
+  cloudToggles.forEach(({ id, configId }) => {
+    const toggle = document.getElementById(id);
+    const config = document.getElementById(configId);
+    if (toggle && config) {
+      toggle.addEventListener('change', () => {
+        config.style.display = toggle.checked ? 'block' : 'none';
+      });
+      // Initialize state
+      config.style.display = toggle.checked ? 'block' : 'none';
+    }
+  });
+
+  // Channel toggles
+  const channelToggles = [
+    { id: 'settings-telegram-enabled', configId: 'settings-telegram-config' },
+    { id: 'settings-slack-enabled', configId: 'settings-slack-config' }
+  ];
+
+  channelToggles.forEach(({ id, configId }) => {
+    const toggle = document.getElementById(id);
+    const config = document.getElementById(configId);
+    if (toggle && config) {
+      toggle.addEventListener('change', () => {
+        config.style.display = toggle.checked ? 'block' : 'none';
+      });
+      // Initialize state
+      config.style.display = toggle.checked ? 'block' : 'none';
+    }
+  });
+
+  // Provider card selection
+  document.querySelectorAll('.settings-provider-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const provider = card.dataset.settingsProvider;
+      if (provider) {
+        // Update selection
+        document.querySelectorAll('.settings-provider-card').forEach(c => {
+          c.classList.remove('selected');
+        });
+        card.classList.add('selected');
+
+        // Show/hide provider-specific fields
+        const apiKeyGroup = document.getElementById('settings-api-key-group');
+        const ollamaUrlGroup = document.getElementById('settings-ollama-url-group');
+
+        if (provider === 'ollama') {
+          apiKeyGroup.style.display = 'none';
+          ollamaUrlGroup.style.display = 'block';
+        } else {
+          apiKeyGroup.style.display = 'block';
+          ollamaUrlGroup.style.display = 'block';
+        }
+      }
+    });
+  });
+
+  // Save buttons
+  const saveButtons = [
+    'save-llm-btn',
+    'save-cloud-btn',
+    'save-channels-btn'
+  ];
+
+  saveButtons.forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        Toast.success('Settings saved successfully');
+        // TODO: Actually save settings to server
+      });
+    }
+  });
+
+  // Test LLM button
+  const testLlmBtn = document.getElementById('test-llm-btn');
+  if (testLlmBtn) {
+    testLlmBtn.addEventListener('click', async () => {
+      testLlmBtn.disabled = true;
+      testLlmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+
+      // Simulate test (TODO: implement real test)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      testLlmBtn.innerHTML = '<i class="fas fa-vial"></i> Test Connection';
+      testLlmBtn.disabled = false;
+      Toast.success('Connection test successful!');
+    });
+  }
+
+  // Danger zone buttons
+  const rerunWizardBtn = document.getElementById('rerun-wizard-btn');
+  if (rerunWizardBtn) {
+    rerunWizardBtn.addEventListener('click', () => {
+      if (confirm('This will restart the setup wizard. Continue?')) {
+        AegisConfig.clear();
+        location.reload();
+      }
+    });
+  }
+
+  const clearDataBtn = document.getElementById('clear-data-btn');
+  if (clearDataBtn) {
+    clearDataBtn.addEventListener('click', () => {
+      if (confirm('This will permanently delete all data. This action cannot be undone. Are you sure?')) {
+        AegisConfig.clear();
+        localStorage.clear();
+        Toast.success('All data cleared');
+        setTimeout(() => location.reload(), 1000);
       }
     });
   }

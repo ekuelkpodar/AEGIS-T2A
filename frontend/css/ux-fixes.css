@@ -65,10 +65,13 @@
 }
 
 /* =============================================================================
-   SETTINGS PANEL - Prevent Overlap Issues
+   MODAL SETTINGS PANEL - Prevent Overlap Issues
    ============================================================================= */
 
-.settings-panel {
+/* Modal settings panel (created by settings-panel.js) */
+/* Only target the modal version, NOT the main app settings tabs */
+body > .settings-panel,
+.settings-panel-modal {
     z-index: var(--z-modal) !important;
     position: fixed !important;
     inset: 0;
@@ -78,7 +81,8 @@
     pointer-events: none;
 }
 
-.settings-panel:not(.hidden) {
+body > .settings-panel:not(.hidden),
+.settings-panel-modal:not(.hidden) {
     pointer-events: all;
 }
 
@@ -94,6 +98,223 @@
     position: relative;
     z-index: calc(var(--z-modal) + 10);
     box-shadow: var(--elevation-5);
+}
+
+/* =============================================================================
+   MAIN APP SETTINGS TABS - Fix Layout & Overlapping
+   ============================================================================= */
+
+/* Main settings page container */
+#page-settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Settings tabs navigation */
+.settings-tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.settings-tab {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.settings-tab:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.settings-tab.active {
+    background: var(--primary);
+    color: white;
+}
+
+/* Container for all settings tabs */
+.settings-content {
+    position: relative;
+    min-height: 400px;
+    padding: var(--space-4);
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+}
+
+/* Individual settings tab panels - use relative positioning */
+#page-settings .settings-panel,
+.settings-content > .settings-panel {
+    position: relative !important;
+    z-index: var(--z-base) !important;
+    display: none;
+    width: 100%;
+    padding: 0;
+}
+
+#page-settings .settings-panel.active,
+.settings-content > .settings-panel.active {
+    display: block;
+}
+
+/* Ensure proper vertical spacing for sections within tabs */
+#page-settings .settings-panel > *,
+.settings-content > .settings-panel > * {
+    margin-bottom: var(--space-4);
+    clear: both;
+}
+
+/* Fix cloud settings and channel settings lists */
+.cloud-settings-list,
+.channel-settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.cloud-setting-item,
+.channel-setting-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    transition: all var(--transition-normal);
+}
+
+.cloud-setting-config,
+.channel-setting-config {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Settings danger zone - ensure it's at the bottom with clear separation */
+.settings-danger-zone {
+    margin-top: var(--space-8) !important;
+    padding: var(--space-4);
+    background: rgba(239, 68, 68, 0.1);
+    border: 2px solid var(--danger);
+    border-radius: var(--radius-lg);
+    clear: both;
+}
+
+.settings-danger-zone h3 {
+    color: var(--danger);
+    font-weight: 700;
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.danger-actions {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.settings-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Provider cards grid */
+.settings-provider-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-3);
+    margin: var(--space-4) 0;
+}
+
+.settings-provider-card {
+    padding: var(--space-3);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    text-align: center;
+}
+
+.settings-provider-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.settings-provider-card.selected {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.settings-provider-card h3 {
+    margin: var(--space-2) 0;
+    font-size: 1rem;
+}
+
+.settings-provider-card p {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* Settings form */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin: var(--space-4) 0;
+}
+
+.settings-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.settings-form label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.settings-form input,
+.settings-form select {
+    width: 100%;
+    padding: var(--space-2);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.settings-form input:focus,
+.settings-form select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 /* =============================================================================
@@ -178,107 +399,9 @@
     z-index: 1;
 }
 
-/* =============================================================================
-   CHANNEL SETTINGS - Fix Overlapping Issues
-   ============================================================================= */
+/* REMOVED - Channel/cloud config styles moved to main app settings section above */
 
-.channel-config,
-.cloud-config {
-    margin-top: var(--space-4) !important;
-    margin-bottom: var(--space-4) !important;
-    padding: var(--space-4) !important;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    position: relative;
-    z-index: var(--z-base);
-    clear: both;
-}
-
-.channel-section,
-.cloud-section {
-    margin-bottom: var(--space-6) !important;
-    padding-bottom: var(--space-4);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.channel-section:last-child,
-.cloud-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-/* =============================================================================
-   DANGER ZONE - Enhanced Visual Hierarchy & Separation
-   ============================================================================= */
-
-.danger-zone {
-    margin-top: var(--space-8) !important;
-    padding: var(--space-4) !important;
-    background: rgba(239, 68, 68, 0.1);
-    border: 2px solid var(--danger);
-    border-radius: var(--radius-lg);
-    position: relative;
-    z-index: var(--z-base);
-    clear: both;
-}
-
-.danger-zone h3 {
-    color: var(--danger) !important;
-    font-weight: 700;
-    font-size: 1.25rem;
-    margin-bottom: var(--space-3);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.danger-zone h3::before {
-    content: '⚠️';
-    font-size: 1.5rem;
-}
-
-.danger-zone p {
-    color: rgba(248, 250, 252, 0.9) !important;
-    margin-bottom: var(--space-4);
-    line-height: 1.6;
-}
-
-/* Separate danger zone buttons with clear visual distance */
-.danger-zone .btn {
-    margin-right: var(--space-3);
-    margin-bottom: var(--space-2);
-}
-
-.danger-zone .btn:last-child {
-    margin-right: 0;
-}
-
-.danger-zone .btn.btn-danger {
-    background: var(--danger);
-    border: 2px solid var(--danger);
-    color: white;
-    font-weight: 600;
-    padding: var(--space-2) var(--space-4);
-    min-width: 180px;
-}
-
-.danger-zone .btn.btn-danger:hover {
-    background: #dc2626;
-    border-color: #dc2626;
-    box-shadow: var(--elevation-2);
-}
-
-.danger-zone .btn.btn-secondary {
-    background: var(--bg-secondary);
-    border: 2px solid var(--border-color);
-    min-width: 180px;
-}
-
-/* Add spacing between dangerous actions */
-.danger-zone .btn + .btn {
-    margin-left: var(--space-4);
-}
+/* REMOVED - Danger zone styles moved to settings-danger-zone section above */
 
 /* =============================================================================
    BADGES - Enhanced Clarity & Context
