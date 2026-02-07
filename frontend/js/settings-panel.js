@@ -13,26 +13,32 @@ const SettingsPanel = {
   currentSettings: null,
   availableModels: {
     anthropic: [
-      'claude-sonnet-4-5-20250929',  // Latest Claude Sonnet 4.5
-      'claude-opus-4-5-20251101',    // Latest Claude Opus 4.5
-      'claude-sonnet-4.0',
-      'claude-haiku-4.0'
+      'claude-opus-4-6-20260201',     // Flagship: Claude Opus 4.6 (1M token context)
+      'claude-sonnet-4-5-20250929',   // Balanced: Claude Sonnet 4.5
+      'claude-haiku-4-5-20251001',    // Fast: Claude Haiku 4.5
+      'claude-sonnet-4.0',            // Legacy
+      'claude-haiku-4.0'              // Legacy
     ],
     openai: [
-      'gpt-4o',                       // Latest GPT-4o
-      'gpt-4-turbo',                  // Latest GPT-4 Turbo
-      'gpt-4-turbo-2024-04-09',
-      'o3-mini',
-      'gpt-3.5-turbo'
+      'gpt-5.2',                       // Flagship: GPT-5.2 (latest proprietary)
+      'gpt-5.3-codex',                 // Balanced: GPT-5.3-Codex (code-optimized)
+      'gpt-oss-120b',                  // Open Source: GPT-OSS 120B
+      'gpt-oss-20b',                   // Open Source: GPT-OSS 20B
+      'gpt-4o',                        // Legacy (retiring 2026)
+      'gpt-4-turbo',                   // Legacy (retiring 2026)
+      'o3-mini'
     ],
     ollama: [],  // Populated dynamically from Ollama API
     openrouter: [
-      'deepseek/deepseek-r1',         // Latest DeepSeek R1
-      'google/gemini-2.0-flash-exp',  // Latest Gemini 2.0
+      'anthropic/claude-opus-4-6',         // Latest Claude Opus 4.6
+      'openai/gpt-5.2',                    // Latest GPT-5.2
+      'openai/gpt-5.3-codex',              // Latest GPT-5.3-Codex
+      'google/gemini-2.0-flash-thinking',  // Latest Gemini 2.0
+      'deepseek/deepseek-r1',              // Latest DeepSeek R1
       'meta-llama/llama-4-maverick',
-      'anthropic/claude-3.5-sonnet',
-      'openai/gpt-4o',
-      'mistralai/mixtral-8x22b'
+      'mistralai/mixtral-8x22b',
+      'qwen/qwen3-coder-next',
+      'google/gemma-3-27b'
     ],
   },
 
@@ -80,25 +86,36 @@ const SettingsPanel = {
       }
     } catch (error) {
       console.warn('[SettingsPanel] Could not fetch Ollama models:', error);
-      // Fallback to default models
+      // Fallback to latest models (February 2026)
       this.availableModels.ollama = [
-        'llama3.2',
-        'llama3.1',
+        // Latest flagship models
         'llama3-70b',
         'llama3-8b',
-        'mistral',
+        'qwen3-coder-next',
+        'qwen3-next',
+        'qwen3-vl',
+        'deepseek-v3',
+        'deepseek-r1',
+        // Latest specialized models
+        'glm-4.7-flash',
+        'glm-ocr',
+        'kimi-k2.5',
+        'lfm2.5-thinking',
+        'rnj-1',
+        // Popular stable models
         'qwen2.5',
         'qwen2.5-vl',
-        'deepseek-r1',
-        'deepseek-v3',
+        'mistral',
+        'mixtral',
+        'ministral-3',
+        'translategemma',
         'codellama',
         'phi3',
         'gemma2',
-        'mixtral',
         'neural-chat',
-        'qwen3-coder-next',
-        'glm-4.7-flash',
-        'kimi-k2.5'
+        // Legacy
+        'llama3.2',
+        'llama3.1'
       ];
       this.showValidationIndicator('ollama-connection', 'warning', 'Using cached models - Ollama not running');
     }
@@ -1083,11 +1100,35 @@ const SettingsPanel = {
   },
 
   open() {
-    document.getElementById('settings-panel').classList.remove('hidden');
+    const panel = document.getElementById('settings-panel');
+    if (panel) {
+      panel.classList.remove('hidden');
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+
+      // Add ESC key listener
+      this.handleEscKey = (e) => {
+        if (e.key === 'Escape') {
+          this.close();
+        }
+      };
+      document.addEventListener('keydown', this.handleEscKey);
+    }
   },
 
   close() {
-    document.getElementById('settings-panel').classList.add('hidden');
+    const panel = document.getElementById('settings-panel');
+    if (panel) {
+      panel.classList.add('hidden');
+      // Restore body scroll
+      document.body.style.overflow = '';
+
+      // Remove ESC key listener
+      if (this.handleEscKey) {
+        document.removeEventListener('keydown', this.handleEscKey);
+        this.handleEscKey = null;
+      }
+    }
   },
 };
 
