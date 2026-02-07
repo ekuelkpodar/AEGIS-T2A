@@ -1,0 +1,732 @@
+/**
+ * Settings Panel - Comprehensive Configuration UI
+ *
+ * Allows users to customize all aspects of AEGIS-T2A including:
+ * - Model selection (Claude, GPT, Ollama, OpenRouter, etc.)
+ * - Provider configuration
+ * - Feature toggles
+ * - Security settings
+ * - Performance tuning
+ */
+
+const SettingsPanel = {
+  currentSettings: null,
+  availableModels: {
+    anthropic: ['claude-opus-4.5', 'claude-sonnet-4.5', 'claude-sonnet-4.0', 'claude-haiku-4.0'],
+    openai: ['gpt-4o', 'gpt-4-turbo', 'o3-mini', 'gpt-3.5-turbo'],
+    ollama: ['llama3.2', 'llama3.1', 'mistral', 'qwen2.5', 'deepseek-r1', 'codellama', 'phi3', 'gemma2'],
+    openrouter: ['deepseek/deepseek-r1', 'google/gemini-2.0-flash', 'meta-llama/llama-4-maverick', 'anthropic/claude-3.5-sonnet'],
+  },
+
+  init() {
+    this.loadCurrentSettings();
+    this.createSettingsPanel();
+    this.bindEvents();
+  },
+
+  async loadCurrentSettings() {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        this.currentSettings = await response.json();
+      } else {
+        this.currentSettings = this.getDefaultSettings();
+      }
+    } catch (error) {
+      console.warn('Failed to load settings, using defaults:', error);
+      this.currentSettings = this.getDefaultSettings();
+    }
+  },
+
+  getDefaultSettings() {
+    return {
+      llm: {
+        provider: 'ollama',
+        model: 'llama3.2',
+        apiKey: '',
+        endpoint: 'http://localhost:11434',
+        temperature: 0.7,
+        maxTokens: 4096,
+      },
+      security: {
+        requireApproval: true,
+        promptInjectionDetection: true,
+        rateLimiting: true,
+        maxRequestsPerMinute: 60,
+      },
+      features: {
+        shadowExecution: true,
+        blastRadiusAnalysis: true,
+        confidenceScoring: true,
+        policyEngine: true,
+        auditLogging: true,
+        identityManagement: true,
+      },
+      performance: {
+        cacheEnabled: true,
+        cacheTTL: 3600,
+        parallelExecution: true,
+        maxConcurrent: 5,
+      },
+      ui: {
+        theme: 'dark',
+        autoRefresh: true,
+        refreshInterval: 5000,
+        notifications: true,
+      },
+    };
+  },
+
+  createSettingsPanel() {
+    const settingsHTML = `
+      <div id="settings-panel" class="settings-panel hidden">
+        <div class="settings-overlay" id="settings-overlay"></div>
+        <div class="settings-container">
+          <div class="settings-header">
+            <h2><i class="fas fa-cog"></i> Settings & Configuration</h2>
+            <button class="settings-close" id="settings-close">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div class="settings-content">
+            <div class="settings-sidebar">
+              <div class="settings-nav">
+                <button class="settings-nav-item active" data-tab="models">
+                  <i class="fas fa-brain"></i> AI Models
+                </button>
+                <button class="settings-nav-item" data-tab="security">
+                  <i class="fas fa-shield-alt"></i> Security
+                </button>
+                <button class="settings-nav-item" data-tab="features">
+                  <i class="fas fa-puzzle-piece"></i> Features
+                </button>
+                <button class="settings-nav-item" data-tab="performance">
+                  <i class="fas fa-tachometer-alt"></i> Performance
+                </button>
+                <button class="settings-nav-item" data-tab="ui">
+                  <i class="fas fa-palette"></i> UI/UX
+                </button>
+                <button class="settings-nav-item" data-tab="advanced">
+                  <i class="fas fa-wrench"></i> Advanced
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-main">
+              <!-- AI Models Tab -->
+              <div class="settings-tab active" data-tab-content="models">
+                <h3>AI Model Configuration</h3>
+                <p class="tab-description">Configure your AI provider and models for intent parsing and execution planning.</p>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Provider</span>
+                    <select id="setting-llm-provider" class="setting-select">
+                      <option value="anthropic">Anthropic Claude</option>
+                      <option value="openai">OpenAI GPT</option>
+                      <option value="ollama" selected>Ollama (Local)</option>
+                      <option value="openrouter">OpenRouter</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Model</span>
+                    <select id="setting-llm-model" class="setting-select">
+                      <!-- Populated dynamically -->
+                    </select>
+                  </label>
+                </div>
+
+                <div class="setting-group" id="api-key-group">
+                  <label class="setting-label">
+                    <span>API Key</span>
+                    <input type="password" id="setting-api-key" class="setting-input" placeholder="Enter your API key">
+                    <small>Your API key is stored locally and encrypted</small>
+                  </label>
+                </div>
+
+                <div class="setting-group" id="endpoint-group">
+                  <label class="setting-label">
+                    <span>Endpoint URL</span>
+                    <input type="text" id="setting-endpoint" class="setting-input" placeholder="http://localhost:11434">
+                    <small>For Ollama or custom endpoints</small>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Temperature (0-1)</span>
+                    <input type="range" id="setting-temperature" class="setting-range" min="0" max="1" step="0.1" value="0.7">
+                    <span class="setting-value" id="temperature-value">0.7</span>
+                    <small>Higher = more creative, Lower = more focused</small>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Max Tokens</span>
+                    <input type="number" id="setting-max-tokens" class="setting-input" value="4096" min="128" max="32768">
+                    <small>Maximum response length</small>
+                  </label>
+                </div>
+
+                <button class="btn-primary" id="test-model-connection">
+                  <i class="fas fa-plug"></i> Test Connection
+                </button>
+              </div>
+
+              <!-- Security Tab -->
+              <div class="settings-tab" data-tab-content="security">
+                <h3>Security Configuration</h3>
+                <p class="tab-description">Configure security policies and access controls.</p>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-require-approval" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Require Approval for High-Risk Actions</strong>
+                      <small>Destructive operations need manual approval</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-prompt-injection" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Prompt Injection Detection</strong>
+                      <small>Block malicious prompt attempts</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-rate-limiting" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Rate Limiting</strong>
+                      <small>Prevent API abuse</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Max Requests per Minute</span>
+                    <input type="number" id="setting-max-rpm" class="setting-input" value="60" min="1" max="1000">
+                  </label>
+                </div>
+              </div>
+
+              <!-- Features Tab -->
+              <div class="settings-tab" data-tab-content="features">
+                <h3>Feature Configuration</h3>
+                <p class="tab-description">Enable or disable platform features.</p>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-shadow-execution" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Shadow Execution</strong>
+                      <small>Test plans before production execution</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-blast-radius" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Blast Radius Analysis</strong>
+                      <small>Predict impact of changes</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-confidence-scoring" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Confidence Scoring</strong>
+                      <small>Bayesian confidence calculation</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-policy-engine" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Policy Engine</strong>
+                      <small>Enforce governance policies</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-audit-logging" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Audit Logging</strong>
+                      <small>Track all actions for compliance</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-identity-mgmt" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Identity Management (SPIFFE)</strong>
+                      <small>Zero-trust workload identity</small>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Performance Tab -->
+              <div class="settings-tab" data-tab-content="performance">
+                <h3>Performance Tuning</h3>
+                <p class="tab-description">Optimize performance and resource usage.</p>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-cache-enabled" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Response Caching</strong>
+                      <small>Cache API responses for faster performance</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Cache TTL (seconds)</span>
+                    <input type="number" id="setting-cache-ttl" class="setting-input" value="3600" min="60" max="86400">
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-parallel-execution" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Parallel Execution</strong>
+                      <small>Execute independent steps concurrently</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Max Concurrent Tasks</span>
+                    <input type="number" id="setting-max-concurrent" class="setting-input" value="5" min="1" max="20">
+                  </label>
+                </div>
+              </div>
+
+              <!-- UI/UX Tab -->
+              <div class="settings-tab" data-tab-content="ui">
+                <h3>UI/UX Preferences</h3>
+                <p class="tab-description">Customize the dashboard appearance and behavior.</p>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Theme</span>
+                    <select id="setting-theme" class="setting-select">
+                      <option value="dark" selected>Dark</option>
+                      <option value="light">Light</option>
+                      <option value="auto">Auto (System)</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-auto-refresh" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Auto Refresh</strong>
+                      <small>Automatically update dashboard</small>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Refresh Interval (ms)</span>
+                    <input type="number" id="setting-refresh-interval" class="setting-input" value="5000" min="1000" max="60000" step="1000">
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-toggle">
+                    <input type="checkbox" id="setting-notifications" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">
+                      <strong>Desktop Notifications</strong>
+                      <small>Show system notifications for events</small>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Advanced Tab -->
+              <div class="settings-tab" data-tab-content="advanced">
+                <h3>Advanced Settings</h3>
+                <p class="tab-description">Advanced configuration for power users.</p>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Debug Mode</span>
+                    <select id="setting-debug-mode" class="setting-select">
+                      <option value="off" selected>Off</option>
+                      <option value="info">Info</option>
+                      <option value="debug">Debug</option>
+                      <option value="trace">Trace</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="setting-group">
+                  <button class="btn-secondary" id="export-settings">
+                    <i class="fas fa-download"></i> Export Settings
+                  </button>
+                  <button class="btn-secondary" id="import-settings">
+                    <i class="fas fa-upload"></i> Import Settings
+                  </button>
+                  <input type="file" id="import-settings-file" accept=".json" style="display: none;">
+                </div>
+
+                <div class="setting-group">
+                  <button class="btn-danger" id="reset-settings">
+                    <i class="fas fa-undo"></i> Reset to Defaults
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-footer">
+            <button class="btn-secondary" id="settings-cancel">Cancel</button>
+            <button class="btn-primary" id="settings-save">
+              <i class="fas fa-save"></i> Save Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', settingsHTML);
+    this.populateModelOptions();
+    this.loadSettingsValues();
+  },
+
+  populateModelOptions() {
+    const provider = document.getElementById('setting-llm-provider').value;
+    const modelSelect = document.getElementById('setting-llm-model');
+
+    modelSelect.innerHTML = '';
+    this.availableModels[provider].forEach(model => {
+      const option = document.createElement('option');
+      option.value = model;
+      option.textContent = model;
+      modelSelect.appendChild(option);
+    });
+  },
+
+  loadSettingsValues() {
+    if (!this.currentSettings) return;
+
+    // LLM settings
+    document.getElementById('setting-llm-provider').value = this.currentSettings.llm.provider;
+    this.populateModelOptions();
+    document.getElementById('setting-llm-model').value = this.currentSettings.llm.model;
+    document.getElementById('setting-api-key').value = this.currentSettings.llm.apiKey || '';
+    document.getElementById('setting-endpoint').value = this.currentSettings.llm.endpoint || '';
+    document.getElementById('setting-temperature').value = this.currentSettings.llm.temperature;
+    document.getElementById('temperature-value').textContent = this.currentSettings.llm.temperature;
+    document.getElementById('setting-max-tokens').value = this.currentSettings.llm.maxTokens;
+
+    // Security
+    document.getElementById('setting-require-approval').checked = this.currentSettings.security.requireApproval;
+    document.getElementById('setting-prompt-injection').checked = this.currentSettings.security.promptInjectionDetection;
+    document.getElementById('setting-rate-limiting').checked = this.currentSettings.security.rateLimiting;
+    document.getElementById('setting-max-rpm').value = this.currentSettings.security.maxRequestsPerMinute;
+
+    // Features
+    document.getElementById('setting-shadow-execution').checked = this.currentSettings.features.shadowExecution;
+    document.getElementById('setting-blast-radius').checked = this.currentSettings.features.blastRadiusAnalysis;
+    document.getElementById('setting-confidence-scoring').checked = this.currentSettings.features.confidenceScoring;
+    document.getElementById('setting-policy-engine').checked = this.currentSettings.features.policyEngine;
+    document.getElementById('setting-audit-logging').checked = this.currentSettings.features.auditLogging;
+    document.getElementById('setting-identity-mgmt').checked = this.currentSettings.features.identityManagement;
+
+    // Performance
+    document.getElementById('setting-cache-enabled').checked = this.currentSettings.performance.cacheEnabled;
+    document.getElementById('setting-cache-ttl').value = this.currentSettings.performance.cacheTTL;
+    document.getElementById('setting-parallel-execution').checked = this.currentSettings.performance.parallelExecution;
+    document.getElementById('setting-max-concurrent').value = this.currentSettings.performance.maxConcurrent;
+
+    // UI
+    document.getElementById('setting-theme').value = this.currentSettings.ui.theme;
+    document.getElementById('setting-auto-refresh').checked = this.currentSettings.ui.autoRefresh;
+    document.getElementById('setting-refresh-interval').value = this.currentSettings.ui.refreshInterval;
+    document.getElementById('setting-notifications').checked = this.currentSettings.ui.notifications;
+  },
+
+  bindEvents() {
+    // Open settings
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="open-settings"]')) {
+        this.open();
+      }
+    });
+
+    // Close settings
+    document.getElementById('settings-close')?.addEventListener('click', () => this.close());
+    document.getElementById('settings-overlay')?.addEventListener('click', () => this.close());
+    document.getElementById('settings-cancel')?.addEventListener('click', () => this.close());
+
+    // Tab navigation
+    document.querySelectorAll('.settings-nav-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const tab = e.currentTarget.dataset.tab;
+        this.switchTab(tab);
+      });
+    });
+
+    // Provider change
+    document.getElementById('setting-llm-provider')?.addEventListener('change', (e) => {
+      this.populateModelOptions();
+      this.updateProviderFields(e.target.value);
+    });
+
+    // Temperature slider
+    document.getElementById('setting-temperature')?.addEventListener('input', (e) => {
+      document.getElementById('temperature-value').textContent = e.target.value;
+    });
+
+    // Test connection
+    document.getElementById('test-model-connection')?.addEventListener('click', () => {
+      this.testModelConnection();
+    });
+
+    // Save settings
+    document.getElementById('settings-save')?.addEventListener('click', () => {
+      this.saveSettings();
+    });
+
+    // Export/Import
+    document.getElementById('export-settings')?.addEventListener('click', () => this.exportSettings());
+    document.getElementById('import-settings')?.addEventListener('click', () => {
+      document.getElementById('import-settings-file').click();
+    });
+    document.getElementById('import-settings-file')?.addEventListener('change', (e) => {
+      this.importSettings(e);
+    });
+
+    // Reset
+    document.getElementById('reset-settings')?.addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all settings to defaults?')) {
+        this.resetToDefaults();
+      }
+    });
+  },
+
+  switchTab(tabName) {
+    document.querySelectorAll('.settings-nav-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.tabContent === tabName);
+    });
+  },
+
+  updateProviderFields(provider) {
+    const apiKeyGroup = document.getElementById('api-key-group');
+    const endpointGroup = document.getElementById('endpoint-group');
+
+    if (provider === 'ollama') {
+      apiKeyGroup.style.display = 'none';
+      endpointGroup.style.display = 'block';
+    } else {
+      apiKeyGroup.style.display = 'block';
+      endpointGroup.style.display = provider === 'openrouter' ? 'block' : 'none';
+    }
+  },
+
+  async testModelConnection() {
+    const btn = document.getElementById('test-model-connection');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+
+    try {
+      const response = await fetch('/api/test-llm-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: document.getElementById('setting-llm-provider').value,
+          model: document.getElementById('setting-llm-model').value,
+          apiKey: document.getElementById('setting-api-key').value,
+          endpoint: document.getElementById('setting-endpoint').value,
+        }),
+      });
+
+      if (response.ok) {
+        alert('✅ Connection successful!');
+      } else {
+        const error = await response.json();
+        alert(`❌ Connection failed: ${error.message}`);
+      }
+    } catch (error) {
+      alert(`❌ Connection failed: ${error.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-plug"></i> Test Connection';
+    }
+  },
+
+  async saveSettings() {
+    const settings = {
+      llm: {
+        provider: document.getElementById('setting-llm-provider').value,
+        model: document.getElementById('setting-llm-model').value,
+        apiKey: document.getElementById('setting-api-key').value,
+        endpoint: document.getElementById('setting-endpoint').value,
+        temperature: parseFloat(document.getElementById('setting-temperature').value),
+        maxTokens: parseInt(document.getElementById('setting-max-tokens').value),
+      },
+      security: {
+        requireApproval: document.getElementById('setting-require-approval').checked,
+        promptInjectionDetection: document.getElementById('setting-prompt-injection').checked,
+        rateLimiting: document.getElementById('setting-rate-limiting').checked,
+        maxRequestsPerMinute: parseInt(document.getElementById('setting-max-rpm').value),
+      },
+      features: {
+        shadowExecution: document.getElementById('setting-shadow-execution').checked,
+        blastRadiusAnalysis: document.getElementById('setting-blast-radius').checked,
+        confidenceScoring: document.getElementById('setting-confidence-scoring').checked,
+        policyEngine: document.getElementById('setting-policy-engine').checked,
+        auditLogging: document.getElementById('setting-audit-logging').checked,
+        identityManagement: document.getElementById('setting-identity-mgmt').checked,
+      },
+      performance: {
+        cacheEnabled: document.getElementById('setting-cache-enabled').checked,
+        cacheTTL: parseInt(document.getElementById('setting-cache-ttl').value),
+        parallelExecution: document.getElementById('setting-parallel-execution').checked,
+        maxConcurrent: parseInt(document.getElementById('setting-max-concurrent').value),
+      },
+      ui: {
+        theme: document.getElementById('setting-theme').value,
+        autoRefresh: document.getElementById('setting-auto-refresh').checked,
+        refreshInterval: parseInt(document.getElementById('setting-refresh-interval').value),
+        notifications: document.getElementById('setting-notifications').checked,
+      },
+    };
+
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+
+      if (response.ok) {
+        this.currentSettings = settings;
+        this.applySettings();
+        alert('✅ Settings saved successfully!');
+        this.close();
+      } else {
+        alert('❌ Failed to save settings');
+      }
+    } catch (error) {
+      // Save to localStorage as fallback
+      localStorage.setItem('aegis-settings', JSON.stringify(settings));
+      this.currentSettings = settings;
+      this.applySettings();
+      alert('✅ Settings saved locally!');
+      this.close();
+    }
+  },
+
+  applySettings() {
+    // Apply theme
+    document.documentElement.setAttribute('data-theme', this.currentSettings.ui.theme);
+
+    // Apply auto-refresh
+    if (Dashboard.refreshInterval) {
+      clearInterval(Dashboard.refreshInterval);
+    }
+    if (this.currentSettings.ui.autoRefresh) {
+      Dashboard.startAutoRefresh(this.currentSettings.ui.refreshInterval);
+    }
+
+    // Request notification permission
+    if (this.currentSettings.ui.notifications && 'Notification' in window) {
+      Notification.requestPermission();
+    }
+  },
+
+  exportSettings() {
+    const dataStr = JSON.stringify(this.currentSettings, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'aegis-settings.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  },
+
+  importSettings(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const settings = JSON.parse(e.target.result);
+        this.currentSettings = settings;
+        this.loadSettingsValues();
+        alert('✅ Settings imported successfully!');
+      } catch (error) {
+        alert('❌ Failed to import settings: Invalid file format');
+      }
+    };
+    reader.readAsText(file);
+  },
+
+  resetToDefaults() {
+    this.currentSettings = this.getDefaultSettings();
+    this.loadSettingsValues();
+  },
+
+  open() {
+    document.getElementById('settings-panel').classList.remove('hidden');
+  },
+
+  close() {
+    document.getElementById('settings-panel').classList.add('hidden');
+  },
+};
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => SettingsPanel.init());
+} else {
+  SettingsPanel.init();
+}

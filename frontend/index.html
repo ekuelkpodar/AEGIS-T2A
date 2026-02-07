@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/wizard.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/enhanced-features.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -432,9 +433,15 @@
             <header class="top-bar">
                 <div class="intent-bar">
                     <i class="fas fa-magic"></i>
-                    <input type="text" id="intent-input" placeholder="What would you like to do? (e.g., 'Build me a CRUD app')">
+                    <input type="text" id="intent-input" placeholder="What would you like to do? (e.g., 'Build a graphic sandbox locally')">
                     <button class="btn btn-primary" id="submit-intent-btn">
                         <i class="fas fa-paper-plane"></i>
+                    </button>
+                    <button class="btn btn-secondary" data-action="open-sandbox" title="Sandbox Builder">
+                        <i class="fas fa-cube"></i>
+                    </button>
+                    <button class="btn btn-secondary" data-action="open-settings" title="Settings">
+                        <i class="fas fa-cog"></i>
                     </button>
                 </div>
             </header>
@@ -812,6 +819,8 @@
     <script src="js/toast.js"></script>
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/settings-panel.js"></script>
+    <script src="js/sandbox-builder.js"></script>
 
     <!-- Main Wizard and App Script - Everything in one place -->
     <script>
