@@ -336,3 +336,126 @@ export type {
   DisambiguationAuditRecord,
   ConfidenceParserConfig,
 } from './confidence-aware-parser.js';
+
+// =============================================================================
+// Phase 3: Advanced Policy Engine & Governance
+// =============================================================================
+
+// Policy Versioning & History
+export {
+  PolicyVersioningManager,
+  getPolicyVersioningManager,
+} from './policy-versioning.js';
+export type {
+  PolicyVersion,
+  PolicyDiff,
+  PolicyVersionHistory,
+  RollbackRequest,
+  PolicyApproval,
+} from './policy-versioning.js';
+
+// Policy Templates Library
+export {
+  PolicyTemplateManager,
+  getPolicyTemplateManager,
+  POLICY_TEMPLATES,
+} from './policy-templates.js';
+export type {
+  PolicyTemplate,
+  PolicyCategory,
+  ComplianceFramework,
+  TemplateParameter,
+  TemplateInstantiation,
+} from './policy-templates.js';
+
+// Policy Testing Framework
+export {
+  PolicyTestingFramework,
+  getPolicyTestingFramework,
+} from './policy-testing.js';
+export type {
+  PolicyTestCase,
+  PolicyTestResult,
+  TestFailure,
+  PolicyTestSuite,
+  TestSuiteResult,
+  PolicyCoverage,
+} from './policy-testing.js';
+
+// Policy Conflict Detection
+export {
+  PolicyConflictDetector,
+  getPolicyConflictDetector,
+} from './policy-conflict-detector.js';
+export type {
+  PolicyConflict,
+  ConflictType,
+  ConflictAnalysisResult,
+  ConflictResolution,
+} from './policy-conflict-detector.js';
+
+// Policy RBAC Integration with SPIFFE
+export {
+  PolicyRBACManager,
+  getPolicyRBACManager,
+} from './policy-rbac.js';
+export type {
+  Role,
+  Permission,
+  RoleBinding,
+  PolicyRBACContext,
+  RBACEvaluationResult,
+} from './policy-rbac.js';
+
+// Policy Impact Analysis
+export {
+  PolicyImpactAnalyzer,
+  getPolicyImpactAnalyzer,
+} from './policy-impact-analyzer.js';
+export type {
+  PolicyChange,
+  ImpactAnalysisRequest,
+  ImpactAnalysisResult,
+  AffectedRequest,
+} from './policy-impact-analyzer.js';
+
+// Policy Compliance Mapper
+export {
+  PolicyComplianceMapper,
+  getPolicyComplianceMapper,
+  COMPLIANCE_CONTROLS,
+} from './policy-compliance-mapper.js';
+export type {
+  ComplianceControl,
+  PolicyComplianceMapping,
+  ComplianceReport,
+  ComplianceGap,
+} from './policy-compliance-mapper.js';
+
+// Policy Analytics Engine
+export {
+  PolicyAnalyticsEngine,
+  getPolicyAnalyticsEngine,
+} from './policy-analytics.js';
+export type {
+  PolicyMetric,
+  PolicyAnalytics,
+} from './policy-analytics.js';
+
+// Policy Exception Management
+export {
+  PolicyExceptionManager,
+  getPolicyExceptionManager,
+} from './policy-exception-manager.js';
+export type {
+  PolicyException,
+} from './policy-exception-manager.js';
+
+// Policy Inheritance
+export {
+  PolicyInheritanceManager,
+  getPolicyInheritanceManager,
+} from './policy-inheritance.js';
+export type {
+  PolicyScope,
+} from './policy-inheritance.js';
