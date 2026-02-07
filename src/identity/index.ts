@@ -20,4 +20,6 @@ export * from './delegation.js';
 export * from './federation.js';
 export * from './genealogy.js';
 export * from './compliance-report.js';
+export * from './rate-limiter.js';
+export * from './attestors/workload-attestation.js';
 export * from './initialization.js';
