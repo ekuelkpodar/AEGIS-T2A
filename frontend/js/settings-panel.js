@@ -12,10 +12,39 @@
 const SettingsPanel = {
   currentSettings: null,
   availableModels: {
-    anthropic: ['claude-opus-4.5', 'claude-sonnet-4.5', 'claude-sonnet-4.0', 'claude-haiku-4.0'],
-    openai: ['gpt-4o', 'gpt-4-turbo', 'o3-mini', 'gpt-3.5-turbo'],
-    ollama: ['llama3.2', 'llama3.1', 'mistral', 'qwen2.5', 'deepseek-r1', 'codellama', 'phi3', 'gemma2'],
-    openrouter: ['deepseek/deepseek-r1', 'google/gemini-2.0-flash', 'meta-llama/llama-4-maverick', 'anthropic/claude-3.5-sonnet'],
+    anthropic: [
+      'claude-sonnet-4-5-20250929',  // Latest Claude Sonnet 4.5
+      'claude-opus-4-5-20251101',    // Latest Claude Opus 4.5
+      'claude-sonnet-4.0',
+      'claude-haiku-4.0'
+    ],
+    openai: [
+      'gpt-4o',                       // Latest GPT-4o
+      'gpt-4-turbo',                  // Latest GPT-4 Turbo
+      'gpt-4-turbo-2024-04-09',
+      'o3-mini',
+      'gpt-3.5-turbo'
+    ],
+    ollama: [
+      'llama3.2',                     // Latest Llama 3.2
+      'llama3.1',
+      'mistral',
+      'qwen2.5',
+      'deepseek-r1',
+      'codellama',
+      'phi3',
+      'gemma2',
+      'mixtral',
+      'neural-chat'
+    ],
+    openrouter: [
+      'deepseek/deepseek-r1',         // Latest DeepSeek R1
+      'google/gemini-2.0-flash-exp',  // Latest Gemini 2.0
+      'meta-llama/llama-4-maverick',
+      'anthropic/claude-3.5-sonnet',
+      'openai/gpt-4o',
+      'mistralai/mixtral-8x22b'
+    ],
   },
 
   init() {

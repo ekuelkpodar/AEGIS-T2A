@@ -1,0 +1,568 @@
+/**
+ * AEGIS-T2A - UX/UI Fixes
+ *
+ * Comprehensive fixes for:
+ * - Z-index hierarchy (proper layering system)
+ * - Layout overlapping issues
+ * - Visual hierarchy improvements
+ * - Spacing consistency (8px grid system)
+ * - Enhanced accessibility and contrast
+ */
+
+/* =============================================================================
+   Z-INDEX SYSTEM - Proper Layering Hierarchy
+   ============================================================================= */
+
+:root {
+    /* Z-Index Scale - Organized by priority */
+    --z-base: 0;
+    --z-dropdown: 100;          /* Dropdowns, tooltips */
+    --z-sticky: 200;            /* Sticky headers, nav */
+    --z-fixed: 300;             /* Fixed position elements */
+    --z-drawer: 400;            /* Side drawers */
+    --z-overlay: 500;           /* Overlays, backdrops */
+    --z-modal-backdrop: 900;    /* Modal backgrounds */
+    --z-modal: 1000;            /* Modals, dialogs */
+    --z-popover: 1100;          /* Popovers on modals */
+    --z-toast: 9000;            /* Toast notifications */
+    --z-tooltip: 9100;          /* Tooltips (highest) */
+
+    /* Enhanced spacing system (8px grid) */
+    --space-0: 0;
+    --space-1: 0.5rem;   /* 8px */
+    --space-2: 1rem;     /* 16px */
+    --space-3: 1.5rem;   /* 24px */
+    --space-4: 2rem;     /* 32px */
+    --space-5: 2.5rem;   /* 40px */
+    --space-6: 3rem;     /* 48px */
+    --space-8: 4rem;     /* 64px */
+    --space-10: 5rem;    /* 80px */
+
+    /* Enhanced elevation system */
+    --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.24);
+    --elevation-2: 0 3px 6px rgba(0, 0, 0, 0.3), 0 3px 6px rgba(0, 0, 0, 0.23);
+    --elevation-3: 0 10px 20px rgba(0, 0, 0, 0.3), 0 6px 6px rgba(0, 0, 0, 0.23);
+    --elevation-4: 0 14px 28px rgba(0, 0, 0, 0.4), 0 10px 10px rgba(0, 0, 0, 0.22);
+    --elevation-5: 0 19px 38px rgba(0, 0, 0, 0.5), 0 15px 12px rgba(0, 0, 0, 0.22);
+}
+
+/* =============================================================================
+   WIZARD OVERLAY - Fixed Z-Index and Layering
+   ============================================================================= */
+
+.wizard-overlay {
+    z-index: var(--z-modal) !important;
+    position: fixed;
+    inset: 0;
+    background: var(--bg-primary);
+    overflow-y: auto;
+}
+
+.wizard-container {
+    position: relative;
+    z-index: calc(var(--z-modal) + 1);
+    margin: var(--space-4) auto;
+}
+
+/* =============================================================================
+   SETTINGS PANEL - Prevent Overlap Issues
+   ============================================================================= */
+
+.settings-panel {
+    z-index: var(--z-modal) !important;
+    position: fixed !important;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.settings-panel:not(.hidden) {
+    pointer-events: all;
+}
+
+.settings-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: var(--z-modal-backdrop);
+}
+
+.settings-container {
+    position: relative;
+    z-index: calc(var(--z-modal) + 10);
+    box-shadow: var(--elevation-5);
+}
+
+/* =============================================================================
+   SANDBOX PANEL - Proper Layering
+   ============================================================================= */
+
+.sandbox-panel {
+    z-index: var(--z-modal) !important;
+    position: fixed !important;
+    inset: 0;
+}
+
+.sandbox-overlay {
+    z-index: var(--z-modal-backdrop);
+}
+
+.sandbox-container {
+    z-index: calc(var(--z-modal) + 10);
+    box-shadow: var(--elevation-5);
+}
+
+.sandbox-window {
+    z-index: calc(var(--z-modal) - 100) !important;
+    box-shadow: var(--elevation-4);
+}
+
+.sandbox-window.active {
+    z-index: calc(var(--z-modal) - 50) !important;
+}
+
+/* =============================================================================
+   PROVIDER CARDS - Enhanced Visual Feedback
+   ============================================================================= */
+
+.provider-card {
+    position: relative;
+    transition: all var(--transition-normal);
+    border: 2px solid transparent;
+    background: var(--bg-card);
+    box-shadow: var(--elevation-1);
+}
+
+.provider-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--elevation-3);
+    border-color: var(--primary-light);
+}
+
+.provider-card.selected {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
+    box-shadow: var(--elevation-3), 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+.provider-card.selected::before {
+    content: '';
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: 24px;
+    height: 24px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.provider-card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: 24px;
+    height: 24px;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+/* =============================================================================
+   CHANNEL SETTINGS - Fix Overlapping Issues
+   ============================================================================= */
+
+.channel-config,
+.cloud-config {
+    margin-top: var(--space-4) !important;
+    margin-bottom: var(--space-4) !important;
+    padding: var(--space-4) !important;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    position: relative;
+    z-index: var(--z-base);
+    clear: both;
+}
+
+.channel-section,
+.cloud-section {
+    margin-bottom: var(--space-6) !important;
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.channel-section:last-child,
+.cloud-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* =============================================================================
+   DANGER ZONE - Enhanced Visual Hierarchy & Separation
+   ============================================================================= */
+
+.danger-zone {
+    margin-top: var(--space-8) !important;
+    padding: var(--space-4) !important;
+    background: rgba(239, 68, 68, 0.1);
+    border: 2px solid var(--danger);
+    border-radius: var(--radius-lg);
+    position: relative;
+    z-index: var(--z-base);
+    clear: both;
+}
+
+.danger-zone h3 {
+    color: var(--danger) !important;
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.danger-zone h3::before {
+    content: '⚠️';
+    font-size: 1.5rem;
+}
+
+.danger-zone p {
+    color: rgba(248, 250, 252, 0.9) !important;
+    margin-bottom: var(--space-4);
+    line-height: 1.6;
+}
+
+/* Separate danger zone buttons with clear visual distance */
+.danger-zone .btn {
+    margin-right: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.danger-zone .btn:last-child {
+    margin-right: 0;
+}
+
+.danger-zone .btn.btn-danger {
+    background: var(--danger);
+    border: 2px solid var(--danger);
+    color: white;
+    font-weight: 600;
+    padding: var(--space-2) var(--space-4);
+    min-width: 180px;
+}
+
+.danger-zone .btn.btn-danger:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    box-shadow: var(--elevation-2);
+}
+
+.danger-zone .btn.btn-secondary {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    min-width: 180px;
+}
+
+/* Add spacing between dangerous actions */
+.danger-zone .btn + .btn {
+    margin-left: var(--space-4);
+}
+
+/* =============================================================================
+   BADGES - Enhanced Clarity & Context
+   ============================================================================= */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.badge.recommended {
+    background: linear-gradient(135deg, var(--success), #059669);
+    color: white;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.badge.always-enabled {
+    background: linear-gradient(135deg, var(--info), #2563eb);
+    color: white;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.badge::before {
+    content: '●';
+    font-size: 0.5rem;
+}
+
+/* =============================================================================
+   LOADING STATES & TRANSITIONS
+   ============================================================================= */
+
+.loading-state {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.loading-state::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    z-index: var(--z-overlay);
+}
+
+.loading-spinner {
+    border: 3px solid rgba(99, 102, 241, 0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =============================================================================
+   MODAL MANAGEMENT - Backdrop & Close Handlers
+   ============================================================================= */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: var(--z-modal-backdrop);
+    animation: fadeIn var(--transition-normal);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    position: relative;
+    z-index: calc(var(--z-modal) + 1);
+    animation: slideUp var(--transition-normal);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================================================
+   RESPONSIVE LAYOUT - Mobile Optimization
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    .provider-cards {
+        grid-template-columns: 1fr !important;
+        gap: var(--space-3);
+    }
+
+    .settings-container,
+    .sandbox-container {
+        width: 95% !important;
+        height: 95% !important;
+        margin: var(--space-2);
+    }
+
+    .danger-zone .btn {
+        width: 100%;
+        margin-left: 0 !important;
+        margin-bottom: var(--space-2);
+    }
+}
+
+/* =============================================================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================================================= */
+
+/* Focus visible styles */
+*:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* High contrast for better readability */
+.text-high-contrast {
+    color: var(--text-primary) !important;
+    font-weight: 500;
+}
+
+/* Skip to main content link */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--primary);
+    color: white;
+    padding: var(--space-2);
+    z-index: var(--z-tooltip);
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* =============================================================================
+   WELCOME SCREEN - Enhanced UX
+   ============================================================================= */
+
+.wizard-header {
+    position: relative;
+    padding: var(--space-6) var(--space-4);
+}
+
+.wizard-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--space-2);
+}
+
+.wizard-header p {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Progress indicators */
+.progress-step.active .step-circle {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+.progress-step.completed .step-circle {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+.progress-step.completed .step-circle::after {
+    content: '✓';
+    position: absolute;
+}
+
+/* =============================================================================
+   TOAST NOTIFICATIONS - Highest Layer
+   ============================================================================= */
+
+.toast-container {
+    position: fixed;
+    top: var(--space-4);
+    right: var(--space-4);
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    min-width: 300px;
+    box-shadow: var(--elevation-4);
+    animation: slideInRight var(--transition-normal);
+    pointer-events: all;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* =============================================================================
+   UTILITY CLASSES
+   ============================================================================= */
+
+.prevent-scroll {
+    overflow: hidden;
+}
+
+.clear-both {
+    clear: both;
+}
+
+.relative {
+    position: relative;
+}
+
+.absolute {
+    position: absolute;
+}
+
+.flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); }
+.mb-8 { margin-bottom: var(--space-8); }
+
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); }
+.mt-8 { margin-top: var(--space-8); }
