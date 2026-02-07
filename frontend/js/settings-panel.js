@@ -25,18 +25,7 @@ const SettingsPanel = {
       'o3-mini',
       'gpt-3.5-turbo'
     ],
-    ollama: [
-      'llama3.2',                     // Latest Llama 3.2
-      'llama3.1',
-      'mistral',
-      'qwen2.5',
-      'deepseek-r1',
-      'codellama',
-      'phi3',
-      'gemma2',
-      'mixtral',
-      'neural-chat'
-    ],
+    ollama: [],  // Populated dynamically from Ollama API
     openrouter: [
       'deepseek/deepseek-r1',         // Latest DeepSeek R1
       'google/gemini-2.0-flash-exp',  // Latest Gemini 2.0
@@ -47,10 +36,171 @@ const SettingsPanel = {
     ],
   },
 
+  modelCache: {},
+  saveDebounceTimer: null,
+  validationStates: {},
+
   init() {
     this.loadCurrentSettings();
     this.createSettingsPanel();
     this.bindEvents();
+    this.fetchDynamicModels();
+  },
+
+  /**
+   * Dynamically fetch available models from Ollama API
+   */
+  async fetchDynamicModels() {
+    try {
+      const endpoint = this.currentSettings?.llm?.endpoint || 'http://localhost:11434';
+      const response = await fetch(`${endpoint}/api/tags`, {
+        signal: AbortSignal.timeout(5000)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.models && Array.isArray(data.models)) {
+          this.availableModels.ollama = data.models.map(m => m.name);
+          this.modelCache.ollama = {
+            models: data.models,
+            timestamp: Date.now()
+          };
+          console.log('[SettingsPanel] Fetched', this.availableModels.ollama.length, 'Ollama models');
+
+          // Update dropdown if Ollama is currently selected
+          const providerSelect = document.getElementById('setting-llm-provider');
+          if (providerSelect && providerSelect.value === 'ollama') {
+            this.updateModelDropdown('ollama');
+          }
+
+          this.showValidationIndicator('ollama-connection', 'success', `Connected - ${data.models.length} models available`);
+        }
+      } else {
+        throw new Error('Ollama not reachable');
+      }
+    } catch (error) {
+      console.warn('[SettingsPanel] Could not fetch Ollama models:', error);
+      // Fallback to default models
+      this.availableModels.ollama = [
+        'llama3.2',
+        'llama3.1',
+        'llama3-70b',
+        'llama3-8b',
+        'mistral',
+        'qwen2.5',
+        'qwen2.5-vl',
+        'deepseek-r1',
+        'deepseek-v3',
+        'codellama',
+        'phi3',
+        'gemma2',
+        'mixtral',
+        'neural-chat',
+        'qwen3-coder-next',
+        'glm-4.7-flash',
+        'kimi-k2.5'
+      ];
+      this.showValidationIndicator('ollama-connection', 'warning', 'Using cached models - Ollama not running');
+    }
+  },
+
+  /**
+   * Show validation indicator with icon and message
+   */
+  showValidationIndicator(id, state, message) {
+    this.validationStates[id] = { state, message, timestamp: Date.now() };
+
+    // Update UI if element exists
+    const indicator = document.getElementById(`validation-${id}`);
+    if (indicator) {
+      indicator.style.display = 'flex';
+      indicator.className = `validation-indicator ${state}`;
+      indicator.innerHTML = `
+        <i class="fas fa-${state === 'success' ? 'check-circle' : state === 'error' ? 'times-circle' : 'exclamation-triangle'}"></i>
+        <span>${message}</span>
+      `;
+    }
+  },
+
+  /**
+   * Check model availability for current provider
+   */
+  async checkModelAvailability(provider, model) {
+    const badge = document.getElementById('model-availability-badge');
+    if (!badge) return;
+
+    badge.style.display = 'inline-flex';
+    badge.className = 'model-availability checking';
+    badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+
+    try {
+      // For Ollama, check against fetched models
+      if (provider === 'ollama') {
+        const isAvailable = this.availableModels.ollama.includes(model);
+        badge.className = `model-availability ${isAvailable ? 'available' : 'unavailable'}`;
+        badge.innerHTML = `<i class="fas fa-${isAvailable ? 'check' : 'times'}"></i> ${isAvailable ? 'Available' : 'Not Installed'}`;
+
+        if (!isAvailable) {
+          this.showValidationIndicator('model-availability', 'warning',
+            `Model "${model}" not found. Install it with: ollama pull ${model}`);
+        } else {
+          const validationDiv = document.getElementById('validation-model-availability');
+          if (validationDiv) validationDiv.style.display = 'none';
+        }
+      } else {
+        // For cloud providers, assume available
+        badge.className = 'model-availability available';
+        badge.innerHTML = '<i class="fas fa-check"></i> Available';
+        const validationDiv = document.getElementById('validation-model-availability');
+        if (validationDiv) validationDiv.style.display = 'none';
+      }
+    } catch (error) {
+      badge.className = 'model-availability unavailable';
+      badge.innerHTML = '<i class="fas fa-times"></i> Unknown';
+    }
+  },
+
+  /**
+   * Validate API key format and optionally test connection
+   */
+  async validateApiKey(provider, apiKey) {
+    if (!apiKey || apiKey.trim() === '') {
+      this.showValidationIndicator('api-key', 'warning', 'API key is required for this provider');
+      return false;
+    }
+
+    // Basic format validation
+    const validationRules = {
+      anthropic: /^sk-ant-[a-zA-Z0-9\-_]{40,}$/,
+      openai: /^sk-[a-zA-Z0-9]{48,}$/,
+      openrouter: /^sk-or-v1-[a-zA-Z0-9]{64,}$/
+    };
+
+    const pattern = validationRules[provider];
+    if (pattern && !pattern.test(apiKey)) {
+      this.showValidationIndicator('api-key', 'warning', 'API key format looks incorrect');
+      return false;
+    }
+
+    this.showValidationIndicator('api-key', 'success', 'API key format is valid');
+    return true;
+  },
+
+  /**
+   * Auto-save settings with debounce
+   */
+  autoSaveSettings() {
+    clearTimeout(this.saveDebounceTimer);
+
+    const saveIndicator = document.getElementById('auto-save-indicator');
+    if (saveIndicator) {
+      saveIndicator.textContent = 'Saving...';
+      saveIndicator.className = 'auto-save-indicator saving';
+    }
+
+    this.saveDebounceTimer = setTimeout(() => {
+      this.saveSettings(true); // true = silent auto-save
+    }, 1000);
   },
 
   async loadCurrentSettings() {
@@ -112,7 +262,10 @@ const SettingsPanel = {
         <div class="settings-overlay" id="settings-overlay"></div>
         <div class="settings-container">
           <div class="settings-header">
-            <h2><i class="fas fa-cog"></i> Settings & Configuration</h2>
+            <h2>
+              <i class="fas fa-cog"></i> Settings & Configuration
+              <span id="auto-save-indicator" class="auto-save-indicator"></span>
+            </h2>
             <button class="settings-close" id="settings-close">
               <i class="fas fa-times"></i>
             </button>
@@ -158,15 +311,19 @@ const SettingsPanel = {
                       <option value="openrouter">OpenRouter</option>
                     </select>
                   </label>
+                  <div id="validation-provider-selection" class="validation-indicator" style="display: none;"></div>
                 </div>
 
                 <div class="setting-group">
                   <label class="setting-label">
-                    <span>Model</span>
+                    <span>Model <span class="model-availability checking" id="model-availability-badge" style="display: none;">
+                      <i class="fas fa-spinner fa-spin"></i> Checking...
+                    </span></span>
                     <select id="setting-llm-model" class="setting-select">
                       <!-- Populated dynamically -->
                     </select>
                   </label>
+                  <div id="validation-model-availability" class="validation-indicator" style="display: none;"></div>
                 </div>
 
                 <div class="setting-group" id="api-key-group">
@@ -175,6 +332,7 @@ const SettingsPanel = {
                     <input type="password" id="setting-api-key" class="setting-input" placeholder="Enter your API key">
                     <small>Your API key is stored locally and encrypted</small>
                   </label>
+                  <div id="validation-api-key" class="validation-indicator" style="display: none;"></div>
                 </div>
 
                 <div class="setting-group" id="endpoint-group">
@@ -183,6 +341,7 @@ const SettingsPanel = {
                     <input type="text" id="setting-endpoint" class="setting-input" placeholder="http://localhost:11434">
                     <small>For Ollama or custom endpoints</small>
                   </label>
+                  <div id="validation-ollama-connection" class="validation-indicator" style="display: none;"></div>
                 </div>
 
                 <div class="setting-group">
@@ -466,15 +625,53 @@ const SettingsPanel = {
 
   populateModelOptions() {
     const provider = document.getElementById('setting-llm-provider').value;
+    this.updateModelDropdown(provider);
+  },
+
+  /**
+   * Update model dropdown with available models for the provider
+   */
+  updateModelDropdown(provider) {
     const modelSelect = document.getElementById('setting-llm-model');
+    if (!modelSelect) return;
 
     modelSelect.innerHTML = '';
-    this.availableModels[provider].forEach(model => {
+
+    const models = this.availableModels[provider] || [];
+
+    if (models.length === 0) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = provider === 'ollama' ? 'Loading models...' : 'No models available';
+      option.disabled = true;
+      modelSelect.appendChild(option);
+      return;
+    }
+
+    models.forEach((model, index) => {
       const option = document.createElement('option');
       option.value = model;
-      option.textContent = model;
+
+      // Format display name
+      let displayName = model;
+      if (provider === 'openrouter' && model.includes('/')) {
+        displayName = model.split('/')[1]; // Show just the model name
+      }
+
+      option.textContent = displayName;
+
+      // Add recommended badge to first model
+      if (index === 0) {
+        option.textContent += ' (Recommended)';
+      }
+
       modelSelect.appendChild(option);
     });
+
+    // Check availability of currently selected model
+    if (modelSelect.value) {
+      this.checkModelAvailability(provider, modelSelect.value);
+    }
   },
 
   loadSettingsValues() {
@@ -540,13 +737,45 @@ const SettingsPanel = {
 
     // Provider change
     document.getElementById('setting-llm-provider')?.addEventListener('change', (e) => {
+      const provider = e.target.value;
       this.populateModelOptions();
-      this.updateProviderFields(e.target.value);
+      this.updateProviderFields(provider);
+      this.showValidationIndicator('provider-selection', 'success', `Switched to ${provider}`);
+
+      // Check model availability for new provider
+      setTimeout(() => {
+        const model = document.getElementById('setting-llm-model').value;
+        if (model) {
+          this.checkModelAvailability(provider, model);
+        }
+      }, 100);
+
+      // Re-fetch Ollama models if switching to Ollama
+      if (provider === 'ollama') {
+        this.fetchDynamicModels();
+      }
+    });
+
+    // Model change - check availability
+    document.getElementById('setting-llm-model')?.addEventListener('change', (e) => {
+      const provider = document.getElementById('setting-llm-provider').value;
+      const model = e.target.value;
+      this.checkModelAvailability(provider, model);
+    });
+
+    // API key validation on blur
+    document.getElementById('setting-api-key')?.addEventListener('blur', (e) => {
+      const provider = document.getElementById('setting-llm-provider').value;
+      const apiKey = e.target.value;
+      if (provider !== 'ollama' && apiKey) {
+        this.validateApiKey(provider, apiKey);
+      }
     });
 
     // Temperature slider
     document.getElementById('setting-temperature')?.addEventListener('input', (e) => {
       document.getElementById('temperature-value').textContent = e.target.value;
+      this.autoSaveSettings();
     });
 
     // Test connection
@@ -554,7 +783,51 @@ const SettingsPanel = {
       this.testModelConnection();
     });
 
-    // Save settings
+    // Auto-save on input changes
+    const autoSaveInputs = [
+      'setting-llm-provider',
+      'setting-llm-model',
+      'setting-endpoint',
+      'setting-max-tokens',
+      'setting-max-rpm',
+      'setting-cache-ttl',
+      'setting-max-concurrent',
+      'setting-refresh-interval',
+      'setting-theme'
+    ];
+
+    autoSaveInputs.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.addEventListener('change', () => this.autoSaveSettings());
+      }
+    });
+
+    // Auto-save on checkbox changes
+    const autoSaveCheckboxes = [
+      'setting-require-approval',
+      'setting-prompt-injection',
+      'setting-rate-limiting',
+      'setting-shadow-execution',
+      'setting-blast-radius',
+      'setting-confidence-scoring',
+      'setting-policy-engine',
+      'setting-audit-logging',
+      'setting-identity-mgmt',
+      'setting-cache-enabled',
+      'setting-parallel-execution',
+      'setting-auto-refresh',
+      'setting-notifications'
+    ];
+
+    autoSaveCheckboxes.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.addEventListener('change', () => this.autoSaveSettings());
+      }
+    });
+
+    // Save settings (manual)
     document.getElementById('settings-save')?.addEventListener('click', () => {
       this.saveSettings();
     });
@@ -629,7 +902,7 @@ const SettingsPanel = {
     }
   },
 
-  async saveSettings() {
+  async saveSettings(silent = false) {
     const settings = {
       llm: {
         provider: document.getElementById('setting-llm-provider').value,
@@ -677,19 +950,84 @@ const SettingsPanel = {
       if (response.ok) {
         this.currentSettings = settings;
         this.applySettings();
-        alert('✅ Settings saved successfully!');
-        this.close();
+
+        if (!silent) {
+          this.showToast('Settings saved successfully!', 'success');
+          this.close();
+        } else {
+          this.updateAutoSaveIndicator('saved');
+        }
       } else {
-        alert('❌ Failed to save settings');
+        if (!silent) {
+          this.showToast('Failed to save settings', 'error');
+        } else {
+          this.updateAutoSaveIndicator('error');
+        }
       }
     } catch (error) {
       // Save to localStorage as fallback
       localStorage.setItem('aegis-settings', JSON.stringify(settings));
       this.currentSettings = settings;
       this.applySettings();
-      alert('✅ Settings saved locally!');
-      this.close();
+
+      if (!silent) {
+        this.showToast('Settings saved locally!', 'success');
+        this.close();
+      } else {
+        this.updateAutoSaveIndicator('saved');
+      }
     }
+  },
+
+  /**
+   * Update auto-save indicator
+   */
+  updateAutoSaveIndicator(state) {
+    const indicator = document.getElementById('auto-save-indicator');
+    if (!indicator) return;
+
+    switch (state) {
+      case 'saving':
+        indicator.textContent = 'Saving...';
+        indicator.className = 'auto-save-indicator saving';
+        break;
+      case 'saved':
+        indicator.textContent = 'Saved ✓';
+        indicator.className = 'auto-save-indicator saved';
+        setTimeout(() => {
+          indicator.textContent = '';
+          indicator.className = 'auto-save-indicator';
+        }, 2000);
+        break;
+      case 'error':
+        indicator.textContent = 'Save failed';
+        indicator.className = 'auto-save-indicator error';
+        setTimeout(() => {
+          indicator.textContent = '';
+          indicator.className = 'auto-save-indicator';
+        }, 3000);
+        break;
+    }
+  },
+
+  /**
+   * Show toast notification
+   */
+  showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container') || document.body;
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i>
+      <span>${message}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   },
 
   applySettings() {
