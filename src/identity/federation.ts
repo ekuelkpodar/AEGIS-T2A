@@ -154,7 +154,7 @@ export class TrustDomainFederationManager {
     const federatedDomain = this.federatedDomains.get(trustDomain);
     if (!federatedDomain) {
       logger.warn('Identity from non-federated trust domain', {
-        spiffeId: spiffeId.fullId,
+        spiffeId: spiffeId.toString(),
         trustDomain,
       });
       return {
@@ -167,12 +167,12 @@ export class TrustDomainFederationManager {
     const relationship = this.relationships.get(trustDomain);
     if (relationship?.allowedSPIFFEPatterns) {
       const allowed = relationship.allowedSPIFFEPatterns.some(pattern =>
-        this.matchesPattern(spiffeId.fullId, pattern)
+        this.matchesPattern(spiffeId.toString(), pattern)
       );
 
       if (!allowed) {
         logger.warn('SPIFFE ID not in allowed patterns', {
-          spiffeId: spiffeId.fullId,
+          spiffeId: spiffeId.toString(),
           allowedPatterns: relationship.allowedSPIFFEPatterns,
         });
         return {
@@ -187,7 +187,7 @@ export class TrustDomainFederationManager {
 
     if (result.valid) {
       logger.info('Federated identity verified', {
-        spiffeId: spiffeId.fullId,
+        spiffeId: spiffeId.toString(),
         trustDomain,
       });
     }

@@ -109,13 +109,16 @@ Complete SPIFFE/SPIRE-based workload identity with zero-trust principles:
 
 | Component | Description | Status |
 |-----------|-------------|--------|
+| **SPIFFE Identity** | Cryptographic IDs for every agent: `spiffe://aegis-t2a.local/ns/{ns}/agent/{type}/{id}` | ✅ Implemented |
 | **SPIRE Agent Integration** | X.509-SVID and JWT-SVID issuance with automatic rotation | ✅ Implemented |
 | **Workload Attestation** | Docker, Kubernetes, Unix process identity verification | ✅ Implemented |
 | **Node Attestation** | AWS, Azure, GCP cloud provider verification | ✅ Implemented |
-| **Workload IAM** | Context-aware access policies (time, location, risk) | ✅ Implemented |
-| **Scope Authorization** | Hierarchical permission model with delegation | ✅ Implemented |
+| **Workload IAM** | Aembit-style context-aware access (identity + context + sensitivity) | ✅ Implemented |
+| **Hierarchical Scopes** | OpenClaw.ai-style: read → write → execute → admin | ✅ Implemented |
 | **Trust Federation** | Multi-org identity verification across trust domains | ✅ Implemented |
-| **NHI Lifecycle** | Automated rotation, expiration alerts, full lifecycle management | ✅ Implemented |
+| **NHI Lifecycle** | Provision → Rotate → Suspend → Revoke → Decommission | ✅ Implemented |
+| **Agent Genealogy** | Parent-child spawn tracking for incident response | ✅ Implemented |
+| **Identity Compliance** | Automated SOC 2 CC6.1/CC6.6/CC6.7/CC6.8 reporting | ✅ Implemented |
 
 ### **TIER 2: LLM Security & Control Plane** ✅
 

@@ -1,34 +1,44 @@
 /**
- * Aembit-style Workload IAM Layer
+ * Workload IAM - Context-Aware Access Control
  *
- * Enforces access policies based on agent identity, context (time, location, risk score),
- * and target resource sensitivity. Acts as a policy decision point between agent identity
- * and action execution.
+ * Implements Aembit-style workload IAM: policy decisions based on
+ * identity + context + resource sensitivity.
  *
- * Reference: aembit.io architecture, Workload IAM patterns
+ * Evaluation considers:
+ * - SPIFFE ID (who)
+ * - Scopes (permissions)
+ * - Context (time, location, risk score, blast radius)
+ * - Resource sensitivity (classification level)
+ * - Environmental factors (production vs dev)
+ *
+ * References:
+ * - Aembit.io Workload IAM
+ * - arxiv:2504.14760 (NHI Management)
+ * - NIST ABAC (Attribute-Based Access Control)
  */
 
+import { SPIFFEId } from './spiffe.js';
+import { ScopeLevel, getScopeManager } from './scopes.js';
 import { logger } from '../core/logger.js';
-import type { SPIFFEId } from './spiffe.js';
 
+/**
+ * Access context for policy evaluation
+ */
 export interface AccessContext {
-  requestTime: Date;
-  sourceIp?: string;
-  geoLocation?: string;
+  time: Date;
+  location?: string; // e.g., "us-east-1", "on-premises"
+  environment: 'production' | 'staging' | 'development' | 'test';
   riskScore?: number; // 0-100
-  sessionId?: string;
-  parentWorkflowId?: string;
+  blastRadius?: number; // 0-100
+  sourceIp?: string;
   userAgent?: string;
+  sessionId?: string;
+  metadata?: Record<string, unknown>;
 }
 
-export interface ResourceTarget {
-  resourceId: string;
-  resourceType: string; // e.g., "database", "api", "tool", "secret"
-  sensitivity: ResourceSensitivity;
-  owner?: string;
-  tags?: Record<string, string>;
-}
-
+/**
+ * Resource sensitivity classification
+ */
 export enum ResourceSensitivity {
   PUBLIC = 'public',
   INTERNAL = 'internal',
@@ -36,414 +46,420 @@ export enum ResourceSensitivity {
   RESTRICTED = 'restricted',
 }
 
-export interface AccessPolicy {
-  id: string;
-  name: string;
-  description?: string;
-  priority: number; // Higher priority = evaluated first
-
-  // Who can access
-  allowedSpiffePatterns: string[]; // e.g., ["spiffe://aegis-t2a.local/ns/production/agent/*"]
-  deniedSpiffePatterns?: string[];
-
-  // What they can access
-  resourceTypes?: string[]; // If not specified, applies to all types
-  resourceSensitivity?: ResourceSensitivity[];
-  resourceTags?: Record<string, string>; // Must match all tags
-
-  // Contextual conditions
-  allowedTimeRanges?: TimeRange[];
-  allowedGeoLocations?: string[];
-  maxRiskScore?: number;
-  requireMFA?: boolean;
-
-  // Actions
-  action: PolicyAction;
-  conditions?: Record<string, unknown>;
-
-  // Metadata
-  createdAt: Date;
-  updatedAt?: Date;
-  createdBy: string;
-  enabled: boolean;
+/**
+ * Resource metadata for policy evaluation
+ */
+export interface ResourceMetadata {
+  resourceId: string;
+  resourceType: string; // e.g., "truck", "load", "driver", "payment"
+  sensitivity: ResourceSensitivity;
+  owner?: string;
+  tags?: Record<string, string>;
+  complianceFlags?: string[]; // e.g., ["PCI", "PII", "PHI"]
 }
 
-export interface TimeRange {
-  start: string; // HH:MM format
-  end: string;
-  daysOfWeek?: number[]; // 0 = Sunday, 6 = Saturday
-  timezone?: string;
-}
-
-export enum PolicyAction {
+/**
+ * Access decision
+ */
+export enum AccessDecision {
   ALLOW = 'allow',
   DENY = 'deny',
   REQUIRE_APPROVAL = 'require_approval',
   REQUIRE_MFA = 'require_mfa',
-  STEP_UP_AUTH = 'step_up_auth',
 }
 
-export interface AccessDecision {
-  allowed: boolean;
-  action: PolicyAction;
-  matchedPolicies: string[]; // Policy IDs
+/**
+ * Access evaluation result
+ */
+export interface AccessEvaluationResult {
+  decision: AccessDecision;
+  reason: string;
+  matchedPolicies: string[];
+  metadata?: {
+    scopeCheck?: boolean;
+    contextCheck?: boolean;
+    sensitivityCheck?: boolean;
+    riskThreshold?: number;
+  };
+}
+
+/**
+ * IAM Policy rule
+ */
+export interface IAMPolicyRule {
+  ruleId: string;
+  name: string;
+  priority: number; // Lower = higher priority
+  enabled: boolean;
+  
+  // Conditions
+  conditions: {
+    identityPatterns?: string[]; // SPIFFE ID patterns
+    requiredScope?: { resource: string; level: ScopeLevel };
+    
+    // Context constraints
+    allowedEnvironments?: Array<'production' | 'staging' | 'development' | 'test'>;
+    maxRiskScore?: number;
+    maxBlastRadius?: number;
+    businessHoursOnly?: boolean;
+    allowedLocations?: string[];
+    
+    // Resource constraints
+    minSensitivity?: ResourceSensitivity;
+    maxSensitivity?: ResourceSensitivity;
+    requiredTags?: Record<string, string>;
+    forbiddenTags?: Record<string, string>;
+  };
+  
+  // Action
+  decision: AccessDecision;
   reason?: string;
-  requiredApprovals?: string[]; // Approver IDs/roles
-  additionalContext?: Record<string, unknown>;
 }
 
+/**
+ * Workload IAM Engine
+ */
 export class WorkloadIAM {
-  private policies: Map<string, AccessPolicy>;
-
-  constructor() {
-    this.policies = new Map();
-  }
+  private policies: IAMPolicyRule[] = [];
 
   /**
-   * Add or update an access policy
+   * Register an IAM policy rule
    */
-  addPolicy(policy: AccessPolicy): void {
-    this.policies.set(policy.id, policy);
-
-    logger.info('Access policy added', {
-      policyId: policy.id,
+  registerPolicy(policy: IAMPolicyRule): void {
+    this.policies.push(policy);
+    this.policies.sort((a, b) => a.priority - b.priority);
+    
+    logger.info('Registered IAM policy', {
+      ruleId: policy.ruleId,
       name: policy.name,
       priority: policy.priority,
-      action: policy.action,
     });
   }
 
   /**
-   * Remove an access policy
+   * Remove a policy
    */
-  removePolicy(policyId: string): boolean {
-    const removed = this.policies.delete(policyId);
-
-    if (removed) {
-      logger.info('Access policy removed', { policyId });
+  removePolicy(ruleId: string): boolean {
+    const index = this.policies.findIndex(p => p.ruleId === ruleId);
+    if (index !== -1) {
+      this.policies.splice(index, 1);
+      logger.info('Removed IAM policy', { ruleId });
+      return true;
     }
-
-    return removed;
+    return false;
   }
 
   /**
-   * Evaluate access request against all applicable policies
-   *
-   * Returns the decision from the highest-priority matching policy.
+   * Evaluate access request
    */
-  async evaluateAccess(
-    agentSpiffeId: SPIFFEId,
-    resource: ResourceTarget,
-    context: AccessContext,
-    requiredAction: string = 'access'
-  ): Promise<AccessDecision> {
-    logger.debug('Evaluating workload access', {
-      agentSpiffeId: agentSpiffeId.fullId,
-      resourceId: resource.resourceId,
-      resourceType: resource.resourceType,
-      sensitivity: resource.sensitivity,
-      context,
-    });
-
-    // Get all enabled policies, sorted by priority
-    const enabledPolicies = Array.from(this.policies.values())
-      .filter(p => p.enabled)
-      .sort((a, b) => b.priority - a.priority);
-
-    const matchedPolicies: string[] = [];
-    let finalDecision: AccessDecision = {
-      allowed: false,
-      action: PolicyAction.DENY,
-      matchedPolicies: [],
-      reason: 'No matching policy - default deny',
-    };
-
-    // Evaluate policies in priority order
-    for (const policy of enabledPolicies) {
-      const matches = await this.policyMatches(
-        policy,
-        agentSpiffeId,
-        resource,
-        context
-      );
-
-      if (matches) {
-        matchedPolicies.push(policy.id);
-
-        // First matching policy determines the decision
-        if (finalDecision.matchedPolicies.length === 0) {
-          finalDecision = {
-            allowed: policy.action === PolicyAction.ALLOW,
-            action: policy.action,
-            matchedPolicies: [policy.id],
-            reason: policy.description || `Matched policy: ${policy.name}`,
-          };
-
-          // If it's a hard deny, stop processing
-          if (policy.action === PolicyAction.DENY) {
-            logger.warn('Access denied by policy', {
-              agentSpiffeId: agentSpiffeId.fullId,
-              resourceId: resource.resourceId,
-              policyId: policy.id,
-              policyName: policy.name,
-            });
-            break;
-          }
-        }
-      }
-    }
-
-    // Log final decision
-    if (finalDecision.allowed) {
-      logger.info('Access granted', {
-        agentSpiffeId: agentSpiffeId.fullId,
-        resourceId: resource.resourceId,
-        matchedPolicies,
-        action: finalDecision.action,
-      });
-    } else {
-      logger.warn('Access denied', {
-        agentSpiffeId: agentSpiffeId.fullId,
-        resourceId: resource.resourceId,
-        matchedPolicies,
-        reason: finalDecision.reason,
-      });
-    }
-
-    finalDecision.matchedPolicies = matchedPolicies;
-    return finalDecision;
-  }
-
-  /**
-   * Check if a policy matches the access request
-   */
-  private async policyMatches(
-    policy: AccessPolicy,
-    agentSpiffeId: SPIFFEId,
-    resource: ResourceTarget,
+  evaluate(
+    spiffeId: SPIFFEId,
+    resource: ResourceMetadata,
+    action: ScopeLevel,
     context: AccessContext
-  ): Promise<boolean> {
-    // Check SPIFFE ID patterns
-    if (policy.deniedSpiffePatterns) {
-      for (const pattern of policy.deniedSpiffePatterns) {
-        if (this.matchesPattern(agentSpiffeId.fullId, pattern)) {
-          return false; // Explicit deny
+  ): AccessEvaluationResult {
+    logger.debug('Evaluating IAM policy', {
+      spiffeId: spiffeId.toString(),
+      resource: resource.resourceId,
+      action,
+      environment: context.environment,
+    });
+
+    // 1. Check scope first (fast fail)
+    const scopeCheck = getScopeManager().evaluate(spiffeId, resource.resourceType, action);
+    if (!scopeCheck.allowed) {
+      return {
+        decision: AccessDecision.DENY,
+        reason: `Scope check failed: ${scopeCheck.reason}`,
+        matchedPolicies: [],
+        metadata: { scopeCheck: false },
+      };
+    }
+
+    // 2. Evaluate policies in priority order
+    const matchedPolicies: string[] = [];
+    
+    for (const policy of this.policies) {
+      if (!policy.enabled) {
+        continue;
+      }
+
+      if (this.policyMatches(policy, spiffeId, resource, action, context)) {
+        matchedPolicies.push(policy.ruleId);
+        
+        // First matching policy wins
+        return {
+          decision: policy.decision,
+          reason: policy.reason || `Matched policy: ${policy.name}`,
+          matchedPolicies,
+          metadata: {
+            scopeCheck: true,
+            contextCheck: true,
+            sensitivityCheck: true,
+          },
+        };
+      }
+    }
+
+    // 3. Default: allow if scopes passed and no policy matched
+    return {
+      decision: AccessDecision.ALLOW,
+      reason: 'No restrictive policies matched',
+      matchedPolicies,
+      metadata: {
+        scopeCheck: true,
+        contextCheck: true,
+        sensitivityCheck: true,
+      },
+    };
+  }
+
+  /**
+   * Check if policy matches the request
+   */
+  private policyMatches(
+    policy: IAMPolicyRule,
+    spiffeId: SPIFFEId,
+    resource: ResourceMetadata,
+    action: ScopeLevel,
+    context: AccessContext
+  ): boolean {
+    const conds = policy.conditions;
+
+    // Identity pattern match
+    if (conds.identityPatterns) {
+      const matches = conds.identityPatterns.some(pattern =>
+        spiffeId.toString().match(pattern)
+      );
+      if (!matches) {
+        return false;
+      }
+    }
+
+    // Scope requirement
+    if (conds.requiredScope) {
+      const scopeCheck = getScopeManager().evaluate(
+        spiffeId,
+        conds.requiredScope.resource,
+        conds.requiredScope.level
+      );
+      if (!scopeCheck.allowed) {
+        return false;
+      }
+    }
+
+    // Environment check
+    if (conds.allowedEnvironments) {
+      if (!conds.allowedEnvironments.includes(context.environment)) {
+        return false;
+      }
+    }
+
+    // Risk score check
+    if (conds.maxRiskScore !== undefined && context.riskScore !== undefined) {
+      if (context.riskScore > conds.maxRiskScore) {
+        return false;
+      }
+    }
+
+    // Blast radius check
+    if (conds.maxBlastRadius !== undefined && context.blastRadius !== undefined) {
+      if (context.blastRadius > conds.maxBlastRadius) {
+        return false;
+      }
+    }
+
+    // Business hours check
+    if (conds.businessHoursOnly) {
+      const hour = context.time.getHours();
+      const day = context.time.getDay();
+      // Mon-Fri, 9 AM - 5 PM
+      if (day === 0 || day === 6 || hour < 9 || hour >= 17) {
+        return false;
+      }
+    }
+
+    // Location check
+    if (conds.allowedLocations && context.location) {
+      if (!conds.allowedLocations.includes(context.location)) {
+        return false;
+      }
+    }
+
+    // Resource sensitivity
+    if (conds.minSensitivity) {
+      if (!this.meetsMinSensitivity(resource.sensitivity, conds.minSensitivity)) {
+        return false;
+      }
+    }
+    if (conds.maxSensitivity) {
+      if (!this.meetsMaxSensitivity(resource.sensitivity, conds.maxSensitivity)) {
+        return false;
+      }
+    }
+
+    // Tag checks
+    if (conds.requiredTags) {
+      for (const [key, value] of Object.entries(conds.requiredTags)) {
+        if (resource.tags?.[key] !== value) {
+          return false;
         }
       }
     }
-
-    let matchesAllowed = false;
-    for (const pattern of policy.allowedSpiffePatterns) {
-      if (this.matchesPattern(agentSpiffeId.fullId, pattern)) {
-        matchesAllowed = true;
-        break;
-      }
-    }
-    if (!matchesAllowed) return false;
-
-    // Check resource type
-    if (policy.resourceTypes && !policy.resourceTypes.includes(resource.resourceType)) {
-      return false;
-    }
-
-    // Check resource sensitivity
-    if (policy.resourceSensitivity && !policy.resourceSensitivity.includes(resource.sensitivity)) {
-      return false;
-    }
-
-    // Check resource tags
-    if (policy.resourceTags && resource.tags) {
-      for (const [key, value] of Object.entries(policy.resourceTags)) {
-        if (resource.tags[key] !== value) {
+    if (conds.forbiddenTags) {
+      for (const [key, value] of Object.entries(conds.forbiddenTags)) {
+        if (resource.tags?.[key] === value) {
           return false;
         }
       }
     }
 
-    // Check time ranges
-    if (policy.allowedTimeRanges) {
-      if (!this.isInAllowedTimeRange(context.requestTime, policy.allowedTimeRanges)) {
-        return false;
-      }
-    }
-
-    // Check geo location
-    if (policy.allowedGeoLocations && context.geoLocation) {
-      if (!policy.allowedGeoLocations.includes(context.geoLocation)) {
-        return false;
-      }
-    }
-
-    // Check risk score
-    if (policy.maxRiskScore !== undefined && context.riskScore !== undefined) {
-      if (context.riskScore > policy.maxRiskScore) {
-        return false;
-      }
-    }
-
-    // All conditions matched
     return true;
   }
 
-  /**
-   * Check if a SPIFFE ID matches a pattern (supports wildcards)
-   */
-  private matchesPattern(spiffeId: string, pattern: string): boolean {
-    // Convert pattern to regex
-    const regexPattern = pattern
-      .replace(/\./g, '\\.')
-      .replace(/\*/g, '.*')
-      .replace(/\?/g, '.');
+  private meetsMinSensitivity(actual: ResourceSensitivity, min: ResourceSensitivity): boolean {
+    const levels = [
+      ResourceSensitivity.PUBLIC,
+      ResourceSensitivity.INTERNAL,
+      ResourceSensitivity.CONFIDENTIAL,
+      ResourceSensitivity.RESTRICTED,
+    ];
+    return levels.indexOf(actual) >= levels.indexOf(min);
+  }
 
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(spiffeId);
+  private meetsMaxSensitivity(actual: ResourceSensitivity, max: ResourceSensitivity): boolean {
+    const levels = [
+      ResourceSensitivity.PUBLIC,
+      ResourceSensitivity.INTERNAL,
+      ResourceSensitivity.CONFIDENTIAL,
+      ResourceSensitivity.RESTRICTED,
+    ];
+    return levels.indexOf(actual) <= levels.indexOf(max);
   }
 
   /**
-   * Check if current time is within allowed time ranges
+   * Get all registered policies
    */
-  private isInAllowedTimeRange(requestTime: Date, timeRanges: TimeRange[]): boolean {
-    for (const range of timeRanges) {
-      const dayOfWeek = requestTime.getDay();
-
-      // Check day of week if specified
-      if (range.daysOfWeek && !range.daysOfWeek.includes(dayOfWeek)) {
-        continue;
-      }
-
-      // Check time of day
-      const currentTime = requestTime.toTimeString().slice(0, 5); // HH:MM
-      if (currentTime >= range.start && currentTime <= range.end) {
-        return true;
-      }
-    }
-
-    return false;
+  getPolicies(): IAMPolicyRule[] {
+    return [...this.policies];
   }
 
   /**
-   * Get all policies
-   */
-  getPolicies(): AccessPolicy[] {
-    return Array.from(this.policies.values());
-  }
-
-  /**
-   * Get policies applicable to a specific agent
-   */
-  getPoliciesForAgent(agentSpiffeId: string): AccessPolicy[] {
-    return this.getPolicies().filter(policy => {
-      for (const pattern of policy.allowedSpiffePatterns) {
-        if (this.matchesPattern(agentSpiffeId, pattern)) {
-          return true;
-        }
-      }
-      return false;
-    });
-  }
-
-  /**
-   * Get compliance report
+   * Get compliance report for SOC 2 / audit purposes
    */
   getComplianceReport(): {
     totalPolicies: number;
     enabledPolicies: number;
-    policiesByAction: Record<string, number>;
-    policiesByResourceType: Record<string, number>;
-    timestamp: string;
+    disabledPolicies: number;
+    policiesByDecision: Record<AccessDecision, number>;
   } {
-    const policies = this.getPolicies();
-    const enabled = policies.filter(p => p.enabled);
+    let enabledPolicies = 0;
+    let disabledPolicies = 0;
+    const policiesByDecision: Record<AccessDecision, number> = {
+      [AccessDecision.ALLOW]: 0,
+      [AccessDecision.DENY]: 0,
+      [AccessDecision.REQUIRE_APPROVAL]: 0,
+      [AccessDecision.REQUIRE_MFA]: 0,
+    };
 
-    const byAction: Record<string, number> = {};
-    const byResourceType: Record<string, number> = {};
-
-    policies.forEach(p => {
-      byAction[p.action] = (byAction[p.action] || 0) + 1;
-
-      if (p.resourceTypes) {
-        p.resourceTypes.forEach(type => {
-          byResourceType[type] = (byResourceType[type] || 0) + 1;
-        });
+    for (const policy of this.policies) {
+      if (policy.enabled) {
+        enabledPolicies++;
+      } else {
+        disabledPolicies++;
       }
-    });
+
+      policiesByDecision[policy.decision]++;
+    }
 
     return {
-      totalPolicies: policies.length,
-      enabledPolicies: enabled.length,
-      policiesByAction: byAction,
-      policiesByResourceType: byResourceType,
-      timestamp: new Date().toISOString(),
+      totalPolicies: this.policies.length,
+      enabledPolicies,
+      disabledPolicies,
+      policiesByDecision,
     };
   }
 }
 
-// Singleton instance
+/**
+ * Singleton instance
+ */
 let workloadIAM: WorkloadIAM;
 
 export function getWorkloadIAM(): WorkloadIAM {
   if (!workloadIAM) {
     workloadIAM = new WorkloadIAM();
+    
+    // Register default policies
+    registerDefaultPolicies(workloadIAM);
   }
   return workloadIAM;
 }
 
 /**
- * Initialize default policies for AEGIS-T2A
+ * Initialize default IAM policies (exported function)
  */
 export function initializeDefaultPolicies(iam: WorkloadIAM): void {
-  // Policy 1: Allow read-only access to public resources
-  iam.addPolicy({
-    id: 'default-public-read',
-    name: 'Public Resource Read Access',
-    description: 'Allow all agents to read public resources',
+  registerDefaultPolicies(iam);
+}
+
+/**
+ * Register default IAM policies
+ */
+function registerDefaultPolicies(iam: WorkloadIAM): void {
+  // Policy 1: Deny high-risk operations in production
+  iam.registerPolicy({
+    ruleId: 'deny-high-risk-prod',
+    name: 'Deny High Risk in Production',
     priority: 100,
-    allowedSpiffePatterns: ['spiffe://aegis-t2a.local/ns/*/agent/*'],
-    resourceSensitivity: [ResourceSensitivity.PUBLIC],
-    action: PolicyAction.ALLOW,
-    createdAt: new Date(),
-    createdBy: 'system',
     enabled: true,
+    conditions: {
+      allowedEnvironments: ['production'],
+      maxRiskScore: 70,
+    },
+    decision: AccessDecision.DENY,
+    reason: 'Risk score too high for production',
   });
 
   // Policy 2: Require approval for restricted resources
-  iam.addPolicy({
-    id: 'restricted-require-approval',
-    name: 'Restricted Resource Approval',
-    description: 'Require human approval for accessing restricted resources',
+  iam.registerPolicy({
+    ruleId: 'approval-restricted',
+    name: 'Require Approval for Restricted Resources',
     priority: 200,
-    allowedSpiffePatterns: ['spiffe://aegis-t2a.local/ns/*/agent/*'],
-    resourceSensitivity: [ResourceSensitivity.RESTRICTED],
-    action: PolicyAction.REQUIRE_APPROVAL,
-    createdAt: new Date(),
-    createdBy: 'system',
     enabled: true,
+    conditions: {
+      minSensitivity: ResourceSensitivity.RESTRICTED,
+    },
+    decision: AccessDecision.REQUIRE_APPROVAL,
+    reason: 'Restricted resource requires approval',
   });
 
-  // Policy 3: Deny high-risk access outside business hours
-  iam.addPolicy({
-    id: 'after-hours-high-risk-deny',
-    name: 'After-Hours High-Risk Deny',
-    description: 'Deny high-risk actions outside business hours',
+  // Policy 3: Require approval for high blast radius
+  iam.registerPolicy({
+    ruleId: 'approval-high-blast',
+    name: 'Require Approval for High Blast Radius',
     priority: 300,
-    allowedSpiffePatterns: ['spiffe://aegis-t2a.local/ns/*/agent/*'],
-    resourceSensitivity: [ResourceSensitivity.CONFIDENTIAL, ResourceSensitivity.RESTRICTED],
-    allowedTimeRanges: [
-      {
-        start: '09:00',
-        end: '17:00',
-        daysOfWeek: [1, 2, 3, 4, 5], // Monday-Friday
-        timezone: 'America/Los_Angeles',
-      },
-    ],
-    maxRiskScore: 30,
-    action: PolicyAction.DENY,
-    createdAt: new Date(),
-    createdBy: 'system',
     enabled: true,
+    conditions: {
+      maxBlastRadius: 80,
+    },
+    decision: AccessDecision.REQUIRE_APPROVAL,
+    reason: 'Blast radius too high, requires approval',
   });
 
-  logger.info('Default Workload IAM policies initialized', {
-    policiesAdded: 3,
+  // Policy 4: Business hours only for production writes
+  iam.registerPolicy({
+    ruleId: 'business-hours-prod-write',
+    name: 'Business Hours Only for Production Writes',
+    priority: 400,
+    enabled: true,
+    conditions: {
+      allowedEnvironments: ['production'],
+      businessHoursOnly: true,
+    },
+    decision: AccessDecision.REQUIRE_APPROVAL,
+    reason: 'Production changes outside business hours require approval',
   });
+
+  logger.info('Registered default IAM policies', { count: 4 });
 }

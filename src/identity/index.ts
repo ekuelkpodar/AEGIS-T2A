@@ -1,30 +1,23 @@
 /**
- * AEGIS-T2A Identity & Zero-Trust Security Module
+ * AEGIS-T2A Identity Module
  *
- * Implements SPIFFE/SPIRE-based agent identity, workload IAM,
- * and hierarchical scope-based authorization.
+ * Zero-trust workload identity based on SPIFFE/SPIRE, implementing
+ * Aembit-style workload IAM with hierarchical scopes and full NHI lifecycle.
+ *
+ * Components:
+ * - SPIFFE IDs: Cryptographic identity for every agent/service/workflow
+ * - Scopes: Hierarchical authorization (read/write/execute/admin)
+ * - Workload IAM: Context-aware access control
+ * - NHI Lifecycle: Provision→Rotate→Suspend→Revoke→Decommission
  */
 
-// Core identity types and SPIFFE
 export * from './spiffe.js';
-
-// SPIRE Agent integration
-export * from './spire-agent.js';
-
-// Workload attestation
-export * from './attestors/workload-attestation.js';
-export * from './attestors/node-attestation.js';
-
-// IAM and authorization
-export * from './workload-iam.js';
 export * from './scopes.js';
-
-// Delegation and federation
+export * from './workload-iam.js';
+export * from './nhi-lifecycle.js';
+export * from './spire-agent.js';
 export * from './delegation.js';
 export * from './federation.js';
-
-// Lifecycle management
-export * from './nhi-lifecycle.js';
-
-// System initialization
+export * from './genealogy.js';
+export * from './compliance-report.js';
 export * from './initialization.js';

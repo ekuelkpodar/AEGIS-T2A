@@ -1,596 +1,571 @@
 /**
  * Non-Human Identity (NHI) Lifecycle Management
  *
- * Full lifecycle management for all agent identities: provisioning, rotation,
- * suspension, revocation, and decommissioning. Includes automated alerts for
- * identities approaching expiration.
+ * Manages the complete lifecycle of machine identities:
+ * provision → active → rotate → suspend → revoke → decommission
  *
- * Reference: Gartner 2025 NHI management trend, Aembit NHI patterns
+ * Includes:
+ * - Automated provisioning
+ * - Certificate rotation
+ * - Expiration monitoring
+ * - Emergency revocation
+ * - Audit trail
+ *
+ * References:
+ * - Gartner 2025 NHI Security Report
+ * - Aembit.io NHI Lifecycle
+ * - SPIFFE/SPIRE identity management
  */
 
+import { SPIFFEId, createSPIFFEId } from './spiffe.js';
+import { ScopeManager, ResourceScope } from './scopes.js';
 import { logger } from '../core/logger.js';
-import type { SPIFFEId, AgentIdentity, SVID } from './spiffe.js';
+import { randomUUID } from 'crypto';
 
-export enum IdentityLifecycleState {
+/**
+ * NHI lifecycle states
+ */
+export enum NHIState {
   PROVISIONING = 'provisioning',
   ACTIVE = 'active',
   ROTATING = 'rotating',
   SUSPENDED = 'suspended',
-  REVOKING = 'revoking',
   REVOKED = 'revoked',
   DECOMMISSIONED = 'decommissioned',
 }
 
-export interface IdentityLifecycleRecord {
-  identityId: string;
-  spiffeId: string;
-  state: IdentityLifecycleState;
-  previousState?: IdentityLifecycleState;
-
-  // Lifecycle timestamps
-  provisionedAt: Date;
-  activatedAt?: Date;
+/**
+ * NHI record
+ */
+export interface NHIRecord {
+  id: string;
+  spiffeId: SPIFFEId;
+  state: NHIState;
+  createdAt: Date;
+  createdBy: string;
   lastRotatedAt?: Date;
+  expiresAt?: Date;
   suspendedAt?: Date;
   revokedAt?: Date;
   decommissionedAt?: Date;
-
-  // Expiration tracking
-  currentSVIDExpiresAt?: Date;
-  nextRotationDue?: Date;
-  expirationWarningsSent: number;
-
-  // Rotation tracking
-  rotationCount: number;
-  rotationPolicy: RotationPolicy;
-
-  // Metadata
-  reason?: string; // Reason for current state
-  initiatedBy?: string;
-  metadata: Record<string, unknown>;
+  rotationPolicyDays?: number; // Auto-rotate every N days
+  metadata: {
+    purpose: string;
+    owner: string;
+    environment: string;
+    tags?: Record<string, string>;
+  };
+  scopes: ResourceScope[];
+  auditLog: NHIAuditEvent[];
 }
 
-export interface RotationPolicy {
-  rotateAtFraction: number; // Rotate at this fraction of TTL (e.g., 0.66 = 66%)
-  minTTL: number; // Minimum seconds between rotations
-  maxTTL: number; // Maximum seconds between rotations
-  alertBeforeExpiry: number[]; // Alert N seconds before expiry
-  autoRotate: boolean;
+/**
+ * NHI audit event
+ */
+export interface NHIAuditEvent {
+  timestamp: Date;
+  action: string;
+  actor: string;
+  details?: Record<string, unknown>;
 }
 
-export interface LifecycleAlert {
-  alertId: string;
-  identityId: string;
-  spiffeId: string;
-  alertType: 'rotation_due' | 'expiring_soon' | 'rotation_failed' | 'suspended' | 'revoked';
+/**
+ * NHI lifecycle alert
+ */
+export interface NHIAlert {
+  alertType: 'expiration' | 'rotation_due' | 'rotation_failed' | 'revocation' | 'state_change';
   severity: 'info' | 'warning' | 'error' | 'critical';
   message: string;
-  triggeredAt: Date;
-  acknowledged: boolean;
+  identityId: string;
+  spiffeId: string;
+  metadata?: Record<string, unknown>;
 }
 
+/**
+ * NHI lifecycle manager
+ */
 export class NHILifecycleManager {
-  private readonly identities: Map<string, IdentityLifecycleRecord>;
-  private readonly alerts: Map<string, LifecycleAlert>;
-  private readonly alertCallbacks: ((alert: LifecycleAlert) => void)[];
-  private monitoringInterval?: NodeJS.Timeout;
+  private identities: Map<string, NHIRecord> = new Map();
+  private scopeManager: ScopeManager;
 
-  constructor() {
-    this.identities = new Map();
-    this.alerts = new Map();
-    this.alertCallbacks = [];
+  constructor(scopeManager: ScopeManager) {
+    this.scopeManager = scopeManager;
+    
+    // Start background tasks
+    this.startMonitoring();
   }
 
   /**
-   * Provision a new agent identity
+   * Provision a new NHI
    */
-  async provisionIdentity(
-    spiffeId: SPIFFEId,
-    rotationPolicy?: Partial<RotationPolicy>,
-    metadata: Record<string, unknown> = {}
-  ): Promise<IdentityLifecycleRecord> {
-    const identityId = this.generateIdentityId();
+  async provision(options: {
+    agentType: 'agent' | 'service' | 'workflow';
+    agentId?: string;
+    namespace?: string;
+    purpose: string;
+    owner: string;
+    environment: string;
+    scopes: ResourceScope[];
+    rotationPolicyDays?: number;
+    expiresAt?: Date;
+    createdBy: string;
+    tags?: Record<string, string>;
+  }): Promise<NHIRecord> {
+    // Create SPIFFE ID
+    const spiffeId = createSPIFFEId({
+      agentType: options.agentType,
+      agentId: options.agentId,
+      namespace: options.namespace,
+    });
 
-    const record: IdentityLifecycleRecord = {
-      identityId,
-      spiffeId: spiffeId.fullId,
-      state: IdentityLifecycleState.PROVISIONING,
-      provisionedAt: new Date(),
-      expirationWarningsSent: 0,
-      rotationCount: 0,
-      rotationPolicy: {
-        rotateAtFraction: rotationPolicy?.rotateAtFraction ?? 0.66,
-        minTTL: rotationPolicy?.minTTL ?? 300, // 5 minutes
-        maxTTL: rotationPolicy?.maxTTL ?? 3600, // 1 hour
-        alertBeforeExpiry: rotationPolicy?.alertBeforeExpiry ?? [86400, 3600, 300], // 24h, 1h, 5m
-        autoRotate: rotationPolicy?.autoRotate ?? true,
+    const record: NHIRecord = {
+      id: randomUUID(),
+      spiffeId,
+      state: NHIState.PROVISIONING,
+      createdAt: new Date(),
+      createdBy: options.createdBy,
+      rotationPolicyDays: options.rotationPolicyDays || 30,
+      expiresAt: options.expiresAt,
+      metadata: {
+        purpose: options.purpose,
+        owner: options.owner,
+        environment: options.environment,
+        tags: options.tags,
       },
-      metadata,
+      scopes: options.scopes,
+      auditLog: [
+        {
+          timestamp: new Date(),
+          action: 'provision',
+          actor: options.createdBy,
+          details: { purpose: options.purpose },
+        },
+      ],
     };
 
-    this.identities.set(identityId, record);
+    this.identities.set(record.id, record);
 
-    logger.info('Identity provisioned', {
-      identityId,
-      spiffeId: spiffeId.fullId,
-      rotationPolicy: record.rotationPolicy,
+    // Grant scopes
+    this.scopeManager.grantScopes(spiffeId, options.scopes, {
+      grantedBy: options.createdBy,
+      expiresAt: options.expiresAt,
+      reason: options.purpose,
+    });
+
+    // Transition to active
+    await this.transitionState(record.id, NHIState.ACTIVE, options.createdBy);
+
+    logger.info('Provisioned NHI', {
+      id: record.id,
+      spiffeId: spiffeId.toString(),
+      owner: options.owner,
+      environment: options.environment,
     });
 
     return record;
   }
 
   /**
-   * Activate a provisioned identity
+   * Rotate credentials for an NHI
    */
-  async activateIdentity(
-    identityId: string,
-    svid: SVID
-  ): Promise<IdentityLifecycleRecord> {
-    const record = this.identities.get(identityId);
+  async rotate(
+    id: string,
+    actor: string,
+    options?: { newExpiresAt?: Date }
+  ): Promise<NHIRecord> {
+    const record = this.identities.get(id);
     if (!record) {
-      throw new Error(`Identity not found: ${identityId}`);
+      throw new Error(`NHI not found: ${id}`);
     }
 
-    if (record.state !== IdentityLifecycleState.PROVISIONING) {
-      throw new Error(`Identity not in provisioning state: ${record.state}`);
+    if (record.state !== NHIState.ACTIVE) {
+      throw new Error(`Cannot rotate NHI in state: ${record.state}`);
     }
 
-    record.previousState = record.state;
-    record.state = IdentityLifecycleState.ACTIVE;
-    record.activatedAt = new Date();
-    record.currentSVIDExpiresAt = svid.expiresAt;
-    record.nextRotationDue = this.calculateNextRotation(
-      svid.expiresAt,
-      record.rotationPolicy
-    );
+    // Transition to rotating
+    await this.transitionState(id, NHIState.ROTATING, actor);
 
-    logger.info('Identity activated', {
-      identityId,
-      spiffeId: record.spiffeId,
-      expiresAt: svid.expiresAt.toISOString(),
-      nextRotationDue: record.nextRotationDue.toISOString(),
+    // Re-grant scopes (simulates certificate rotation)
+    this.scopeManager.revokeScopes(record.spiffeId);
+    this.scopeManager.grantScopes(record.spiffeId, record.scopes, {
+      grantedBy: actor,
+      expiresAt: options?.newExpiresAt || record.expiresAt,
+      reason: 'Certificate rotation',
+    });
+
+    record.lastRotatedAt = new Date();
+    if (options?.newExpiresAt) {
+      record.expiresAt = options.newExpiresAt;
+    }
+
+    record.auditLog.push({
+      timestamp: new Date(),
+      action: 'rotate',
+      actor,
+      details: { newExpiresAt: record.expiresAt?.toISOString() },
+    });
+
+    // Transition back to active
+    await this.transitionState(id, NHIState.ACTIVE, actor);
+
+    logger.info('Rotated NHI credentials', {
+      id,
+      spiffeId: record.spiffeId.toString(),
+      actor,
     });
 
     return record;
   }
 
   /**
-   * Rotate an identity's SVID
+   * Suspend an NHI (temporary)
    */
-  async rotateIdentity(
-    identityId: string,
-    newSVID: SVID,
-    initiatedBy: string = 'system'
-  ): Promise<IdentityLifecycleRecord> {
-    const record = this.identities.get(identityId);
+  async suspend(id: string, actor: string, reason: string): Promise<NHIRecord> {
+    const record = this.identities.get(id);
     if (!record) {
-      throw new Error(`Identity not found: ${identityId}`);
+      throw new Error(`NHI not found: ${id}`);
     }
 
-    if (record.state !== IdentityLifecycleState.ACTIVE) {
-      throw new Error(`Identity not active: ${record.state}`);
-    }
+    // Revoke scopes temporarily
+    this.scopeManager.revokeScopes(record.spiffeId);
 
-    record.previousState = record.state;
-    record.state = IdentityLifecycleState.ROTATING;
-
-    try {
-      // Update SVID information
-      record.currentSVIDExpiresAt = newSVID.expiresAt;
-      record.lastRotatedAt = new Date();
-      record.rotationCount++;
-      record.nextRotationDue = this.calculateNextRotation(
-        newSVID.expiresAt,
-        record.rotationPolicy
-      );
-      record.expirationWarningsSent = 0; // Reset warnings
-
-      record.state = IdentityLifecycleState.ACTIVE;
-
-      logger.info('Identity rotated', {
-        identityId,
-        spiffeId: record.spiffeId,
-        rotationCount: record.rotationCount,
-        newExpiresAt: newSVID.expiresAt.toISOString(),
-        nextRotationDue: record.nextRotationDue.toISOString(),
-        initiatedBy,
-      });
-
-      return record;
-    } catch (error) {
-      // Rotation failed - create alert
-      this.createAlert(identityId, 'rotation_failed', 'error', `Rotation failed: ${error}`);
-
-      record.state = record.previousState || IdentityLifecycleState.ACTIVE;
-      throw error;
-    }
-  }
-
-  /**
-   * Suspend an identity
-   */
-  async suspendIdentity(
-    identityId: string,
-    reason: string,
-    suspendedBy: string
-  ): Promise<IdentityLifecycleRecord> {
-    const record = this.identities.get(identityId);
-    if (!record) {
-      throw new Error(`Identity not found: ${identityId}`);
-    }
-
-    if (record.state === IdentityLifecycleState.REVOKED ||
-        record.state === IdentityLifecycleState.DECOMMISSIONED) {
-      throw new Error(`Cannot suspend identity in ${record.state} state`);
-    }
-
-    record.previousState = record.state;
-    record.state = IdentityLifecycleState.SUSPENDED;
     record.suspendedAt = new Date();
-    record.reason = reason;
-    record.initiatedBy = suspendedBy;
+    record.auditLog.push({
+      timestamp: new Date(),
+      action: 'suspend',
+      actor,
+      details: { reason },
+    });
 
-    this.createAlert(identityId, 'suspended', 'warning', `Identity suspended: ${reason}`);
+    await this.transitionState(id, NHIState.SUSPENDED, actor);
 
-    logger.warn('Identity suspended', {
-      identityId,
-      spiffeId: record.spiffeId,
+    logger.warn('Suspended NHI', {
+      id,
+      spiffeId: record.spiffeId.toString(),
+      actor,
       reason,
-      suspendedBy,
     });
 
     return record;
   }
 
   /**
-   * Resume a suspended identity
+   * Resume a suspended NHI
    */
-  async resumeIdentity(
-    identityId: string,
-    resumedBy: string
-  ): Promise<IdentityLifecycleRecord> {
-    const record = this.identities.get(identityId);
+  async resume(id: string, actor: string): Promise<NHIRecord> {
+    const record = this.identities.get(id);
     if (!record) {
-      throw new Error(`Identity not found: ${identityId}`);
+      throw new Error(`NHI not found: ${id}`);
     }
 
-    if (record.state !== IdentityLifecycleState.SUSPENDED) {
-      throw new Error(`Identity not suspended: ${record.state}`);
+    if (record.state !== NHIState.SUSPENDED) {
+      throw new Error(`Cannot resume NHI in state: ${record.state}`);
     }
 
-    record.state = record.previousState || IdentityLifecycleState.ACTIVE;
-    record.previousState = IdentityLifecycleState.SUSPENDED;
-    record.initiatedBy = resumedBy;
+    // Re-grant scopes
+    this.scopeManager.grantScopes(record.spiffeId, record.scopes, {
+      grantedBy: actor,
+      expiresAt: record.expiresAt,
+      reason: 'Resume from suspension',
+    });
 
-    logger.info('Identity resumed', {
-      identityId,
-      spiffeId: record.spiffeId,
-      resumedBy,
+    record.auditLog.push({
+      timestamp: new Date(),
+      action: 'resume',
+      actor,
+    });
+
+    await this.transitionState(id, NHIState.ACTIVE, actor);
+
+    logger.info('Resumed NHI', {
+      id,
+      spiffeId: record.spiffeId.toString(),
+      actor,
     });
 
     return record;
   }
 
   /**
-   * Revoke an identity
+   * Revoke an NHI (permanent, but not deleted)
    */
-  async revokeIdentity(
-    identityId: string,
-    reason: string,
-    revokedBy: string
-  ): Promise<IdentityLifecycleRecord> {
-    const record = this.identities.get(identityId);
+  async revoke(id: string, actor: string, reason: string): Promise<NHIRecord> {
+    const record = this.identities.get(id);
     if (!record) {
-      throw new Error(`Identity not found: ${identityId}`);
+      throw new Error(`NHI not found: ${id}`);
     }
 
-    if (record.state === IdentityLifecycleState.DECOMMISSIONED) {
-      throw new Error('Cannot revoke decommissioned identity');
-    }
+    // Revoke all scopes
+    this.scopeManager.revokeScopes(record.spiffeId);
 
-    record.previousState = record.state;
-    record.state = IdentityLifecycleState.REVOKING;
+    record.revokedAt = new Date();
+    record.auditLog.push({
+      timestamp: new Date(),
+      action: 'revoke',
+      actor,
+      details: { reason },
+    });
 
-    try {
-      // Perform revocation (would integrate with SPIRE Agent)
-      // For now, just update state
+    await this.transitionState(id, NHIState.REVOKED, actor);
 
-      record.state = IdentityLifecycleState.REVOKED;
-      record.revokedAt = new Date();
-      record.reason = reason;
-      record.initiatedBy = revokedBy;
+    logger.error('Revoked NHI', {
+      id,
+      spiffeId: record.spiffeId.toString(),
+      actor,
+      reason,
+    });
 
-      this.createAlert(identityId, 'revoked', 'critical', `Identity revoked: ${reason}`);
-
-      logger.warn('Identity revoked', {
-        identityId,
-        spiffeId: record.spiffeId,
-        reason,
-        revokedBy,
-      });
-
-      return record;
-    } catch (error) {
-      record.state = record.previousState || IdentityLifecycleState.ACTIVE;
-      throw error;
-    }
+    return record;
   }
 
   /**
-   * Decommission an identity (final state)
+   * Decommission an NHI (mark for deletion)
    */
-  async decommissionIdentity(
-    identityId: string,
-    reason: string,
-    decommissionedBy: string
-  ): Promise<IdentityLifecycleRecord> {
-    const record = this.identities.get(identityId);
+  async decommission(id: string, actor: string): Promise<NHIRecord> {
+    const record = this.identities.get(id);
     if (!record) {
-      throw new Error(`Identity not found: ${identityId}`);
+      throw new Error(`NHI not found: ${id}`);
     }
 
-    // Must be revoked first
-    if (record.state !== IdentityLifecycleState.REVOKED) {
-      await this.revokeIdentity(identityId, 'Decommissioning', decommissionedBy);
+    // Ensure revoked first
+    if (record.state !== NHIState.REVOKED) {
+      await this.revoke(id, actor, 'Decommissioning');
     }
 
-    record.state = IdentityLifecycleState.DECOMMISSIONED;
     record.decommissionedAt = new Date();
-    record.reason = reason;
-    record.initiatedBy = decommissionedBy;
+    record.auditLog.push({
+      timestamp: new Date(),
+      action: 'decommission',
+      actor,
+    });
 
-    logger.info('Identity decommissioned', {
-      identityId,
-      spiffeId: record.spiffeId,
-      reason,
-      decommissionedBy,
+    await this.transitionState(id, NHIState.DECOMMISSIONED, actor);
+
+    logger.info('Decommissioned NHI', {
+      id,
+      spiffeId: record.spiffeId.toString(),
+      actor,
     });
 
     return record;
   }
 
   /**
-   * Start lifecycle monitoring
+   * Get NHI by ID
    */
-  startMonitoring(intervalSeconds: number = 60): void {
+  get(id: string): NHIRecord | undefined {
+    return this.identities.get(id);
+  }
+
+  /**
+   * Get NHI by SPIFFE ID
+   */
+  getBySpiffeId(spiffeId: SPIFFEId): NHIRecord | undefined {
+    return Array.from(this.identities.values()).find(
+      record => record.spiffeId.toString() === spiffeId.toString()
+    );
+  }
+
+  /**
+   * List all NHIs matching criteria
+   */
+  list(filters?: {
+    state?: NHIState;
+    owner?: string;
+    environment?: string;
+    tag?: { key: string; value: string };
+  }): NHIRecord[] {
+    let records = Array.from(this.identities.values());
+
+    if (filters?.state) {
+      records = records.filter(r => r.state === filters.state);
+    }
+    if (filters?.owner) {
+      records = records.filter(r => r.metadata.owner === filters.owner);
+    }
+    if (filters?.environment) {
+      records = records.filter(r => r.metadata.environment === filters.environment);
+    }
+    if (filters?.tag) {
+      records = records.filter(
+        r => r.metadata.tags?.[filters.tag!.key] === filters.tag!.value
+      );
+    }
+
+    return records;
+  }
+
+  /**
+   * Transition state and audit
+   */
+  private async transitionState(
+    id: string,
+    newState: NHIState,
+    actor: string
+  ): Promise<void> {
+    const record = this.identities.get(id);
+    if (!record) {
+      throw new Error(`NHI not found: ${id}`);
+    }
+
+    const oldState = record.state;
+    record.state = newState;
+
+    logger.debug('NHI state transition', {
+      id,
+      spiffeId: record.spiffeId.toString(),
+      oldState,
+      newState,
+      actor,
+    });
+  }
+
+  private monitoringInterval: NodeJS.Timeout | null = null;
+  private alertHandlers: Array<(alert: NHIAlert) => void> = [];
+
+  /**
+   * Start background monitoring
+   */
+  startMonitoring(intervalSeconds: number = 3600): void {
     if (this.monitoringInterval) {
-      return; // Already monitoring
+      clearInterval(this.monitoringInterval);
     }
 
     this.monitoringInterval = setInterval(() => {
-      this.checkRotations();
       this.checkExpirations();
+      this.checkRotations();
     }, intervalSeconds * 1000);
 
-    logger.info('NHI lifecycle monitoring started', { intervalSeconds });
+    logger.info('Started NHI lifecycle monitoring', { intervalSeconds });
   }
 
   /**
-   * Stop lifecycle monitoring
+   * Stop background monitoring
    */
   stopMonitoring(): void {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
-      this.monitoringInterval = undefined;
-      logger.info('NHI lifecycle monitoring stopped');
+      this.monitoringInterval = null;
+      logger.info('Stopped NHI lifecycle monitoring');
     }
   }
 
   /**
-   * Register alert callback
+   * Register alert handler
    */
-  onAlert(callback: (alert: LifecycleAlert) => void): void {
-    this.alertCallbacks.push(callback);
+  onAlert(handler: (alert: NHIAlert) => void): void {
+    this.alertHandlers.push(handler);
   }
 
   /**
-   * Get identity record
+   * Emit alert to all handlers
    */
-  getIdentity(identityId: string): IdentityLifecycleRecord | undefined {
-    return this.identities.get(identityId);
-  }
-
-  /**
-   * Get all identities in a specific state
-   */
-  getIdentitiesByState(state: IdentityLifecycleState): IdentityLifecycleRecord[] {
-    return Array.from(this.identities.values()).filter(r => r.state === state);
-  }
-
-  /**
-   * Get all active alerts
-   */
-  getActiveAlerts(): LifecycleAlert[] {
-    return Array.from(this.alerts.values()).filter(a => !a.acknowledged);
-  }
-
-  /**
-   * Acknowledge an alert
-   */
-  acknowledgeAlert(alertId: string): boolean {
-    const alert = this.alerts.get(alertId);
-    if (!alert) return false;
-
-    alert.acknowledged = true;
-    return true;
-  }
-
-  /**
-   * Get lifecycle statistics
-   */
-  getStats(): {
-    totalIdentities: number;
-    byState: Record<string, number>;
-    activeAlerts: number;
-    avgRotationCount: number;
-    identitiesNearExpiry: number;
-    timestamp: string;
-  } {
-    const identities = Array.from(this.identities.values());
-
-    const byState: Record<string, number> = {};
-    Object.values(IdentityLifecycleState).forEach(state => {
-      byState[state] = identities.filter(i => i.state === state).length;
-    });
-
-    const avgRotationCount =
-      identities.reduce((sum, i) => sum + i.rotationCount, 0) / identities.length || 0;
-
-    const now = new Date();
-    const identitiesNearExpiry = identities.filter(i =>
-      i.currentSVIDExpiresAt &&
-      i.currentSVIDExpiresAt.getTime() - now.getTime() < 86400000 // 24 hours
-    ).length;
-
-    return {
-      totalIdentities: identities.length,
-      byState,
-      activeAlerts: this.getActiveAlerts().length,
-      avgRotationCount,
-      identitiesNearExpiry,
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  /**
-   * Check if identities need rotation
-   */
-  private checkRotations(): void {
-    const now = new Date();
-
-    for (const record of this.identities.values()) {
-      if (record.state !== IdentityLifecycleState.ACTIVE) continue;
-      if (!record.rotationPolicy.autoRotate) continue;
-      if (!record.nextRotationDue) continue;
-
-      if (now >= record.nextRotationDue) {
-        this.createAlert(
-          record.identityId,
-          'rotation_due',
-          'warning',
-          'Identity rotation is due'
-        );
+  private emitAlert(alert: NHIAlert): void {
+    for (const handler of this.alertHandlers) {
+      try {
+        handler(alert);
+      } catch (error) {
+        logger.error('Alert handler failed', { error });
       }
     }
   }
 
   /**
-   * Check for expiring identities
+   * Check for expired identities
    */
   private checkExpirations(): void {
     const now = new Date();
+    let expiredCount = 0;
 
     for (const record of this.identities.values()) {
-      if (!record.currentSVIDExpiresAt) continue;
+      if (
+        record.state === NHIState.ACTIVE &&
+        record.expiresAt &&
+        record.expiresAt < now
+      ) {
+        this.emitAlert({
+          alertType: 'expiration',
+          severity: 'warning',
+          message: `Identity expired and is being revoked`,
+          identityId: record.id,
+          spiffeId: record.spiffeId.toString(),
+          metadata: { expiresAt: record.expiresAt.toISOString() },
+        });
 
-      const timeUntilExpiry =
-        (record.currentSVIDExpiresAt.getTime() - now.getTime()) / 1000;
-
-      for (const alertSeconds of record.rotationPolicy.alertBeforeExpiry) {
-        if (timeUntilExpiry <= alertSeconds && timeUntilExpiry > 0) {
-          // Check if we already sent this warning level
-          const warningsSent = record.expirationWarningsSent;
-          const alertIndex = record.rotationPolicy.alertBeforeExpiry.indexOf(alertSeconds);
-
-          if (alertIndex >= warningsSent) {
-            this.createAlert(
-              record.identityId,
-              'expiring_soon',
-              this.getSeverityForExpiry(timeUntilExpiry),
-              `Identity expires in ${Math.round(timeUntilExpiry)} seconds`
-            );
-
-            record.expirationWarningsSent = alertIndex + 1;
-          }
-        }
+        this.revoke(record.id, 'system', 'Expired').catch(err => {
+          logger.error('Failed to revoke expired NHI', {
+            id: record.id,
+            error: err.message,
+          });
+        });
+        expiredCount++;
       }
+    }
+
+    if (expiredCount > 0) {
+      logger.warn('Revoked expired NHIs', { count: expiredCount });
     }
   }
 
   /**
-   * Calculate next rotation time
+   * Check for identities needing rotation
    */
-  private calculateNextRotation(expiresAt: Date, policy: RotationPolicy): Date {
+  private checkRotations(): void {
     const now = new Date();
-    const ttl = expiresAt.getTime() - now.getTime();
-    const rotationTime = now.getTime() + ttl * policy.rotateAtFraction;
-    return new Date(rotationTime);
-  }
+    let rotatedCount = 0;
 
-  /**
-   * Create and dispatch alert
-   */
-  private createAlert(
-    identityId: string,
-    alertType: LifecycleAlert['alertType'],
-    severity: LifecycleAlert['severity'],
-    message: string
-  ): void {
-    const record = this.identities.get(identityId);
-    if (!record) return;
-
-    const alert: LifecycleAlert = {
-      alertId: this.generateAlertId(),
-      identityId,
-      spiffeId: record.spiffeId,
-      alertType,
-      severity,
-      message,
-      triggeredAt: new Date(),
-      acknowledged: false,
-    };
-
-    this.alerts.set(alert.alertId, alert);
-
-    // Dispatch to callbacks
-    this.alertCallbacks.forEach(callback => {
-      try {
-        callback(alert);
-      } catch (error) {
-        logger.error('Alert callback failed', { error });
+    for (const record of this.identities.values()) {
+      if (record.state !== NHIState.ACTIVE || !record.rotationPolicyDays) {
+        continue;
       }
-    });
 
-    logger.warn('Lifecycle alert created', {
-      alertId: alert.alertId,
-      identityId,
-      alertType,
-      severity,
-      message,
-    });
-  }
+      const lastRotation = record.lastRotatedAt || record.createdAt;
+      const rotationDue = new Date(
+        lastRotation.getTime() + record.rotationPolicyDays * 24 * 60 * 60 * 1000
+      );
 
-  /**
-   * Get severity based on time until expiry
-   */
-  private getSeverityForExpiry(seconds: number): LifecycleAlert['severity'] {
-    if (seconds < 300) return 'critical'; // < 5 minutes
-    if (seconds < 3600) return 'error'; // < 1 hour
-    if (seconds < 86400) return 'warning'; // < 24 hours
-    return 'info';
-  }
+      if (rotationDue < now) {
+        this.emitAlert({
+          alertType: 'rotation_due',
+          severity: 'info',
+          message: `Identity rotation due`,
+          identityId: record.id,
+          spiffeId: record.spiffeId.toString(),
+          metadata: { lastRotatedAt: lastRotation.toISOString() },
+        });
 
-  /**
-   * Generate unique identity ID
-   */
-  private generateIdentityId(): string {
-    return `nhi-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-  }
+        this.rotate(record.id, 'system').catch(err => {
+          logger.error('Failed to auto-rotate NHI', {
+            id: record.id,
+            error: err.message,
+          });
 
-  /**
-   * Generate unique alert ID
-   */
-  private generateAlertId(): string {
-    return `alert-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+          this.emitAlert({
+            alertType: 'rotation_failed',
+            severity: 'error',
+            message: `Failed to auto-rotate identity: ${err.message}`,
+            identityId: record.id,
+            spiffeId: record.spiffeId.toString(),
+          });
+        });
+        rotatedCount++;
+      }
+    }
+
+    if (rotatedCount > 0) {
+      logger.info('Auto-rotated NHIs', { count: rotatedCount });
+    }
   }
 }
 
-// Singleton instance
+/**
+ * Singleton instance
+ */
 let nhiLifecycleManager: NHILifecycleManager;
 
 export function getNHILifecycleManager(): NHILifecycleManager {
   if (!nhiLifecycleManager) {
-    nhiLifecycleManager = new NHILifecycleManager();
+    nhiLifecycleManager = new NHILifecycleManager(require("./scopes.js").getScopeManager());
   }
   return nhiLifecycleManager;
 }

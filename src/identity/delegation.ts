@@ -112,8 +112,8 @@ export class DelegationManager {
 
     // Create delegation claims
     const claims: DelegationClaims = {
-      iss: issuerSpiffeId.fullId,
-      sub: subjectSpiffeId.fullId,
+      iss: issuerSpiffeId.toString(),
+      sub: subjectSpiffeId.toString(),
       aud: options.audience || ['aegis-t2a'],
       exp: Math.floor((now.getTime() + ttl * 1000) / 1000),
       iat: Math.floor(now.getTime() / 1000),
@@ -137,8 +137,8 @@ export class DelegationManager {
       tokenId,
       issuedAt: now,
       expiresAt: new Date(now.getTime() + ttl * 1000),
-      issuerSpiffeId: issuerSpiffeId.fullId,
-      subjectSpiffeId: subjectSpiffeId.fullId,
+      issuerSpiffeId: issuerSpiffeId.toString(),
+      subjectSpiffeId: subjectSpiffeId.toString(),
       parentWorkflowId: options.parentWorkflowId,
       delegatedScopes,
       maxTTL: ttl,
@@ -156,8 +156,8 @@ export class DelegationManager {
 
     logger.info('Delegation token issued', {
       tokenId,
-      issuer: issuerSpiffeId.fullId,
-      subject: subjectSpiffeId.fullId,
+      issuer: issuerSpiffeId.toString(),
+      subject: subjectSpiffeId.toString(),
       scopes: delegatedScopes,
       ttl,
       depth: currentDepth,
