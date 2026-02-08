@@ -18,6 +18,7 @@ import { listControlMappings, listControlMappingsByFramework } from '../complian
 import { createRopaRecord, listRopaRecords, getRopaRecord, RopaInput } from '../compliance/ropa.js';
 import { ensureDefaultTemplate, listDpiaTemplates, getDpiaTemplate } from '../compliance/dpia.js';
 import { getFeatureFlags } from '../deployment/feature-flags.js';
+import { getMetricsRegistry } from '../observability/metrics.js';
 import { EventType, ActorType } from '../core/types.js';
 import {
   initializeLLMProvider,
@@ -83,6 +84,12 @@ export function createRouter(): Router {
       timestamp: new Date().toISOString(),
       version: process.env['npm_package_version'] ?? '0.1.0',
     });
+  });
+
+  router.get('/metrics', async (_req: Request, res: Response) => {
+    const metrics = getMetricsRegistry();
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4');
+    res.send(metrics.renderPrometheus());
   });
 
   router.get('/health/identity', async (_req: Request, res: Response) => {

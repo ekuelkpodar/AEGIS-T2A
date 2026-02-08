@@ -14,6 +14,7 @@ import { enforceSandboxGuardrails } from './sandbox-guard.js';
 import { getIntegrationCatalog, ZapierMcpClient } from '../integrations/index.js';
 import { withSpan, setSpanAttributes } from '../observability/index.js';
 import { getFeatureFlags } from '../deployment/feature-flags.js';
+import { getMetricsRegistry } from '../observability/metrics.js';
 
 // Re-export DLP Filter
 export {
@@ -171,6 +172,8 @@ export class Executor {
           this.timeout(step.timeout),
         ]);
       });
+      const metrics = getMetricsRegistry();
+      metrics.inc('aegis_tool_executions_total', 1);
 
       // Apply DLP to outputs
       const sanitizedOutputs = this.options.dlpEnabled
@@ -191,6 +194,7 @@ export class Executor {
         costIncurred: step.estimatedCost,
       };
     } catch (error) {
+      getMetricsRegistry().inc('aegis_tool_failures_total', 1);
       const durationMs = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 

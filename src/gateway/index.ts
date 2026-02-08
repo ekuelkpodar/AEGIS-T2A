@@ -17,6 +17,7 @@ import {
 import { getPromptInjectionDetector, ThreatLevel } from '../security/prompt-injection-detector.js';
 import { getLLMGuardrails } from '../security/llm-guardrails.js';
 import { withSpan, setSpanAttributes } from '../observability/index.js';
+import { getMetricsRegistry } from '../observability/metrics.js';
 
 const logger = componentLogger('gateway');
 
@@ -74,6 +75,8 @@ export class IntentGateway {
       userId: request.userId,
       textLength: request.text.length,
     });
+    const metrics = getMetricsRegistry();
+    metrics.inc('aegis_intents_total', 1);
 
     return withSpan('aegis.intent.process', {
       'aegis.user.id': request.userId,
@@ -94,6 +97,7 @@ export class IntentGateway {
           confidence: injectionResult.confidence,
           patterns: injectionResult.detectedPatterns.length,
         });
+        metrics.inc('aegis_intents_blocked_total', 1);
 
         setSpanAttributes(span, {
           'aegis.security.prompt_injection.blocked': true,
@@ -128,6 +132,7 @@ export class IntentGateway {
 
       // If parsing failed or needs clarification
       if (!parseResult.success || !parseResult.intent) {
+        metrics.inc('aegis_intents_failed_total', 1);
         setSpanAttributes(span, {
           'aegis.intent.parsed': false,
           'aegis.intent.clarification_needed': parseResult.clarificationNeeded ?? false,
@@ -151,6 +156,7 @@ export class IntentGateway {
       };
 
       const policyResult = this.policyEngine!.evaluateIntent(intent, policyContext);
+      metrics.inc('aegis_policy_evaluations_total', 1);
 
       // Update intent with policy result
       intent.policyStatus = policyResult.allowed
@@ -191,6 +197,7 @@ export class IntentGateway {
         error: policyResult.allowed ? undefined : 'Intent denied by policy',
       };
     }).catch((error) => {
+      metrics.inc('aegis_intents_failed_total', 1);
       logger.error({ error, userId: request.userId }, 'Failed to process request');
 
       return {

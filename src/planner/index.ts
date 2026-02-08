@@ -28,6 +28,7 @@ import { getCachedCompletion, setCachedCompletion } from '../providers/llm/promp
 import { LLMCompletionOptions } from '../providers/llm/index.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { verifyIntentAlignment } from '../security/intent-alignment.js';
+import { getMetricsRegistry } from '../observability/metrics.js';
 
 const logger = componentLogger('planner');
 
@@ -295,6 +296,7 @@ export class PlannerAgent {
 
       // Persist the plan
       await this.persistPlan(plan);
+      getMetricsRegistry().inc('aegis_plans_total', 1);
 
       logPlan(planId, 'plan_generated', {
         intentId: intent.intentId,
