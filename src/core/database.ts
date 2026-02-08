@@ -344,6 +344,30 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       );
     `,
   },
+  {
+    version: 5,
+    name: 'memory_store',
+    sql: `
+      CREATE TABLE IF NOT EXISTS memory_entries (
+        entry_id TEXT PRIMARY KEY,
+        namespace_id TEXT NOT NULL,
+        memory_type TEXT NOT NULL,
+        key TEXT NOT NULL,
+        value_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        valid_from TEXT,
+        valid_to TEXT,
+        recorded_at TEXT NOT NULL,
+        confidence REAL,
+        source TEXT,
+        metadata TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_memory_entries_namespace ON memory_entries(namespace_id);
+      CREATE INDEX IF NOT EXISTS idx_memory_entries_type ON memory_entries(memory_type);
+      CREATE INDEX IF NOT EXISTS idx_memory_entries_key ON memory_entries(key);
+      CREATE INDEX IF NOT EXISTS idx_memory_entries_valid_to ON memory_entries(valid_to);
+    `,
+  },
 ];
 
 /**
