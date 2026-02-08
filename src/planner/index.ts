@@ -27,6 +27,7 @@ import { selectModelForTask } from '../providers/llm/router.js';
 import { getCachedCompletion, setCachedCompletion } from '../providers/llm/prompt-cache.js';
 import { LLMCompletionOptions } from '../providers/llm/index.js';
 import Anthropic from '@anthropic-ai/sdk';
+import { verifyIntentAlignment } from '../security/intent-alignment.js';
 
 const logger = componentLogger('planner');
 
@@ -280,6 +281,14 @@ export class PlannerAgent {
         signature: undefined,
       };
 
+      const alignment = verifyIntentAlignment(intent, steps);
+      if (alignment.issues.length > 0) {
+        warnings.push(...alignment.issues);
+      }
+      if (alignment.score < 0.5) {
+        plan.approvalRequired = true;
+      }
+
       // Compute checksum and sign
       plan.checksum = computePlanChecksum(plan);
       plan.signature = signObject(plan);
@@ -292,6 +301,7 @@ export class PlannerAgent {
         stepCount: steps.length,
         totalCost,
         riskLevel: maxRisk,
+        intentAlignmentScore: alignment.score,
         planningTimeMs: Date.now() - startTime,
       });
 

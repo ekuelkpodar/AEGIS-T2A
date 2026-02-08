@@ -12,3 +12,4 @@
 
 export * from './prompt-injection-detector.js';
 export * from './llm-guardrails.js';
+export * from './intent-alignment.js';
