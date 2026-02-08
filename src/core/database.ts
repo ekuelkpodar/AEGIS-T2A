@@ -283,6 +283,23 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_audit_events_actor_spiffe_id ON audit_events(actor_spiffe_id);
     `,
   },
+  {
+    version: 3,
+    name: 'workflow_payloads',
+    sql: `
+      CREATE TABLE IF NOT EXISTS workflow_payloads (
+        payload_id TEXT PRIMARY KEY,
+        plan_id TEXT NOT NULL,
+        intent_id TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_workflow_payloads_plan_id ON workflow_payloads(plan_id);
+      CREATE INDEX IF NOT EXISTS idx_workflow_payloads_expires_at ON workflow_payloads(expires_at);
+    `,
+  },
 ];
 
 /**

@@ -17,6 +17,7 @@ import { generateWorkflowId, generateId } from '../core/ids.js';
 import { componentLogger, logWorkflow, logStep } from '../core/logger.js';
 import { execute, queryOne, queryAll, transaction } from '../core/database.js';
 import { getConfig } from '../core/config.js';
+import { TemporalWorkflowEngine } from './temporal/engine.js';
 import { hashObject } from '../core/crypto.js';
 
 // Re-export Compensation Verifier
@@ -48,6 +49,7 @@ export interface WorkflowOptions {
   skipApproval?: boolean;
   dryRun?: boolean;
   checkpointInterval?: number;
+  approvalTimeoutHours?: number;
 }
 
 export interface ExecutionContext {
@@ -67,7 +69,20 @@ export type StepExecutor = (
 // Workflow Engine
 // =============================================================================
 
-export class WorkflowEngine {
+export interface WorkflowEngineAdapter {
+  initialize(): Promise<void>;
+  setStepExecutor(executor: StepExecutor): void;
+  createWorkflow(plan: PlanManifest): Promise<WorkflowState>;
+  startWorkflow(workflowId: string, plan: PlanManifest, options?: WorkflowOptions): Promise<WorkflowState>;
+  approveWorkflow(workflowId: string, approverId: string): Promise<void>;
+  rejectWorkflow(workflowId: string, approverId: string, reason: string): Promise<void>;
+  cancelWorkflow(workflowId: string): Promise<void>;
+  getWorkflow(workflowId: string): Promise<WorkflowState | null>;
+  pauseWorkflow?(workflowId: string): Promise<void>;
+  resumeWorkflow?(workflowId: string, plan: PlanManifest, options?: WorkflowOptions): Promise<WorkflowState>;
+}
+
+export class WorkflowEngine implements WorkflowEngineAdapter {
   private initialized = false;
   private config = getConfig();
   private stepExecutor: StepExecutor | null = null;
@@ -745,16 +760,17 @@ export class WorkflowEngine {
 // Singleton Instance
 // =============================================================================
 
-let engine: WorkflowEngine | null = null;
+let engine: WorkflowEngineAdapter | null = null;
 
-export function getWorkflowEngine(): WorkflowEngine {
+export function getWorkflowEngine(): WorkflowEngineAdapter {
   if (!engine) {
-    engine = new WorkflowEngine();
+    const config = getConfig();
+    engine = config.temporalEnabled ? new TemporalWorkflowEngine() : new WorkflowEngine();
   }
   return engine;
 }
 
-export async function initializeWorkflowEngine(): Promise<WorkflowEngine> {
+export async function initializeWorkflowEngine(): Promise<WorkflowEngineAdapter> {
   const e = getWorkflowEngine();
   await e.initialize();
   return e;
