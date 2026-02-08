@@ -55,14 +55,14 @@ npm run cli -- intent "List all S3 buckets" --execute
 
 ## Supported Providers
 
-### LLM Providers (2026 Models)
+### LLM Providers
 
-| Provider | Models | Best For | Setup |
-|----------|--------|----------|-------|
-| **Anthropic** | Claude Opus 4.5, Claude Sonnet 4.0, Claude Haiku 4.0 | Complex reasoning, tool use | API key |
-| **OpenAI** | GPT-4o, o3-mini, GPT-4 Turbo | Fast responses, wide compatibility | API key |
-| **OpenRouter** | 200+ models (DeepSeek, Llama 4, Gemini 2) | Model variety, cost optimization | API key |
-| **Ollama** | Llama 3.2, Mistral, Qwen 2.5, DeepSeek-R1 | Privacy, offline, no API costs | Local install |
+| Provider | Best For | Setup |
+|----------|----------|-------|
+| **Anthropic** | Complex reasoning, tool use | API key |
+| **OpenAI** | Fast responses, wide compatibility | API key |
+| **OpenRouter** | Model variety, cost optimization | API key |
+| **Ollama** | Privacy, offline, no API costs | Local install |
 
 ### Cloud Providers
 
@@ -99,6 +99,19 @@ The AEGIS-T2A web dashboard provides comprehensive visibility and control:
 
 ---
 
+## Current Capabilities (Implemented)
+
+- **Identity & Zero-Trust** — SPIFFE-based identity, attestors, delegation, and lifecycle management
+- **Policy Enforcement** — OPA bundle support, shadow mode, and policy telemetry
+- **Temporal Workflows** — Durable orchestration, signals/queries, schedules, claim-check payloads
+- **Integrations** — Catalog + Zapier MCP fallback, rate limits, circuit breaker, health checks
+- **Observability** — OpenTelemetry tracing and `/metrics` endpoint
+- **Compliance** — SOC2 reports, RoPA records, DPIA templates
+- **Safety** — Prompt injection detection, LLM output guardrails, intent/plan alignment checks
+- **DevEx** — CLI, evaluation harness, feature flags, prompt cache + model routing
+
+---
+
 ## Research-Backed Roadmap (250 Improvements)
 
 See the full, source-cited report in `AEGIS_T2A_250_IMPROVEMENTS.md`. This roadmap is organized for implementation and highlights key, externally validated foundations:
@@ -125,79 +138,11 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
 
 ---
 
-## 🚀 Enterprise Enhancements (Phases 1-5)
+## 🚀 Implemented Enterprise Enhancements (Phases 1-16)
 
-AEGIS-T2A has been enhanced with 90+ production-grade improvements across 5 critical phases:
+AEGIS-T2A now includes identity, policy enforcement, Temporal workflows, hybrid RAG, memory/ontology storage, integration catalog + Zapier MCP fallback, observability (OTel + metrics), compliance tooling (RoPA + DPIA templates), model routing + prompt cache, evaluation harness, feature flags, and sandbox guardrails.
 
-### **Phase 1: Identity & Zero-Trust** (17+ Components) ✅
-
-Advanced identity and access control based on SPIFFE/SPIRE and Aembit patterns:
-
-- **SPIFFE IDs**: Cryptographic identity for every agent/workflow/service
-- **Workload Attestation**: Docker, K8s, Unix, AWS, GCP, Azure verification
-- **Cloud Attestors**: Automatic identity bootstrapping on AWS/GCP/Azure
-- **Hierarchical Scopes**: READ → WRITE → EXECUTE → ADMIN
-- **NHI Lifecycle**: Complete non-human identity management
-- **Token Delegation**: Secure authority delegation to sub-agents
-- **Trust Federation**: Cross-organization identity verification
-- **Agent Genealogy**: Parent-child spawn tracking for blast radius
-- **Rate Limiting**: Token bucket per SPIFFE ID
-- **Emergency Revocation**: Kill switch with instant propagation
-- **SVID Rotation**: Automatic rotation at 2/3 TTL (Envoy SDS pattern)
-- **Bilateral Auth**: Mutual agent authorization
-- **Capability Tokens**: Fine-grained delegation with constraints
-- **Identity Observability**: SPIFFE IDs in all logs/metrics/traces
-
-**Status**: ✅ Production-Ready | **SOC 2**: CC6.1, CC6.6, CC6.7, CC6.8, CC7.3
-
-### **Phase 2: Intent Confidence Scoring** (20 Components) ✅
-
-Multi-model intelligence with Bayesian learning and ensemble voting:
-
-- **Bayesian Scoring**: Prior/likelihood/posterior probability calculations
-- **Ensemble Voting**: Parallel queries to Claude, GPT-4, heuristic parser
-- **Model Agreement**: Fleiss' kappa-like consensus measurement
-- **Confidence Thresholds**: Risk-adjusted auto-approve/clarify/escalate/reject
-- **Real-Time Telemetry**: Sliding window stats, anomaly detection
-- **Shannon Entropy**: Uncertainty quantification
-- **Adaptive Learning**: Priors update from historical observations
-- **Per-User Analytics**: Confidence trends and behavior patterns
-- **Threshold Enforcement**: Automatic rejection below confidence thresholds
-- **Override System**: Authorized overrides with justification audit trail
-
-**Status**: ✅ Production-Ready | **SOC 2**: CC7.2, CC8.1
-
-### **Phase 3: Advanced Policy Engine & Governance** (10 Components) ✅
-
-Enterprise-grade policy management with versioning, testing, and compliance:
-
-- **Policy Versioning**: Semantic versioning with full change history and rollback
-- **Policy Templates**: 17+ ready-to-use templates (SOC 2, ISO 27001, NIST, PCI-DSS, GDPR, HIPAA)
-- **Policy Testing**: Test framework with coverage analysis and regression detection
-- **Conflict Detection**: Identifies contradictory, redundant, and shadowed policies
-- **RBAC with SPIFFE**: Role-based access control integrated with Phase 1 identities
-- **Impact Analysis**: What-if simulation for policy changes with blast radius calculation
-- **Compliance Mapper**: Auto-mapping to compliance frameworks with gap analysis
-- **Policy Analytics**: Real-time metrics, trends, and effectiveness scoring
-- **Exception Management**: Temporary overrides with approval workflows and audit trail
-- **Policy Inheritance**: Hierarchical structure (Global → Environment → Team → User)
-
-**Status**: ✅ Production-Ready | **SOC 2**: All framework controls
-
-### **Phase 4: Simulation & Blast Radius** (18 Components) ✅
-
-Predictive analysis and what-if scenario testing before production:
-
-- **Shadow Execution**: Sandboxed plan execution with state snapshots
-- **Copy-on-Write State**: Full rollback to any execution checkpoint
-- **Dependency Graphs**: DAG construction with topological sorting
-- **Critical Path Analysis**: Longest weighted paths and bottlenecks
-- **Blast Radius Calculation**: Graph traversal for impact prediction
-- **What-If Scenarios**: Test failure/optimization/constraint scenarios
-- **Circular Dependency Detection**: Cycle detection with severity rating
-- **Parallelization Scoring**: Identify concurrent execution opportunities
-- **Resource Conflict Detection**: Concurrent modification analysis
-- **Confidence Scoring**: Production readiness assessment (0-1 scale)
+For the full phase-by-phase implementation status, see `IMPLEMENTATION_REPORT.md`.
 - **Side-Effect Tracking**: Categorized effect analysis
 - **Scenario Comparison**: A/B testing for execution strategies
 
@@ -276,7 +221,7 @@ SOC 2 compliance features with immutable audit logs and policy enforcement:
 | Component | Description | Compliance |
 |-----------|-------------|------------|
 | **Event Store** | Immutable append-only log with hash-chaining | SOC 2 CC7.2 |
-| **Merkle Proofs** | Cryptographic verification of audit trail integrity | CC7.2 |
+| **Queryable Audit Index** | Fast forensic search + evidence export | CC7.2 |
 | **Policy Engine** | OPA-based Rego policies with versioning | CC6.1, CC8.1 |
 | **SOC 2 Reporter** | Automated compliance reports for 5 TSC criteria | All TSC |
 | **Chain Verification** | Real-time tamper detection in audit logs | CC7.3 |
@@ -297,7 +242,7 @@ AEGIS-T2A implements defense-in-depth security across every layer:
 | **Runtime Policy Enforcement** | Real-time execution control | FAIL-CLOSED mode, circuit breakers |
 | **Compensation Validation** | Safe rollback verification | Semantic matching before execution |
 | **Blast Radius Analysis** | Quantitative impact assessment | 15+ risk metrics per operation |
-| **Deterministic Replay** | SOC 2 CC7.2 compliance | Merkle tree audit trail, time travel |
+| **Deterministic Replay** | SOC 2 CC7.2 compliance | Prompt/response capture + replay engine |
 
 ### Enterprise Control Plane (Optional)
 
@@ -333,8 +278,8 @@ For organizations requiring advanced governance:
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │  Audit     │  │  Merkle    │  │   Deterministic        │ │
-│  │  Ledger    │→ │  Proofs    │→ │   Replay Engine        │ │
+│  │  Audit     │  │  Queryable │  │   Deterministic        │ │
+│  │  Ledger    │→ │  Index     │→ │   Replay Engine        │ │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -384,18 +329,20 @@ flowchart TB
 
     subgraph Security["🛡️ Security Layer"]
         RUNTIME[Runtime Interceptor]
-        CIRCUIT[Circuit Breakers]
+        GUARD[LLM Guardrails]
         MEMORY[Memory Isolation]
         DLP[DLP Filter]
     end
 
     subgraph Execution["⚡ Execution Layer"]
-        WORKFLOW[Workflow Engine]
+        TEMPORAL[Temporal Workflows]
         EXECUTOR[Sandboxed Executor]
         CHECKPOINT[Checkpoint Manager]
     end
 
-    subgraph Adapters["🔌 Tool Adapters"]
+    subgraph Integrations["🔌 Integrations"]
+        CATALOG[Integration Catalog]
+        ZAPIER[Zapier MCP Bridge]
         AWS[AWS]
         AZ[Azure]
         GCP[GCP]
@@ -403,20 +350,29 @@ flowchart TB
         DOCKER[Docker]
         SSH[SSH]
         GH[GitHub]
-        TF[Terraform]
     end
 
     subgraph Audit["📊 Audit & Compliance"]
         LEDGER[Hash-Chain Ledger]
-        MERKLE[Merkle Tree]
         REPLAY[Replay Engine]
-        FORENSIC[Forensic Index]
+        FORENSIC[Queryable Audit Index]
+        COMPLY[RoPA + DPIA Templates]
     end
 
     subgraph Approval["✅ Human Approval"]
         AUTO[Auto-Approve<br/>Low Risk]
         ASYNC[Async Approve<br/>Medium Risk]
         SYNC[Multi-Signer<br/>High Risk]
+    end
+
+    subgraph Observability["📈 Observability"]
+        OTEL[OpenTelemetry Tracing]
+        METRICS[Prometheus Metrics]
+        LOGS[Structured Logs]
+    end
+
+    subgraph Controls["🎛️ Deployment Controls"]
+        FLAGS[Feature Flags]
     end
 
     %% Flow connections
@@ -427,17 +383,18 @@ flowchart TB
     Planning --> Approval
     Approval --> Security
     Security --> Execution
-    Execution --> Adapters
+    Execution --> Integrations
 
     %% Audit connections
     Gateway --> Audit
     Planning --> Audit
     Execution --> Audit
 
-    %% Security integration
-    MEMORY -.-> Execution
-    DLP -.-> Execution
-    RUNTIME -.-> Adapters
+    %% Observability + controls
+    Gateway --> Observability
+    Planning --> Observability
+    Execution --> Observability
+    FLAGS -.-> Execution
 
     classDef channel fill:#e3f2fd,stroke:#1565c0
     classDef llm fill:#f3e5f5,stroke:#7b1fa2
@@ -448,16 +405,20 @@ flowchart TB
     classDef adapter fill:#e0f2f1,stroke:#00695c
     classDef audit fill:#eceff1,stroke:#37474f
     classDef approval fill:#fff8e1,stroke:#f57f17
+    classDef observability fill:#ede7f6,stroke:#512da8
+    classDef controls fill:#f3f4c5,stroke:#827717
 
     class WEB,CLI,TG,WA,SLACK,API channel
     class ANTH,OAI,OR,OLL llm
     class PARSE,POLICY,DISAMB gateway
     class PLANNER,BLAST,COMP_VAL,SIM planning
-    class RUNTIME,CIRCUIT,MEMORY,DLP security
-    class WORKFLOW,EXECUTOR,CHECKPOINT execution
-    class AWS,AZ,GCP,K8S,DOCKER,SSH,GH,TF adapter
-    class LEDGER,MERKLE,REPLAY,FORENSIC audit
+    class RUNTIME,GUARD,MEMORY,DLP security
+    class TEMPORAL,EXECUTOR,CHECKPOINT execution
+    class CATALOG,ZAPIER,AWS,AZ,GCP,K8S,DOCKER,SSH,GH adapter
+    class LEDGER,REPLAY,FORENSIC,COMPLY audit
     class AUTO,ASYNC,SYNC approval
+    class OTEL,METRICS,LOGS observability
+    class FLAGS controls
 ```
 
 ---
@@ -507,7 +468,7 @@ sequenceDiagram
     end
 
     E->>U: Result
-    AU->>AU: Merkle Commit
+    AU->>AU: Hash-Chain Commit
 ```
 
 ---
@@ -609,7 +570,6 @@ Create `config/aegis.json` for advanced settings:
     "compensationTimeout": "5m"
   },
   "audit": {
-    "merkleCommitInterval": "5m",
     "retentionDays": 365
   }
 }
@@ -642,7 +602,6 @@ Create `config/aegis.json` for advanced settings:
 | `GET` | `/api/v1/audit/verify` | Verify chain integrity |
 | `GET` | `/api/v1/audit/forensic/:workflowId` | Generate forensic report |
 | `POST` | `/api/v1/audit/replay` | Replay execution |
-| `GET` | `/api/v1/audit/merkle/:commitId` | Get Merkle proof |
 
 ### Settings & Discovery
 
@@ -653,6 +612,11 @@ Create `config/aegis.json` for advanced settings:
 | `POST` | `/api/v1/test/llm` | Test LLM connection |
 | `POST` | `/api/v1/test/cloud` | Validate cloud credentials |
 | `GET` | `/api/v1/registry/adapters` | List tool adapters |
+| `GET` | `/api/v1/integrations/search` | Search integration catalog |
+| `GET` | `/api/v1/integrations/health` | Integration health status |
+| `GET` | `/api/v1/compliance/controls` | Compliance control mappings |
+| `GET` | `/api/v1/feature-flags` | List feature flags |
+| `GET` | `/api/v1/metrics` | Prometheus metrics |
 
 ### Example: Create and Execute Intent
 
@@ -727,9 +691,9 @@ await eventStore.appendEvent({
 const verification = await eventStore.verifyChain('event-1', 'event-1000');
 console.log(`Chain valid: ${verification.valid}`);
 
-// Get Merkle proof
-const proof = await eventStore.getMerkleProof('event-123');
-console.log(`Verified: ${proof.verified}`);
+// Export events for forensic analysis
+const events = await eventStore.query({ limit: 100 });
+console.log(`Events: ${events.length}`);
 ```
 
 ### Policy-Based Access Control
