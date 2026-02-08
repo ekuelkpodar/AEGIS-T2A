@@ -21,10 +21,10 @@ Access via the ⚙️ Settings button in the top bar.
 **AI Models**
 - Provider Selection: Anthropic Claude, OpenAI GPT, Ollama (Local), OpenRouter
 - Model Selection:
-  - Anthropic: claude-opus-4.5, claude-sonnet-4.5, claude-sonnet-4.0, claude-haiku-4.0
-  - OpenAI: gpt-4o, gpt-4-turbo, o3-mini, gpt-3.5-turbo
+  - Anthropic: claude-opus-4-20250514, claude-sonnet-4-20250514, claude-3-7-sonnet-20250219, claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022
+  - OpenAI: gpt-5.1, gpt-5.1-mini, gpt-4.1, gpt-4.1-mini, gpt-4o, gpt-4o-mini
   - Ollama: llama3.2, llama3.1, mistral, qwen2.5, deepseek-r1, codellama, phi3, gemma2
-  - OpenRouter: deepseek-r1, gemini-2.0-flash, llama-4-maverick, claude-3.5-sonnet
+  - OpenRouter: deepseek-r1, gemini-2.5-pro, llama-3-70b-instruct, claude-sonnet-4-20250514
 - API Key Management (encrypted)
 - Endpoint Configuration (Ollama/custom)
 - Temperature Control (0-1)

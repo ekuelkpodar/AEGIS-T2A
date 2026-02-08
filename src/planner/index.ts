@@ -327,7 +327,7 @@ export class PlannerAgent {
    */
   private async generateStepsWithLLM(intent: TypedIntent): Promise<LLMPlanStep[]> {
     const client = getAnthropicClient();
-    const model = selectModelForTask('plan', intent.nlText) || 'claude-3-5-sonnet-20241022';
+    const model = selectModelForTask('plan', intent.nlText) || 'claude-sonnet-4-20250514';
 
     const intentContext = `
 Intent ID: ${intent.intentId}

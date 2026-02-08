@@ -137,7 +137,7 @@ export async function parseIntent(
       ? `\n\nAdditional context:\n${JSON.stringify(context, null, 2)}`
       : '';
 
-    const model = selectModelForTask('intent', nlText) || 'claude-3-5-sonnet-20241022';
+    const model = selectModelForTask('intent', nlText) || 'claude-sonnet-4-20250514';
     const messages = [
       {
         role: 'user' as const,

@@ -810,18 +810,23 @@ async function loadSettingsModels(provider, select) {
 
   const modelsByProvider = {
     anthropic: [
+      { id: 'claude-opus-4-20250514', name: 'Claude Opus 4' },
       { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+      { id: 'claude-3-7-sonnet-20250219', name: 'Claude Sonnet 3.7' },
     ],
     openai: [
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+      { id: 'gpt-5.1', name: 'GPT-5.1' },
+      { id: 'gpt-5.1-mini', name: 'GPT-5.1 Mini' },
+      { id: 'gpt-4.1', name: 'GPT-4.1' },
       { id: 'gpt-4o', name: 'GPT-4o' },
     ],
     openrouter: [
-      { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-      { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo' },
+      { id: 'anthropic/claude-opus-4-20250514', name: 'Claude Opus 4' },
+      { id: 'openai/gpt-5.1', name: 'GPT-5.1' },
+      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
     ],
     gemini: [
+      { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Preview)' },
       { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
       { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
     ],

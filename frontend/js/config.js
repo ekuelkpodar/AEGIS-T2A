@@ -19,7 +19,7 @@ const AegisConfig = {
       },
       openai: {
         apiKey: '',
-        model: 'gpt-4-turbo',
+        model: 'gpt-5.1',
         baseUrl: 'https://api.openai.com/v1'
       },
       openrouter: {

@@ -13,39 +13,39 @@ const SettingsPanel = {
   currentSettings: null,
   availableModels: {
     anthropic: [
-      'claude-opus-4-6-20260201',     // Flagship: Claude Opus 4.6 (1M token context)
-      'claude-sonnet-4-5-20250929',   // Balanced: Claude Sonnet 4.5
-      'claude-haiku-4-5-20251001',    // Fast: Claude Haiku 4.5
-      'claude-sonnet-4.0',            // Legacy
-      'claude-haiku-4.0'              // Legacy
+      'claude-opus-4-20250514',       // Claude Opus 4
+      'claude-sonnet-4-20250514',     // Claude Sonnet 4
+      'claude-3-7-sonnet-20250219',   // Claude Sonnet 3.7
+      'claude-3-5-sonnet-20241022',   // Claude Sonnet 3.5
+      'claude-3-5-haiku-20241022'     // Claude Haiku 3.5
     ],
     openai: [
-      'gpt-5.2',                       // Flagship: GPT-5.2 (latest proprietary)
-      'gpt-5.3-codex',                 // Balanced: GPT-5.3-Codex (code-optimized)
-      'gpt-oss-120b',                  // Open Source: GPT-OSS 120B
-      'gpt-oss-20b',                   // Open Source: GPT-OSS 20B
-      'gpt-4o',                        // Legacy (retiring 2026)
-      'gpt-4-turbo',                   // Legacy (retiring 2026)
+      'gpt-5.1',
+      'gpt-5.1-mini',
+      'gpt-4.1',
+      'gpt-4.1-mini',
+      'gpt-4o',
+      'gpt-4o-mini',
       'o3-mini'
     ],
     ollama: [],  // Populated dynamically from Ollama API
     openrouter: [
-      'anthropic/claude-opus-4-6',         // Latest Claude Opus 4.6
-      'openai/gpt-5.2',                    // Latest GPT-5.2
-      'openai/gpt-5.3-codex',              // Latest GPT-5.3-Codex
-      'google/gemini-2.0-flash-thinking',  // Latest Gemini 2.0
-      'deepseek/deepseek-r1',              // Latest DeepSeek R1
-      'meta-llama/llama-4-maverick',
-      'mistralai/mixtral-8x22b',
-      'qwen/qwen3-coder-next',
-      'google/gemma-3-27b'
+      'anthropic/claude-opus-4-20250514',
+      'anthropic/claude-sonnet-4-20250514',
+      'openai/gpt-5.1',
+      'openai/gpt-4.1',
+      'google/gemini-2.5-pro',
+      'google/gemini-2.5-flash',
+      'deepseek/deepseek-r1',
+      'meta-llama/llama-3-70b-instruct',
+      'mistralai/mixtral-8x22b'
     ],
     gemini: [
+      'gemini-3-pro-preview',
+      'gemini-3-flash-preview',
       'gemini-2.5-pro',
       'gemini-2.5-flash',
-      'gemini-2.5-flash-lite',
-      'gemini-3-pro-preview',
-      'gemini-3-flash-preview'
+      'gemini-2.5-flash-lite'
     ],
   },
 

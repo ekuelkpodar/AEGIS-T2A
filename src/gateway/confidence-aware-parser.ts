@@ -297,7 +297,7 @@ export class ConfidenceAwareParser extends EventEmitter {
       // Build parsing metadata
       const parsingMetadata: ParsingMetadata = {
         parseTimeMs,
-        modelUsed: 'claude-3-5-sonnet-20241022',
+        modelUsed: 'claude-sonnet-4-20250514',
         confidenceScale: '1-10',
         disambiguationThreshold: this.config.confidenceThreshold,
         rawConfidence: llmResult.confidence,
@@ -585,7 +585,7 @@ export class ConfidenceAwareParser extends EventEmitter {
       : '';
 
     const response = await this.anthropicClient.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 2048,
       messages: [
         {

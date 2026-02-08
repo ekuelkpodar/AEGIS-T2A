@@ -113,7 +113,7 @@ export class EnsembleVoter {
       providers: [
         {
           providerId: 'anthropic',
-          modelName: 'claude-3-5-sonnet-20241022',
+          modelName: 'claude-sonnet-4-20250514',
           weight: 1.2, // Higher weight for primary model
           enabled: true,
           apiKeyEnvVar: 'ANTHROPIC_API_KEY',
@@ -351,7 +351,7 @@ export class EnsembleVoter {
 Request: "${nlText}"${contextStr}`;
 
     const response = await this.anthropicClient.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     });

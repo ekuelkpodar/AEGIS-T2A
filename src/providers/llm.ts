@@ -127,7 +127,7 @@ export class OpenAIProvider implements LLMProvider {
     }
 
     this.baseUrl = config?.baseUrl || process.env['OPENAI_BASE_URL'] || 'https://api.openai.com/v1';
-    this.model = config?.model || process.env['OPENAI_MODEL'] || 'gpt-4-turbo';
+    this.model = config?.model || process.env['OPENAI_MODEL'] || 'gpt-5.1';
   }
 
   async complete(options: LLMCompletionOptions): Promise<LLMCompletionResult> {

@@ -233,7 +233,7 @@ export class SetupWizard {
         this.config.llm.apiKey = await this.promptSecret(
           'Enter your OpenAI API key'
         );
-        this.config.llm.model = await this.prompt('Model', 'gpt-4-turbo');
+        this.config.llm.model = await this.prompt('Model', 'gpt-5.1');
         this.config.llm.baseUrl = await this.prompt(
           'Base URL',
           'https://api.openai.com/v1'
@@ -521,7 +521,7 @@ export class SetupWizard {
         break;
       case 'openai':
         setEnv('OPENAI_API_KEY', this.config.llm.apiKey || '');
-        setEnv('OPENAI_MODEL', this.config.llm.model || 'gpt-4-turbo');
+        setEnv('OPENAI_MODEL', this.config.llm.model || 'gpt-5.1');
         setEnv('OPENAI_BASE_URL', this.config.llm.baseUrl || '');
         break;
       case 'gemini':
