@@ -17,6 +17,7 @@ import { getIntegrationCatalog } from '../integrations/index.js';
 import { listControlMappings, listControlMappingsByFramework } from '../compliance/mappings.js';
 import { createRopaRecord, listRopaRecords, getRopaRecord, RopaInput } from '../compliance/ropa.js';
 import { ensureDefaultTemplate, listDpiaTemplates, getDpiaTemplate } from '../compliance/dpia.js';
+import { getFeatureFlags } from '../deployment/feature-flags.js';
 import { EventType, ActorType } from '../core/types.js';
 import {
   initializeLLMProvider,
@@ -57,6 +58,12 @@ const RopaRequestSchema = z.object({
   processingBasis: z.string().optional(),
   crossBorderTransfers: z.boolean().optional(),
   securityMeasures: z.string().optional(),
+});
+
+const FeatureFlagSchema = z.object({
+  name: z.string().min(1),
+  enabled: z.boolean(),
+  description: z.string().optional(),
 });
 
 // =============================================================================
@@ -513,6 +520,35 @@ export function createRouter(): Router {
       const catalog = getIntegrationCatalog();
       const fallbacks = catalog.listFallbacks();
       res.json({ fallbacks, count: fallbacks.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ==========================================================================
+  // Feature Flags
+  // ==========================================================================
+
+  router.get('/feature-flags', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const flags = getFeatureFlags();
+      const entries = flags.listFlags();
+      res.json({ flags: entries, count: entries.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/feature-flags', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = FeatureFlagSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors });
+        return;
+      }
+      const flags = getFeatureFlags();
+      const flag = flags.setFlag(parsed.data.name, parsed.data.enabled, parsed.data.description);
+      res.status(201).json({ flag });
     } catch (error) {
       next(error);
     }

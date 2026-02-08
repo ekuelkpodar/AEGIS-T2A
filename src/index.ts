@@ -21,6 +21,7 @@ import { initializeAuditLedger } from './audit/index.js';
 import { initializeSecretsVault } from './secrets/index.js';
 import { initializeIntegrations } from './integrations/index.js';
 import { initializeObservability, shutdownObservability } from './observability/index.js';
+import { initializeFeatureFlags } from './deployment/feature-flags.js';
 
 // Identity & Zero-Trust initialization
 import { initializeIdentitySystem, shutdownIdentitySystem } from './identity/initialization.js';
@@ -41,6 +42,7 @@ async function initialize(): Promise<void> {
 
   // Initialize observability early for startup spans/logs
   initializeObservability();
+  initializeFeatureFlags();
 
   // Run database migrations
   logger.info('Running database migrations...');
@@ -128,6 +130,7 @@ export { initializeAuditLedger, getAuditLedger, AuditLedger } from './audit/inde
 export { initializeSecretsVault, getSecretsVault, SecretsVault } from './secrets/index.js';
 export { initializeIntegrations, getIntegrationCatalog, IntegrationCatalog } from './integrations/index.js';
 export { initializeObservability, shutdownObservability } from './observability/index.js';
+export { initializeFeatureFlags, getFeatureFlags, FeatureFlagService } from './deployment/feature-flags.js';
 export { createRouter, createServer, ApiError } from './api/index.js';
 
 // Identity & Zero-Trust exports

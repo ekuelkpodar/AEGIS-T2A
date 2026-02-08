@@ -13,6 +13,7 @@ import type { ExecutionContext } from '../workflow/index.js';
 import { enforceSandboxGuardrails } from './sandbox-guard.js';
 import { getIntegrationCatalog, ZapierMcpClient } from '../integrations/index.js';
 import { withSpan, setSpanAttributes } from '../observability/index.js';
+import { getFeatureFlags } from '../deployment/feature-flags.js';
 
 // Re-export DLP Filter
 export {
@@ -121,6 +122,10 @@ export class Executor {
     });
 
     try {
+      const flags = getFeatureFlags();
+      if (!flags.isEnabled('execution_enabled', true)) {
+        throw new Error('Execution disabled by feature flag');
+      }
       // Get the handler for this adapter (with fallback support)
       let adapterToUse = step.toolAdapter;
       let handler = this.getHandler(adapterToUse);
