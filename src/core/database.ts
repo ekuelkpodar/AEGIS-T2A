@@ -300,6 +300,50 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_workflow_payloads_expires_at ON workflow_payloads(expires_at);
     `,
   },
+  {
+    version: 4,
+    name: 'knowledge_store',
+    sql: `
+      CREATE TABLE IF NOT EXISTS knowledge_documents (
+        doc_id TEXT PRIMARY KEY,
+        title TEXT,
+        source TEXT,
+        content_hash TEXT NOT NULL UNIQUE,
+        metadata TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS knowledge_chunks (
+        chunk_id TEXT PRIMARY KEY,
+        doc_id TEXT NOT NULL,
+        chunk_index INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        token_count INTEGER NOT NULL,
+        terms TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (doc_id) REFERENCES knowledge_documents(doc_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_doc_id ON knowledge_chunks(doc_id);
+
+      CREATE TABLE IF NOT EXISTS knowledge_embeddings (
+        chunk_id TEXT PRIMARY KEY,
+        vector_json TEXT NOT NULL,
+        norm REAL NOT NULL,
+        FOREIGN KEY (chunk_id) REFERENCES knowledge_chunks(chunk_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS knowledge_terms (
+        term TEXT PRIMARY KEY,
+        df INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS knowledge_stats (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `,
+  },
 ];
 
 /**

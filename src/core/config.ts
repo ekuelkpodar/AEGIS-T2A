@@ -66,6 +66,13 @@ const ConfigSchema = z.object({
   // Approval
   approvalMediumRiskTtlHours: z.coerce.number().positive().default(24),
   approvalHighRiskTtlHours: z.coerce.number().positive().default(1),
+
+  // RAG
+  ragChunkSizeWords: z.coerce.number().int().positive().default(200),
+  ragChunkOverlapWords: z.coerce.number().int().min(0).default(40),
+  ragVectorDims: z.coerce.number().int().positive().default(256),
+  ragHybridWeight: z.coerce.number().min(0).max(1).default(0.6),
+  ragMinScore: z.coerce.number().min(0).default(0.0),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -108,6 +115,11 @@ function loadConfig(): Config {
     simulationMaxIterations: process.env['SIMULATION_MAX_ITERATIONS'],
     approvalMediumRiskTtlHours: process.env['APPROVAL_MEDIUM_RISK_TTL_HOURS'],
     approvalHighRiskTtlHours: process.env['APPROVAL_HIGH_RISK_TTL_HOURS'],
+    ragChunkSizeWords: process.env['RAG_CHUNK_SIZE_WORDS'],
+    ragChunkOverlapWords: process.env['RAG_CHUNK_OVERLAP_WORDS'],
+    ragVectorDims: process.env['RAG_VECTOR_DIMS'],
+    ragHybridWeight: process.env['RAG_HYBRID_WEIGHT'],
+    ragMinScore: process.env['RAG_MIN_SCORE'],
   };
 
   const result = ConfigSchema.safeParse(rawConfig);
