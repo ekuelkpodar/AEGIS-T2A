@@ -19,6 +19,9 @@ import {
   upsertEntry,
   upsertTool,
 } from './store.js';
+import { getIntegrationHealth } from './health.js';
+import { getIntegrationRateLimiter } from './rate-limiter.js';
+import { getIntegrationCircuitBreaker } from './circuit-breaker.js';
 
 const logger = componentLogger('integrations');
 
@@ -50,6 +53,8 @@ export class IntegrationCatalog {
   initialize(): void {
     if (this.initialized) return;
     this.ensureDefaults();
+    const limiter = getIntegrationRateLimiter();
+    limiter.configure('zapier:mcp', { requestsPerMinute: 60, burst: 10 });
     this.initialized = true;
     logger.info('Integration catalog initialized');
   }
@@ -149,8 +154,23 @@ export class ZapierMcpClient {
   }
 
   async execute(actionId: string, input: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const health = getIntegrationHealth();
+    const rateLimiter = getIntegrationRateLimiter();
+    const circuit = getIntegrationCircuitBreaker();
+
+    if (!circuit.canExecute('zapier:mcp')) {
+      health.update('zapier:mcp', 'down', 'Circuit open');
+      return { success: false, error: 'Circuit open', adapter: 'zapier:mcp' };
+    }
+
+    if (!rateLimiter.allow('zapier:mcp')) {
+      health.update('zapier:mcp', 'degraded', 'Rate limit exceeded');
+      return { success: false, error: 'Rate limit exceeded', adapter: 'zapier:mcp' };
+    }
+
     if (!this.endpoint) {
       logger.warn('Zapier MCP endpoint not configured; returning mock response');
+      health.update('zapier:mcp', 'degraded', 'Endpoint not configured');
       return { success: false, mock: true, reason: 'zapier_mcp_endpoint_not_configured' };
     }
 
@@ -169,9 +189,18 @@ export class ZapierMcpClient {
       });
 
       const json = (await response.json()) as Record<string, unknown>;
+      if (response.ok) {
+        circuit.recordSuccess('zapier:mcp');
+        health.update('zapier:mcp', 'healthy');
+      } else {
+        circuit.recordFailure('zapier:mcp');
+        health.update('zapier:mcp', 'degraded', `HTTP ${response.status}`);
+      }
       return { success: response.ok, status: response.status, ...json };
     } catch (error) {
       logger.error({ error }, 'Zapier MCP request failed');
+      circuit.recordFailure('zapier:mcp');
+      health.update('zapier:mcp', 'down', (error as Error).message);
       return { success: false, error: (error as Error).message };
     } finally {
       clearTimeout(timeout);

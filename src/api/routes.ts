@@ -19,6 +19,7 @@ import { createRopaRecord, listRopaRecords, getRopaRecord, RopaInput } from '../
 import { ensureDefaultTemplate, listDpiaTemplates, getDpiaTemplate } from '../compliance/dpia.js';
 import { getFeatureFlags } from '../deployment/feature-flags.js';
 import { getMetricsRegistry } from '../observability/metrics.js';
+import { getIntegrationHealth } from '../integrations/health.js';
 import { EventType, ActorType } from '../core/types.js';
 import {
   initializeLLMProvider,
@@ -527,6 +528,15 @@ export function createRouter(): Router {
       const catalog = getIntegrationCatalog();
       const fallbacks = catalog.listFallbacks();
       res.json({ fallbacks, count: fallbacks.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/integrations/health', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const health = getIntegrationHealth().list();
+      res.json({ health, count: health.length });
     } catch (error) {
       next(error);
     }
