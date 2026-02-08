@@ -41,6 +41,86 @@ export interface LLMProvider {
 }
 
 // =============================================================================
+// Gemini Provider (Google AI)
+// =============================================================================
+
+export class GeminiProvider implements LLMProvider {
+  name = 'gemini';
+  private apiKey: string;
+  private model: string;
+  private baseUrl: string;
+
+  constructor(config: { apiKey: string; model?: string; baseUrl?: string }) {
+    this.apiKey = config.apiKey;
+    this.model = config.model || 'gemini-2.5-pro';
+    this.baseUrl = config.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
+  }
+
+  async complete(options: LLMCompletionOptions): Promise<LLMCompletionResult> {
+    const systemMessage = options.messages.find(m => m.role === 'system');
+    const otherMessages = options.messages.filter(m => m.role !== 'system');
+
+    const response = await fetch(`${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        systemInstruction: systemMessage ? { parts: [{ text: systemMessage.content }] } : undefined,
+        contents: otherMessages.map((message) => ({
+          role: message.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: message.content }],
+        })),
+        generationConfig: {
+          temperature: options.temperature,
+          topP: options.topP,
+          maxOutputTokens: options.maxTokens || 4096,
+          stopSequences: options.stop,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({})) as { error?: { message?: string } };
+      throw new Error(`Gemini API error: ${error.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+        finishReason?: string;
+      }>;
+      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+      model?: string;
+    };
+
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    return {
+      content,
+      usage: {
+        inputTokens: data.usageMetadata?.promptTokenCount || 0,
+        outputTokens: data.usageMetadata?.candidatesTokenCount || 0,
+      },
+      model: data.model || this.model,
+      finishReason: data.candidates?.[0]?.finishReason,
+    };
+  }
+
+  async testConnection(): Promise<boolean> {
+    try {
+      await this.complete({
+        messages: [{ role: 'user', content: 'Hello' }],
+        maxTokens: 10,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+// =============================================================================
 // Anthropic Provider
 // =============================================================================
 
@@ -712,6 +792,14 @@ export function initializeLLMProvider(config?: {
   const cfg = config || getProviderConfig();
 
   switch (cfg.provider) {
+    case 'gemini':
+      currentProvider = new GeminiProvider({
+        apiKey: cfg.apiKey!,
+        model: cfg.model,
+        baseUrl: cfg.baseUrl,
+      });
+      break;
+
     case 'anthropic':
       currentProvider = new AnthropicProvider({
         apiKey: cfg.apiKey!,
@@ -764,6 +852,14 @@ function getProviderConfig(): {
   const provider = process.env['LLM_PROVIDER'] || 'anthropic';
 
   switch (provider) {
+    case 'gemini':
+      return {
+        provider,
+        apiKey: process.env['GEMINI_API_KEY'],
+        baseUrl: process.env['GEMINI_BASE_URL'],
+        model: process.env['GEMINI_MODEL'],
+      };
+
     case 'anthropic':
       return {
         provider,

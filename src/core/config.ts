@@ -28,11 +28,13 @@ const ConfigSchema = z.object({
   jwtExpiresIn: z.string().default('1h'),
 
   // LLM
-  llmProvider: z.enum(['anthropic', 'openai', 'openrouter', 'ollama']).default('anthropic'),
+  llmProvider: z.enum(['anthropic', 'openai', 'openrouter', 'ollama', 'gemini']).default('anthropic'),
   anthropicApiKey: z.string().optional(),
   openaiApiKey: z.string().optional(),
   openrouterApiKey: z.string().optional(),
   ollamaBaseUrl: z.string().url().optional(),
+  geminiApiKey: z.string().optional(),
+  geminiBaseUrl: z.string().url().optional(),
   llmModel: z.string().optional(),
   llmTemperature: z.coerce.number().min(0).max(2).default(0.7),
   llmFastModel: z.string().optional(),
@@ -117,6 +119,8 @@ function loadConfig(): Config {
     openaiApiKey: process.env['OPENAI_API_KEY'],
     openrouterApiKey: process.env['OPENROUTER_API_KEY'],
     ollamaBaseUrl: process.env['OLLAMA_BASE_URL'],
+    geminiApiKey: process.env['GEMINI_API_KEY'],
+    geminiBaseUrl: process.env['GEMINI_BASE_URL'],
     llmModel: process.env['LLM_MODEL'],
     llmTemperature: process.env['LLM_TEMPERATURE'],
     llmFastModel: process.env['LLM_FAST_MODEL'],

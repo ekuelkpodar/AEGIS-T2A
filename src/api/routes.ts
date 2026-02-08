@@ -681,6 +681,7 @@ export function createRouter(): Router {
           hasAnthropicKey: !!process.env['ANTHROPIC_API_KEY'] && process.env['ANTHROPIC_API_KEY'] !== 'your-anthropic-api-key',
           hasOpenaiKey: !!process.env['OPENAI_API_KEY'] && process.env['OPENAI_API_KEY'] !== 'your-openai-api-key',
           hasOpenrouterKey: !!process.env['OPENROUTER_API_KEY'] && process.env['OPENROUTER_API_KEY'] !== 'your-openrouter-api-key',
+          hasGeminiKey: !!process.env['GEMINI_API_KEY'] && process.env['GEMINI_API_KEY'] !== 'your-gemini-api-key',
         },
         server: {
           port: process.env['PORT'] || 3000,
@@ -695,14 +696,14 @@ export function createRouter(): Router {
 
   router.post('/settings/test-llm', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { provider, apiKey, model, ollamaUrl } = req.body;
+      const { provider, apiKey, model, ollamaUrl, geminiUrl } = req.body;
 
       // Create a temporary provider to test
       const testProvider = initializeLLMProvider({
         provider: provider || 'anthropic',
         apiKey: apiKey,
         model: model,
-        baseUrl: provider === 'ollama' ? ollamaUrl : undefined,
+        baseUrl: provider === 'ollama' ? ollamaUrl : provider === 'gemini' ? geminiUrl : undefined,
       });
 
       const success = await testProvider.testConnection();
@@ -812,6 +813,12 @@ export function createRouter(): Router {
 
       // Return available models for each provider
       const modelsByProvider: Record<string, Array<{ id: string; name: string; description?: string }>> = {
+        gemini: [
+          { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Latest reasoning model' },
+          { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast multimodal model' },
+          { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Preview)', description: 'Next-gen preview model' },
+          { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Preview)', description: 'Preview fast model' },
+        ],
         anthropic: [
           { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Latest balanced model' },
           { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Fast and capable' },

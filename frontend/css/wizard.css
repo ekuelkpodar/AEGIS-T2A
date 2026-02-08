@@ -204,6 +204,7 @@
 .provider-icon.anthropic { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
 .provider-icon.openai { background: rgba(16, 185, 129, 0.2); color: var(--success); }
 .provider-icon.openrouter { background: rgba(59, 130, 246, 0.2); color: var(--info); }
+.provider-icon.gemini { background: rgba(14, 165, 233, 0.2); color: #0EA5E9; }
 .provider-icon.ollama { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
 
 .provider-card h3 {

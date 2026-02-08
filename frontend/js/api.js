@@ -228,12 +228,13 @@ const AegisAPI = {
     return this.get('/api/v1/settings');
   },
 
-  async testLLMConnection(provider, apiKey, model, ollamaUrl) {
+  async testLLMConnection(provider, apiKey, model, ollamaUrl, geminiUrl) {
     return this.post('/api/v1/settings/test-llm', {
       provider,
       apiKey,
       model,
-      ollamaUrl
+      ollamaUrl,
+      geminiUrl
     });
   },
 

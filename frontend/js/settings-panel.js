@@ -40,6 +40,13 @@ const SettingsPanel = {
       'qwen/qwen3-coder-next',
       'google/gemma-3-27b'
     ],
+    gemini: [
+      'gemini-2.5-pro',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-3-pro-preview',
+      'gemini-3-flash-preview'
+    ],
   },
 
   modelCache: {},
@@ -190,7 +197,8 @@ const SettingsPanel = {
     const validationRules = {
       anthropic: /^sk-ant-[a-zA-Z0-9\-_]{40,}$/,
       openai: /^sk-[a-zA-Z0-9]{48,}$/,
-      openrouter: /^sk-or-v1-[a-zA-Z0-9]{64,}$/
+      openrouter: /^sk-or-v1-[a-zA-Z0-9]{64,}$/,
+      gemini: /^AIza[0-9A-Za-z\-_]{30,}$/
     };
 
     const pattern = validationRules[provider];
@@ -324,6 +332,7 @@ const SettingsPanel = {
                     <select id="setting-llm-provider" class="setting-select">
                       <option value="anthropic">Anthropic Claude</option>
                       <option value="openai">OpenAI GPT</option>
+                      <option value="gemini">Google Gemini</option>
                       <option value="ollama" selected>Ollama (Local)</option>
                       <option value="openrouter">OpenRouter</option>
                     </select>
@@ -884,7 +893,7 @@ const SettingsPanel = {
       endpointGroup.style.display = 'block';
     } else {
       apiKeyGroup.style.display = 'block';
-      endpointGroup.style.display = provider === 'openrouter' ? 'block' : 'none';
+      endpointGroup.style.display = provider === 'openrouter' || provider === 'gemini' ? 'block' : 'none';
     }
   },
 

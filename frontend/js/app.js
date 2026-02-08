@@ -821,6 +821,10 @@ async function loadSettingsModels(provider, select) {
       { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
       { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo' },
     ],
+    gemini: [
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+    ],
     ollama: [
       { id: 'llama2', name: 'Llama 2' },
       { id: 'mistral', name: 'Mistral' },

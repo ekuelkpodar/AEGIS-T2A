@@ -138,6 +138,7 @@ const Dashboard = {
       anthropic: { icon: 'fa-robot', color: '#8B5CF6' },
       openai: { icon: 'fa-brain', color: '#10B981' },
       openrouter: { icon: 'fa-network-wired', color: '#3B82F6' },
+      gemini: { icon: 'fa-star', color: '#0EA5E9' },
       ollama: { icon: 'fa-server', color: '#F59E0B' },
     };
 
@@ -358,6 +359,7 @@ const Dashboard = {
       anthropic: 'Anthropic Claude',
       openai: 'OpenAI GPT',
       openrouter: 'OpenRouter',
+      gemini: 'Google Gemini',
       ollama: 'Ollama Local',
     };
     return names[provider] || provider;

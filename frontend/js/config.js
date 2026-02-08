@@ -26,6 +26,11 @@ const AegisConfig = {
         apiKey: '',
         model: 'anthropic/claude-sonnet-4-20250514'
       },
+      gemini: {
+        apiKey: '',
+        model: 'gemini-2.5-pro',
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta'
+      },
       ollama: {
         baseUrl: 'http://localhost:11434',
         model: 'llama2'
@@ -228,6 +233,7 @@ const AegisConfig = {
     if (sanitized.llm?.anthropic) sanitized.llm.anthropic.apiKey = '***';
     if (sanitized.llm?.openai) sanitized.llm.openai.apiKey = '***';
     if (sanitized.llm?.openrouter) sanitized.llm.openrouter.apiKey = '***';
+    if (sanitized.llm?.gemini) sanitized.llm.gemini.apiKey = '***';
     if (sanitized.cloud?.aws) {
       sanitized.cloud.aws.accessKeyId = '***';
       sanitized.cloud.aws.secretAccessKey = '***';
@@ -294,6 +300,8 @@ const AegisConfig = {
         return !!config.llm.openai.apiKey;
       case 'openrouter':
         return !!config.llm.openrouter.apiKey;
+      case 'gemini':
+        return !!config.llm.gemini.apiKey;
       case 'ollama':
         return !!config.llm.ollama.baseUrl;
       default:

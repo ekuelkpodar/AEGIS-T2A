@@ -14,7 +14,7 @@ import * as path from 'path';
 
 interface WizardConfig {
   llm: {
-    provider: 'anthropic' | 'openai' | 'openrouter' | 'ollama';
+    provider: 'anthropic' | 'openai' | 'openrouter' | 'ollama' | 'gemini';
     apiKey?: string;
     baseUrl?: string;
     model?: string;
@@ -195,11 +195,12 @@ export class SetupWizard {
     this.printStep(1, 4, 'LLM Provider Configuration');
 
     console.log('AEGIS-T2A uses a Large Language Model to parse natural language intents.');
-    console.log('You can use Anthropic Claude, OpenAI, OpenRouter, or local Ollama.\n');
+    console.log('You can use Anthropic Claude, OpenAI, Google Gemini, OpenRouter, or local Ollama.\n');
 
     const provider = await this.promptSelect('Select your LLM provider:', [
       'Anthropic (Claude) - Recommended',
       'OpenAI (GPT-4)',
+      'Google Gemini',
       'OpenRouter (Multiple models)',
       'Ollama (Local, open-source)',
     ]);
@@ -207,6 +208,7 @@ export class SetupWizard {
     const providerMap: Record<string, WizardConfig['llm']['provider']> = {
       'Anthropic (Claude) - Recommended': 'anthropic',
       'OpenAI (GPT-4)': 'openai',
+      'Google Gemini': 'gemini',
       'OpenRouter (Multiple models)': 'openrouter',
       'Ollama (Local, open-source)': 'ollama',
     };
@@ -235,6 +237,17 @@ export class SetupWizard {
         this.config.llm.baseUrl = await this.prompt(
           'Base URL',
           'https://api.openai.com/v1'
+        );
+        break;
+
+      case 'gemini':
+        this.config.llm.apiKey = await this.promptSecret(
+          'Enter your Gemini API key'
+        );
+        this.config.llm.model = await this.prompt('Model', 'gemini-2.5-pro');
+        this.config.llm.baseUrl = await this.prompt(
+          'Base URL',
+          'https://generativelanguage.googleapis.com/v1beta'
         );
         break;
 
@@ -510,6 +523,11 @@ export class SetupWizard {
         setEnv('OPENAI_API_KEY', this.config.llm.apiKey || '');
         setEnv('OPENAI_MODEL', this.config.llm.model || 'gpt-4-turbo');
         setEnv('OPENAI_BASE_URL', this.config.llm.baseUrl || '');
+        break;
+      case 'gemini':
+        setEnv('GEMINI_API_KEY', this.config.llm.apiKey || '');
+        setEnv('GEMINI_MODEL', this.config.llm.model || 'gemini-2.5-pro');
+        setEnv('GEMINI_BASE_URL', this.config.llm.baseUrl || '');
         break;
       case 'openrouter':
         setEnv('OPENROUTER_API_KEY', this.config.llm.apiKey || '');

@@ -88,6 +88,13 @@
                             <h3>OpenAI GPT</h3>
                             <p>Fast and versatile</p>
                         </div>
+                        <div class="provider-card" data-provider="gemini">
+                            <div class="provider-icon gemini">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <h3>Google Gemini</h3>
+                            <p>Multimodal + long context</p>
+                        </div>
                         <div class="provider-card" data-provider="openrouter">
                             <div class="provider-icon openrouter">
                                 <i class="fas fa-route"></i>
@@ -528,6 +535,11 @@
                                     <div class="provider-icon openai"><i class="fas fa-bolt"></i></div>
                                     <h3>OpenAI GPT</h3>
                                     <p>Fast and versatile</p>
+                                </div>
+                                <div class="settings-provider-card" data-settings-provider="gemini">
+                                    <div class="provider-icon gemini"><i class="fas fa-star"></i></div>
+                                    <h3>Google Gemini</h3>
+                                    <p>Multimodal + long context</p>
                                 </div>
                                 <div class="settings-provider-card" data-settings-provider="openrouter">
                                     <div class="provider-icon openrouter"><i class="fas fa-route"></i></div>
@@ -977,6 +989,7 @@
                 var labels = {
                     'anthropic': 'Anthropic API Key',
                     'openai': 'OpenAI API Key',
+                    'gemini': 'Gemini API Key',
                     'openrouter': 'OpenRouter API Key'
                 };
                 if (apiKeyLabel) apiKeyLabel.textContent = labels[provider] || 'API Key';
@@ -1003,6 +1016,11 @@
                     ['gpt-4-turbo', 'GPT-4 Turbo'],
                     ['gpt-4o', 'GPT-4o'],
                     ['gpt-4o-mini', 'GPT-4o Mini']
+                ],
+                'gemini': [
+                    ['gemini-2.5-pro', 'Gemini 2.5 Pro'],
+                    ['gemini-2.5-flash', 'Gemini 2.5 Flash'],
+                    ['gemini-3-pro-preview', 'Gemini 3 Pro (Preview)']
                 ],
                 'openrouter': [
                     ['anthropic/claude-sonnet-4', 'Claude Sonnet 4'],
@@ -1779,6 +1797,11 @@
                     ['gpt-4-turbo', 'GPT-4 Turbo'],
                     ['gpt-4o', 'GPT-4o'],
                     ['gpt-4o-mini', 'GPT-4o Mini']
+                ],
+                'gemini': [
+                    ['gemini-2.5-pro', 'Gemini 2.5 Pro'],
+                    ['gemini-2.5-flash', 'Gemini 2.5 Flash'],
+                    ['gemini-3-pro-preview', 'Gemini 3 Pro (Preview)']
                 ],
                 'openrouter': [
                     ['anthropic/claude-sonnet-4', 'Claude Sonnet 4'],
