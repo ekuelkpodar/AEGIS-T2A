@@ -25,6 +25,9 @@ export interface AuditEventInput {
   workflowId?: string;
   actorId: string;
   actorType: ActorType;
+  actorSpiffeId?: string;
+  parentSpiffeId?: string;
+  svidSerialNumber?: string;
   action: string;
   targetResource?: string;
   inputs: Record<string, unknown>;
@@ -97,6 +100,9 @@ export class AuditLedger {
       workflowId: input.workflowId,
       actorId: input.actorId,
       actorType: input.actorType,
+      actorSpiffeId: input.actorSpiffeId,
+      parentSpiffeId: input.parentSpiffeId,
+      svidSerialNumber: input.svidSerialNumber,
       action: input.action,
       targetResource: input.targetResource,
       inputsHash,
@@ -122,10 +128,10 @@ export class AuditLedger {
     execute(
       `INSERT INTO audit_events
        (event_id, timestamp, event_type, intent_id, plan_id, plan_version, step_id,
-        workflow_id, actor_id, actor_type, action, target_resource, inputs_hash,
-        outputs_hash, success, error_code, error_message, risk_level, cost_incurred,
-        duration_ms, signature, previous_event_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        workflow_id, actor_id, actor_type, actor_spiffe_id, parent_spiffe_id, svid_serial_number,
+        action, target_resource, inputs_hash, outputs_hash, success, error_code, error_message,
+        risk_level, cost_incurred, duration_ms, signature, previous_event_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         event.eventId,
         event.timestamp,
@@ -137,6 +143,9 @@ export class AuditLedger {
         event.workflowId ?? null,
         event.actorId,
         event.actorType,
+        event.actorSpiffeId ?? null,
+        event.parentSpiffeId ?? null,
+        event.svidSerialNumber ?? null,
         event.action,
         event.targetResource ?? null,
         event.inputsHash,
@@ -219,6 +228,9 @@ export class AuditLedger {
       workflow_id: string | null;
       actor_id: string;
       actor_type: string;
+      actor_spiffe_id: string | null;
+      parent_spiffe_id: string | null;
+      svid_serial_number: string | null;
       action: string;
       target_resource: string | null;
       inputs_hash: string;
@@ -244,6 +256,9 @@ export class AuditLedger {
       workflowId: row.workflow_id ?? undefined,
       actorId: row.actor_id,
       actorType: row.actor_type as ActorType,
+      actorSpiffeId: row.actor_spiffe_id ?? undefined,
+      parentSpiffeId: row.parent_spiffe_id ?? undefined,
+      svidSerialNumber: row.svid_serial_number ?? undefined,
       action: row.action,
       targetResource: row.target_resource ?? undefined,
       inputsHash: row.inputs_hash,
@@ -313,6 +328,9 @@ export class AuditLedger {
       workflow_id: string | null;
       actor_id: string;
       actor_type: string;
+      actor_spiffe_id: string | null;
+      parent_spiffe_id: string | null;
+      svid_serial_number: string | null;
       action: string;
       target_resource: string | null;
       inputs_hash: string;
@@ -340,6 +358,9 @@ export class AuditLedger {
       workflowId: row.workflow_id ?? undefined,
       actorId: row.actor_id,
       actorType: row.actor_type as ActorType,
+      actorSpiffeId: row.actor_spiffe_id ?? undefined,
+      parentSpiffeId: row.parent_spiffe_id ?? undefined,
+      svidSerialNumber: row.svid_serial_number ?? undefined,
       action: row.action,
       targetResource: row.target_resource ?? undefined,
       inputsHash: row.inputs_hash,

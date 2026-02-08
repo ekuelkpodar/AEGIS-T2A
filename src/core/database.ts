@@ -273,6 +273,16 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       );
     `,
   },
+  {
+    version: 2,
+    name: 'audit_spiffe_fields',
+    sql: `
+      ALTER TABLE audit_events ADD COLUMN actor_spiffe_id TEXT;
+      ALTER TABLE audit_events ADD COLUMN parent_spiffe_id TEXT;
+      ALTER TABLE audit_events ADD COLUMN svid_serial_number TEXT;
+      CREATE INDEX IF NOT EXISTS idx_audit_events_actor_spiffe_id ON audit_events(actor_spiffe_id);
+    `,
+  },
 ];
 
 /**

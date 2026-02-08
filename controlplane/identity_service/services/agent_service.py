@@ -14,7 +14,7 @@ from uuid import UUID
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.agent import Agent, AgentStatus
+from ..models.agent import Agent, AgentStatus, AgentRole, TrustLevel
 from ..models.schemas import AgentCreate, AgentResponse, DIDDocument
 from ...common.config.settings import Settings, get_settings
 from ...common.auth.middleware import create_agent_token
@@ -64,6 +64,9 @@ class AgentService:
             name=data.name,
             public_key=data.public_key,
             key_fingerprint=key_fingerprint,
+            agent_role=AgentRole(data.agent_role) if data.agent_role else None,
+            trust_level=TrustLevel(data.trust_level) if data.trust_level else None,
+            capabilities=data.capabilities or [],
             metadata=data.metadata or {},
             permissions=data.permissions or [],
             status=AgentStatus.PENDING,
@@ -103,6 +106,10 @@ class AgentService:
         # Add metadata about registration
         agent.metadata["registered_by"] = registered_by
         agent.metadata["registration_method"] = provider
+        if data.agent_role:
+            agent.metadata["agent_role"] = data.agent_role
+        if data.trust_level:
+            agent.metadata["trust_level"] = data.trust_level
 
         # Persist to database
         self.session.add(agent)
@@ -344,6 +351,9 @@ class AgentService:
             name=agent.name,
             did=did_doc,
             spiffe_id=agent.spiffe_id,
+            agent_role=agent.agent_role.value if agent.agent_role else None,
+            trust_level=agent.trust_level.value if agent.trust_level else None,
+            capabilities=agent.capabilities or [],
             public_key=agent.public_key,
             key_fingerprint=agent.key_fingerprint,
             issuer=agent.issuer,

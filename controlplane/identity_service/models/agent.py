@@ -30,6 +30,23 @@ class AgentStatus(str, enum.Enum):
     REVOKED = "revoked"
 
 
+class AgentRole(str, enum.Enum):
+    """Primary agent role for trust policy and capability assignment."""
+    SME = "sme"
+    PLANNER = "planner"
+    EXECUTOR = "executor"
+    AUDITOR = "auditor"
+    FACILITATOR = "facilitator"
+
+
+class TrustLevel(str, enum.Enum):
+    """Progressive trust levels aligned to CSA ATF."""
+    INTERN = "intern"
+    JUNIOR = "junior"
+    SENIOR = "senior"
+    PRINCIPAL = "principal"
+
+
 class Agent(Base):
     """
     Agent identity record.
@@ -68,6 +85,28 @@ class Agent(Base):
         unique=True,
         index=True,
         comment="SPIFFE ID (e.g., spiffe://trust-domain/agent/agent-id)",
+    )
+
+    # Role and trust level for identity governance
+    agent_role = Column(
+        Enum(AgentRole),
+        nullable=True,
+        index=True,
+        comment="Primary agent role for capability mapping",
+    )
+    trust_level = Column(
+        Enum(TrustLevel),
+        nullable=True,
+        index=True,
+        comment="Progressive trust level (intern/junior/senior/principal)",
+    )
+
+    # Capability set for rapid authorization decisions
+    capabilities = Column(
+        JSONB,
+        default=list,
+        nullable=False,
+        comment="Capability set for the agent identity",
     )
 
     # Public key for asymmetric operations
@@ -189,6 +228,7 @@ class Agent(Base):
         Index("ix_agents_status_created", "status", "created_at"),
         Index("ix_agents_issuer_status", "issuer", "status"),
         Index("ix_agents_metadata_gin", "metadata", postgresql_using="gin"),
+        Index("ix_agents_role_trust", "agent_role", "trust_level"),
     )
 
     def __repr__(self) -> str:

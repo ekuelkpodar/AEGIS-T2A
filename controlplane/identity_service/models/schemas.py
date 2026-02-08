@@ -5,7 +5,7 @@ Request and response models for agent registration, management, and DID operatio
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -49,6 +49,18 @@ class AgentCreate(BaseModel):
     """Request to register a new agent."""
     name: str = Field(..., min_length=1, max_length=255, description="Agent name")
     public_key: Optional[str] = Field(None, description="PEM-encoded public key")
+    agent_role: Optional[Literal["sme", "planner", "executor", "auditor", "facilitator"]] = Field(
+        None,
+        description="Primary agent role (sme, planner, executor, auditor, facilitator)",
+    )
+    trust_level: Optional[Literal["intern", "junior", "senior", "principal"]] = Field(
+        None,
+        description="Progressive trust level (intern, junior, senior, principal)",
+    )
+    capabilities: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Capability set for authorization decisions",
+    )
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Agent metadata")
     permissions: Optional[List[str]] = Field(default_factory=list, description="Initial permissions")
 
@@ -57,6 +69,9 @@ class AgentCreate(BaseModel):
             "example": {
                 "name": "my-agent",
                 "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----",
+                "agent_role": "executor",
+                "trust_level": "junior",
+                "capabilities": ["execution:read", "sandbox:read"],
                 "metadata": {"team": "platform", "environment": "production"},
                 "permissions": ["read:*", "jira:write"],
             }
@@ -70,6 +85,9 @@ class AgentResponse(BaseModel):
     name: str
     did: Optional[DIDDocument] = None
     spiffe_id: Optional[str] = None
+    agent_role: Optional[str] = None
+    trust_level: Optional[str] = None
+    capabilities: List[str] = Field(default_factory=list)
     public_key: Optional[str] = None
     key_fingerprint: Optional[str] = None
     issuer: Optional[str] = None
