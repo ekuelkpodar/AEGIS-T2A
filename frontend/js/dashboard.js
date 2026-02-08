@@ -346,6 +346,7 @@ const Dashboard = {
       case 'anthropic': return settings.llm?.hasAnthropicKey;
       case 'openai': return settings.llm?.hasOpenaiKey;
       case 'openrouter': return settings.llm?.hasOpenrouterKey;
+      case 'gemini': return settings.llm?.hasGeminiKey;
       case 'ollama': return true; // Ollama doesn't need a key
       default: return false;
     }

@@ -52,6 +52,7 @@ const SettingsPanel = {
   modelCache: {},
   saveDebounceTimer: null,
   validationStates: {},
+  modelCacheTtlMs: 6 * 60 * 60 * 1000,
   modelPresets: {
     fast: {
       temperature: 0.3,
@@ -160,6 +161,30 @@ const SettingsPanel = {
         'llama3.1'
       ];
       this.showValidationIndicator('ollama-connection', 'warning', 'Using cached models - Ollama not running');
+    }
+  },
+
+  async fetchProviderModels(provider) {
+    if (provider === 'ollama') return;
+
+    const cached = this.modelCache[provider];
+    if (cached && Date.now() - cached.timestamp < this.modelCacheTtlMs) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/settings/models?provider=${encodeURIComponent(provider)}`);
+      if (!response.ok) throw new Error('Failed to fetch models');
+      const data = await response.json();
+      if (Array.isArray(data.models)) {
+        this.availableModels[provider] = data.models.map((model) => model.id);
+        this.modelCache[provider] = {
+          models: data.models,
+          timestamp: Date.now()
+        };
+      }
+    } catch (error) {
+      console.warn(`[SettingsPanel] Could not fetch ${provider} models:`, error);
     }
   },
 
@@ -714,12 +739,12 @@ const SettingsPanel = {
     `;
 
     document.body.insertAdjacentHTML('beforeend', settingsHTML);
-    this.populateModelOptions();
-    this.loadSettingsValues();
+    this.populateModelOptions().then(() => this.loadSettingsValues());
   },
 
-  populateModelOptions() {
+  async populateModelOptions() {
     const provider = document.getElementById('setting-llm-provider').value;
+    await this.fetchProviderModels(provider);
     this.updateModelDropdown(provider);
   },
 
@@ -749,17 +774,26 @@ const SettingsPanel = {
       return;
     }
 
+    const cached = this.modelCache[provider];
+    const modelMeta = Array.isArray(cached?.models) ? cached.models : [];
+
     models.forEach((model, index) => {
       const option = document.createElement('option');
       option.value = model;
 
       // Format display name
       let displayName = model;
-      if (provider === 'openrouter' && model.includes('/')) {
-        displayName = model.split('/')[1]; // Show just the model name
+      const meta = modelMeta.find((entry) => entry.id === model);
+      if (meta?.name) {
+        displayName = meta.name;
+      } else if (provider === 'openrouter' && model.includes('/')) {
+        displayName = model.split('/')[1];
       }
 
       option.textContent = displayName;
+      if (meta?.description) {
+        option.title = meta.description;
+      }
 
       // Add recommended badge to first model
       if (index === 0) {
@@ -785,9 +819,10 @@ const SettingsPanel = {
 
     // LLM settings
     document.getElementById('setting-llm-provider').value = this.currentSettings.llm.provider;
-    this.populateModelOptions();
-    document.getElementById('setting-llm-model').value = this.currentSettings.llm.model;
-    this.renderModelDetails(this.currentSettings.llm.provider, this.currentSettings.llm.model);
+    this.populateModelOptions().then(() => {
+      document.getElementById('setting-llm-model').value = this.currentSettings.llm.model;
+      this.renderModelDetails(this.currentSettings.llm.provider, this.currentSettings.llm.model);
+    });
     document.getElementById('setting-api-key').value = this.currentSettings.llm.apiKey || '';
     document.getElementById('setting-endpoint').value = this.currentSettings.llm.endpoint || '';
     document.getElementById('setting-temperature').value = this.currentSettings.llm.temperature;
@@ -846,17 +881,15 @@ const SettingsPanel = {
     // Provider change
     document.getElementById('setting-llm-provider')?.addEventListener('change', (e) => {
       const provider = e.target.value;
-      this.populateModelOptions();
-      this.updateProviderFields(provider);
-      this.showValidationIndicator('provider-selection', 'success', `Switched to ${provider}`);
-
-      // Check model availability for new provider
-      setTimeout(() => {
+      this.populateModelOptions().then(() => {
         const model = document.getElementById('setting-llm-model').value;
         if (model) {
           this.checkModelAvailability(provider, model);
+          this.renderModelDetails(provider, model);
         }
-      }, 100);
+      });
+      this.updateProviderFields(provider);
+      this.showValidationIndicator('provider-selection', 'success', `Switched to ${provider}`);
 
       // Re-fetch Ollama models if switching to Ollama
       if (provider === 'ollama') {
