@@ -11,6 +11,7 @@
 
 const SandboxBuilder = {
   activeSandboxes: [],
+  topZIndex: 9000,
   templates: {
     graphic: {
       name: 'Graphic Sandbox',
@@ -280,6 +281,7 @@ const SandboxBuilder = {
     this.activeSandboxes.push(sandbox);
     this.renderSandboxWindow(sandbox, content);
     this.updateSandboxList();
+    this.saveSandboxes();
   },
 
   createGraphicSandbox(sandboxId, config) {
@@ -644,6 +646,7 @@ print('Factorial of 5:', factorial(5))`,
 
     // Bind window controls
     const window = document.getElementById(`window-${sandbox.id}`);
+    this.bringToFront(window);
     window.querySelector('[data-action="close"]').addEventListener('click', () => {
       this.closeSandbox(sandbox.id);
     });
@@ -653,8 +656,24 @@ print('Factorial of 5:', factorial(5))`,
     });
 
     window.querySelector('[data-action="maximize"]').addEventListener('click', () => {
+      if (!window.classList.contains('maximized')) {
+        window.dataset.prevLeft = window.style.left || '';
+        window.dataset.prevTop = window.style.top || '';
+        window.dataset.prevWidth = window.style.width || '';
+        window.dataset.prevHeight = window.style.height || '';
+        window.dataset.prevTransform = window.style.transform || '';
+      } else {
+        window.style.left = window.dataset.prevLeft || '';
+        window.style.top = window.dataset.prevTop || '';
+        window.style.width = window.dataset.prevWidth || '';
+        window.style.height = window.dataset.prevHeight || '';
+        window.style.transform = window.dataset.prevTransform || '';
+      }
       window.classList.toggle('maximized');
+      this.bringToFront(window);
     });
+
+    window.addEventListener('mousedown', () => this.bringToFront(window));
   },
 
   makeWindowDraggable(windowId) {
@@ -670,6 +689,8 @@ print('Factorial of 5:', factorial(5))`,
       isDragging = true;
       initialX = e.clientX - (window.offsetLeft || 0);
       initialY = e.clientY - (window.offsetTop || 0);
+      window.style.transform = 'none';
+      this.bringToFront(window);
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -689,6 +710,12 @@ print('Factorial of 5:', factorial(5))`,
     });
   },
 
+  bringToFront(window) {
+    if (!window) return;
+    this.topZIndex += 1;
+    window.style.zIndex = this.topZIndex.toString();
+  },
+
   closeSandbox(sandboxId) {
     const window = document.getElementById(`window-${sandboxId}`);
     if (window) {
@@ -697,6 +724,7 @@ print('Factorial of 5:', factorial(5))`,
 
     this.activeSandboxes = this.activeSandboxes.filter(s => s.id !== sandboxId);
     this.updateSandboxList();
+    this.saveSandboxes();
   },
 
   updateSandboxList() {
@@ -731,6 +759,7 @@ print('Factorial of 5:', factorial(5))`,
         const window = document.getElementById(`window-${sandboxId}`);
         if (window) {
           window.classList.remove('minimized');
+          this.bringToFront(window);
         }
       });
     });
@@ -750,10 +779,36 @@ print('Factorial of 5:', factorial(5))`,
       try {
         this.activeSandboxes = JSON.parse(saved);
         this.updateSandboxList();
+        this.restoreSandboxWindows();
       } catch (error) {
         console.warn('Failed to load sandboxes:', error);
       }
     }
+  },
+
+  restoreSandboxWindows() {
+    this.activeSandboxes.forEach((sandbox) => {
+      if (document.getElementById(`window-${sandbox.id}`)) return;
+      let content = '';
+      switch (sandbox.type) {
+        case 'graphic':
+          content = this.createGraphicSandbox(sandbox.id, sandbox.config || {});
+          break;
+        case 'code':
+          content = this.createCodeSandbox(sandbox.id, sandbox.config || {});
+          break;
+        case 'api':
+          content = this.createApiSandbox(sandbox.id, sandbox.config || {});
+          break;
+        case 'docker':
+          content = this.createDockerSandbox(sandbox.id, sandbox.config || {});
+          break;
+        default:
+          content = this.createGraphicSandbox(sandbox.id, sandbox.config || {});
+          break;
+      }
+      this.renderSandboxWindow(sandbox, content);
+    });
   },
 
   saveSandboxes() {
