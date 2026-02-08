@@ -283,6 +283,8 @@ function bindSettingsControls() {
           apiKeyGroup.style.display = 'block';
           ollamaUrlGroup.style.display = 'block';
         }
+
+        updateLLMSettings(provider);
       }
     });
   });
@@ -768,12 +770,12 @@ async function loadSettingsData() {
     const settings = await AegisAPI.getSettings();
     const config = AegisConfig.get();
 
-    // Populate LLM settings
-    const providerSelect = document.getElementById('settings-llm-provider');
-    if (providerSelect) providerSelect.value = settings.llm?.provider || config.llm?.provider || 'ollama';
+    const provider = settings.llm?.provider || config.llm?.provider || 'ollama';
+    document.querySelectorAll('.settings-provider-card').forEach(card => {
+      card.classList.toggle('selected', card.dataset.settingsProvider === provider);
+    });
 
-    // Update based on saved config
-    updateLLMSettings();
+    updateLLMSettings(provider);
   } catch (error) {
     console.error('Failed to load settings:', error);
   }
@@ -782,8 +784,13 @@ async function loadSettingsData() {
 /**
  * Update LLM settings UI based on selected provider
  */
-function updateLLMSettings() {
-  const provider = document.getElementById('settings-llm-provider')?.value;
+function getSelectedSettingsProvider() {
+  const selected = document.querySelector('.settings-provider-card.selected');
+  return selected?.dataset.settingsProvider || 'ollama';
+}
+
+function updateLLMSettings(providerOverride) {
+  const provider = providerOverride || getSelectedSettingsProvider();
   const apiKeyGroup = document.getElementById('settings-api-key-group');
   const ollamaUrlGroup = document.getElementById('settings-ollama-url-group');
   const modelSelect = document.getElementById('settings-llm-model');
@@ -807,38 +814,21 @@ function updateLLMSettings() {
  */
 async function loadSettingsModels(provider, select) {
   select.innerHTML = '<option value="">Loading...</option>';
+  try {
+    if (provider === 'ollama') {
+      const discovery = await AegisAPI.getOllamaModels();
+      const models = Array.isArray(discovery.models) ? discovery.models : [];
+      select.innerHTML = models.map((model) => `<option value="${model}">${model}</option>`).join('');
+      return;
+    }
 
-  const modelsByProvider = {
-    anthropic: [
-      { id: 'claude-opus-4-20250514', name: 'Claude Opus 4' },
-      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-      { id: 'claude-3-7-sonnet-20250219', name: 'Claude Sonnet 3.7' },
-    ],
-    openai: [
-      { id: 'gpt-5.1', name: 'GPT-5.1' },
-      { id: 'gpt-5.1-mini', name: 'GPT-5.1 Mini' },
-      { id: 'gpt-4.1', name: 'GPT-4.1' },
-      { id: 'gpt-4o', name: 'GPT-4o' },
-    ],
-    openrouter: [
-      { id: 'anthropic/claude-opus-4-20250514', name: 'Claude Opus 4' },
-      { id: 'openai/gpt-5.1', name: 'GPT-5.1' },
-      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-    ],
-    gemini: [
-      { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Preview)' },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-    ],
-    ollama: [
-      { id: 'llama2', name: 'Llama 2' },
-      { id: 'mistral', name: 'Mistral' },
-      { id: 'codellama', name: 'Code Llama' },
-    ],
-  };
-
-  const models = modelsByProvider[provider] || [];
-  select.innerHTML = models.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+    const data = await AegisAPI.getModelsForProvider(provider);
+    const models = Array.isArray(data.models) ? data.models : [];
+    select.innerHTML = models.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  } catch (error) {
+    console.warn('Failed to load models from API, using fallback list.', error);
+    select.innerHTML = '<option value="">No models available</option>';
+  }
 }
 
 /**
@@ -926,7 +916,7 @@ function updateConnectionStatus(connected) {
  * Save settings
  */
 async function saveSettings() {
-  const provider = document.getElementById('settings-llm-provider')?.value;
+  const provider = getSelectedSettingsProvider();
   const apiKey = document.getElementById('settings-api-key')?.value;
   const model = document.getElementById('settings-llm-model')?.value;
   const ollamaUrl = document.getElementById('settings-ollama-url')?.value;
@@ -978,7 +968,7 @@ function clearData() {
  * Test LLM connection from settings
  */
 async function testLLMConnection() {
-  const provider = document.getElementById('settings-llm-provider')?.value;
+  const provider = getSelectedSettingsProvider();
   const apiKey = document.getElementById('settings-api-key')?.value;
   const ollamaUrl = document.getElementById('settings-ollama-url')?.value;
 
