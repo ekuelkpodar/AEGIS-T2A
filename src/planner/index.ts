@@ -22,6 +22,7 @@ import { componentLogger, logPlan } from '../core/logger.js';
 import { computePlanChecksum, signObject } from '../core/crypto.js';
 import { execute, queryOne, queryAll } from '../core/database.js';
 import { getConfig } from '../core/config.js';
+import { withSpan, setSpanAttributes } from '../observability/index.js';
 import Anthropic from '@anthropic-ai/sdk';
 
 const logger = componentLogger('planner');
@@ -311,6 +312,7 @@ export class PlannerAgent {
    */
   private async generateStepsWithLLM(intent: TypedIntent): Promise<LLMPlanStep[]> {
     const client = getAnthropicClient();
+    const model = 'claude-3-5-sonnet-20241022';
 
     const intentContext = `
 Intent ID: ${intent.intentId}
@@ -326,15 +328,39 @@ Additional Context:
 ${JSON.stringify(intent.metadata ?? {}, null, 2)}
 `;
 
-    const response = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: `${PLANNING_PROMPT}\n\n${intentContext}`,
-        },
-      ],
+    const response = await withSpan('gen_ai.plan', {
+      'gen_ai.system': 'anthropic',
+      'gen_ai.operation.name': 'plan_generation',
+      'gen_ai.request.model': model,
+      'gen_ai.request.max_tokens': 4096,
+      'aegis.intent.id': intent.intentId,
+      'aegis.intent.action_type': intent.actionType,
+      'aegis.intent.risk_level': intent.riskLevel,
+    }, async (span) => {
+      const result = await client.messages.create({
+        model,
+        max_tokens: 4096,
+        messages: [
+          {
+            role: 'user',
+            content: `${PLANNING_PROMPT}\n\n${intentContext}`,
+          },
+        ],
+      });
+
+      if (result.usage) {
+        setSpanAttributes(span, {
+          'gen_ai.usage.prompt_tokens': result.usage.input_tokens,
+          'gen_ai.usage.completion_tokens': result.usage.output_tokens,
+        });
+      }
+
+      setSpanAttributes(span, {
+        'gen_ai.response.id': result.id,
+        'gen_ai.response.model': result.model,
+      });
+
+      return result;
     });
 
     const content = response.content[0];

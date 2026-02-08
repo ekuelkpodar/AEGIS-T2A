@@ -37,6 +37,7 @@ const ConfigSchema = z.object({
   llmTemperature: z.coerce.number().min(0).max(2).default(0.7),
 
   // Observability
+  otelEnabled: z.coerce.boolean().default(false),
   otelEndpoint: z.string().url().optional(),
   otelServiceName: z.string().default('aegis-t2a'),
 
@@ -112,6 +113,7 @@ function loadConfig(): Config {
     llmTemperature: process.env['LLM_TEMPERATURE'],
     otelEndpoint: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'],
     otelServiceName: process.env['OTEL_SERVICE_NAME'],
+    otelEnabled: process.env['OTEL_ENABLED'],
     rateLimitWindowMs: process.env['RATE_LIMIT_WINDOW_MS'],
     rateLimitMaxRequests: process.env['RATE_LIMIT_MAX_REQUESTS'],
     workflowCheckpointIntervalMs: process.env['WORKFLOW_CHECKPOINT_INTERVAL_MS'],

@@ -20,6 +20,7 @@ import { initializeRegistry } from './registry/index.js';
 import { initializeAuditLedger } from './audit/index.js';
 import { initializeSecretsVault } from './secrets/index.js';
 import { initializeIntegrations } from './integrations/index.js';
+import { initializeObservability, shutdownObservability } from './observability/index.js';
 
 // Identity & Zero-Trust initialization
 import { initializeIdentitySystem, shutdownIdentitySystem } from './identity/initialization.js';
@@ -37,6 +38,9 @@ async function initialize(): Promise<void> {
   if (config.secretsEncryptionKey) {
     initializeEncryptionKey(config.secretsEncryptionKey);
   }
+
+  // Initialize observability early for startup spans/logs
+  initializeObservability();
 
   // Run database migrations
   logger.info('Running database migrations...');
@@ -86,6 +90,7 @@ async function main(): Promise<void> {
 
       // Shutdown identity system
       await shutdownIdentitySystem();
+      await shutdownObservability();
 
       closeDatabase();
       logger.info('Database connection closed');
@@ -122,6 +127,7 @@ export { initializeRegistry, getRegistry, AgentRegistry } from './registry/index
 export { initializeAuditLedger, getAuditLedger, AuditLedger } from './audit/index.js';
 export { initializeSecretsVault, getSecretsVault, SecretsVault } from './secrets/index.js';
 export { initializeIntegrations, getIntegrationCatalog, IntegrationCatalog } from './integrations/index.js';
+export { initializeObservability, shutdownObservability } from './observability/index.js';
 export { createRouter, createServer, ApiError } from './api/index.js';
 
 // Identity & Zero-Trust exports

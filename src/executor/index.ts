@@ -12,6 +12,7 @@ import { componentLogger, logStep } from '../core/logger.js';
 import type { ExecutionContext } from '../workflow/index.js';
 import { enforceSandboxGuardrails } from './sandbox-guard.js';
 import { getIntegrationCatalog, ZapierMcpClient } from '../integrations/index.js';
+import { withSpan, setSpanAttributes } from '../observability/index.js';
 
 // Re-export DLP Filter
 export {
@@ -144,11 +145,27 @@ export class Executor {
         enforceSandboxGuardrails(sanitizedParams);
       }
 
-      // Execute with timeout
-      const outputs = await Promise.race([
-        handler(sanitizedParams, context),
-        this.timeout(step.timeout),
-      ]);
+      // Execute with timeout (traced)
+      const outputs = await withSpan('aegis.tool.execute', {
+        'aegis.workflow.id': context.workflowId,
+        'aegis.plan.id': context.planId,
+        'aegis.intent.id': context.intentId,
+        'aegis.step.id': step.stepId,
+        'aegis.tool.adapter': adapterToUse,
+        'aegis.tool.fallback_applied': adapterToUse !== step.toolAdapter,
+        'aegis.step.risk_level': step.riskLevel,
+      }, async (span) => {
+        setSpanAttributes(span, {
+          'aegis.step.action': step.action,
+          'aegis.step.has_side_effects': step.hasSideEffects,
+          'aegis.step.estimated_cost': step.estimatedCost,
+        });
+
+        return Promise.race([
+          handler(sanitizedParams, context),
+          this.timeout(step.timeout),
+        ]);
+      });
 
       // Apply DLP to outputs
       const sanitizedOutputs = this.options.dlpEnabled

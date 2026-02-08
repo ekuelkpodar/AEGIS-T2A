@@ -16,6 +16,7 @@ import {
 } from './policy-engine.js';
 import { getPromptInjectionDetector, ThreatLevel } from '../security/prompt-injection-detector.js';
 import { getLLMGuardrails } from '../security/llm-guardrails.js';
+import { withSpan, setSpanAttributes } from '../observability/index.js';
 
 const logger = componentLogger('gateway');
 
@@ -74,7 +75,12 @@ export class IntentGateway {
       textLength: request.text.length,
     });
 
-    try {
+    return withSpan('aegis.intent.process', {
+      'aegis.user.id': request.userId,
+      'aegis.environment': request.environment ?? 'unspecified',
+      'aegis.request.text_length': request.text.length,
+      'gen_ai.operation.name': 'intent_parse',
+    }, async (span) => {
       // Step 0: Security checks - Prompt injection detection
       const injectionDetector = getPromptInjectionDetector();
       const injectionResult = await injectionDetector.analyzePrompt(request.text, {
@@ -87,6 +93,12 @@ export class IntentGateway {
           threatLevel: injectionResult.threatLevel,
           confidence: injectionResult.confidence,
           patterns: injectionResult.detectedPatterns.length,
+        });
+
+        setSpanAttributes(span, {
+          'aegis.security.prompt_injection.blocked': true,
+          'aegis.security.prompt_injection.threat_level': injectionResult.threatLevel,
+          'aegis.security.prompt_injection.confidence': injectionResult.confidence,
         });
 
         return {
@@ -116,6 +128,10 @@ export class IntentGateway {
 
       // If parsing failed or needs clarification
       if (!parseResult.success || !parseResult.intent) {
+        setSpanAttributes(span, {
+          'aegis.intent.parsed': false,
+          'aegis.intent.clarification_needed': parseResult.clarificationNeeded ?? false,
+        });
         return {
           success: false,
           error: parseResult.error,
@@ -147,6 +163,19 @@ export class IntentGateway {
       // Step 3: Persist the intent
       await this.persistIntent(intent);
 
+      setSpanAttributes(span, {
+        'aegis.intent.id': intent.intentId,
+        'aegis.intent.action_type': intent.actionType,
+        'aegis.intent.risk_level': intent.riskLevel,
+        'aegis.intent.policy_status': intent.policyStatus,
+        'aegis.intent.approval_required': intent.approvalRequired,
+        'aegis.intent.confidence': intent.confidence,
+        'aegis.intent.processing_ms': Date.now() - startTime,
+        'aegis.policy.allowed': policyResult.allowed,
+        'aegis.policy.requires_approval': policyResult.requiresApproval,
+        'aegis.policy.matched_rules': policyResult.matchedRules.length,
+      });
+
       logIntent(intent.intentId, 'processed', {
         userId: request.userId,
         actionType: intent.actionType,
@@ -161,14 +190,14 @@ export class IntentGateway {
         policyResult,
         error: policyResult.allowed ? undefined : 'Intent denied by policy',
       };
-    } catch (error) {
+    }).catch((error) => {
       logger.error({ error, userId: request.userId }, 'Failed to process request');
 
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error processing request',
       };
-    }
+    });
   }
 
   /**
