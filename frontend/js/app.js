@@ -313,14 +313,54 @@ function bindSettingsControls() {
       testLlmBtn.disabled = true;
       testLlmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
 
-      // Simulate test (TODO: implement real test)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await testLLMConnection();
 
       testLlmBtn.innerHTML = '<i class="fas fa-vial"></i> Test Connection';
       testLlmBtn.disabled = false;
-      Toast.success('Connection test successful!');
     });
   }
+
+  const testSaveDefaultBtn = document.getElementById('test-save-default-btn');
+  if (testSaveDefaultBtn) {
+    testSaveDefaultBtn.addEventListener('click', async () => {
+      testSaveDefaultBtn.disabled = true;
+      testSaveDefaultBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
+      await testSaveSetDefault();
+      testSaveDefaultBtn.innerHTML = '<i class="fas fa-bolt"></i> Test + Save + Default';
+      testSaveDefaultBtn.disabled = false;
+    });
+  }
+
+  const modelSelect = document.getElementById('settings-llm-model');
+  if (modelSelect) {
+    modelSelect.addEventListener('change', () => {
+      const provider = getSelectedSettingsProvider();
+      const modelId = modelSelect.value;
+      const meta = getModelMeta(provider, modelId);
+      updateModelDetails(provider, modelId);
+      setRecentModel(provider, modelId, meta?.name || modelId);
+    });
+  }
+
+  document.getElementById('settings-set-default')?.addEventListener('click', () => {
+    setProjectDefault();
+    const statusEl = document.getElementById('settings-inline-status');
+    if (statusEl) {
+      statusEl.textContent = 'Set project default.';
+      statusEl.className = 'inline-status success';
+    }
+  });
+
+  document.getElementById('settings-toggle-favorite')?.addEventListener('click', () => {
+    const provider = getSelectedSettingsProvider();
+    const modelId = document.getElementById('settings-llm-model')?.value;
+    const meta = getModelMeta(provider, modelId);
+    toggleFavoriteModel(provider, modelId, meta?.name || modelId);
+  });
+
+  document.getElementById('settings-project-name')?.addEventListener('input', () => {
+    updateProjectDefaultDisplay();
+  });
 
   // Danger zone buttons
   const rerunWizardBtn = document.getElementById('rerun-wizard-btn');
@@ -776,6 +816,7 @@ async function loadSettingsData() {
     });
 
     updateLLMSettings(provider);
+    updateProjectDefaultDisplay();
   } catch (error) {
     console.error('Failed to load settings:', error);
   }
@@ -789,11 +830,165 @@ function getSelectedSettingsProvider() {
   return selected?.dataset.settingsProvider || 'ollama';
 }
 
+const LLM_PREFS_KEY = 'aegis-llm-preferences';
+const modelMetaCache = {};
+
+function getProjectKey() {
+  const projectInput = document.getElementById('settings-project-name');
+  const projectName = projectInput?.value?.trim();
+  if (projectName) return projectName;
+  return `${location.host}${location.pathname || '/'}`;
+}
+
+function loadLLMPreferences() {
+  try {
+    return JSON.parse(localStorage.getItem(LLM_PREFS_KEY)) || {
+      favorites: [],
+      recents: [],
+      defaults: {},
+    };
+  } catch (error) {
+    return { favorites: [], recents: [], defaults: {} };
+  }
+}
+
+function saveLLMPreferences(prefs) {
+  localStorage.setItem(LLM_PREFS_KEY, JSON.stringify(prefs));
+}
+
+function updateModelMeta(provider, models) {
+  modelMetaCache[provider] = models;
+}
+
+function getModelMeta(provider, modelId) {
+  const models = modelMetaCache[provider] || [];
+  return models.find((model) => model.id === modelId);
+}
+
+function updateModelDetails(provider, modelId) {
+  const meta = getModelMeta(provider, modelId);
+  const contextEl = document.getElementById('settings-model-context');
+  const pricingEl = document.getElementById('settings-model-pricing');
+  const modalityEl = document.getElementById('settings-model-modality');
+  if (!contextEl || !pricingEl || !modalityEl) return;
+
+  contextEl.textContent = meta?.contextTokens ? `${meta.contextTokens.toLocaleString()} tokens` : '—';
+  if (meta?.priceInputPerMTokens || meta?.priceOutputPerMTokens) {
+    const input = meta?.priceInputPerMTokens ?? '—';
+    const output = meta?.priceOutputPerMTokens ?? '—';
+    pricingEl.textContent = `$${input} / $${output} per 1M`;
+  } else {
+    pricingEl.textContent = '—';
+  }
+  modalityEl.textContent = meta?.modality ? meta.modality : '—';
+  updateFavoriteButton(provider, modelId);
+}
+
+function updateFavoritesRecentsUI(provider) {
+  const prefs = loadLLMPreferences();
+  const favoritesEl = document.getElementById('settings-model-favorites');
+  const recentsEl = document.getElementById('settings-model-recents');
+  if (!favoritesEl || !recentsEl) return;
+
+  const favorites = prefs.favorites.filter(item => item.provider === provider);
+  const recents = prefs.recents.filter(item => item.provider === provider);
+
+  favoritesEl.innerHTML = favorites.length ? favorites.map((item) => `
+    <span class="model-chip active" data-model="${item.model}" data-provider="${item.provider}">
+      ${item.label || item.model}
+    </span>
+  `).join('') : '<span class="detail-label">None yet</span>';
+
+  recentsEl.innerHTML = recents.length ? recents.map((item) => `
+    <span class="model-chip" data-model="${item.model}" data-provider="${item.provider}">
+      ${item.label || item.model}
+    </span>
+  `).join('') : '<span class="detail-label">None yet</span>';
+
+  [...favoritesEl.querySelectorAll('.model-chip'), ...recentsEl.querySelectorAll('.model-chip')].forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const model = chip.dataset.model;
+      const providerId = chip.dataset.provider;
+      if (!model || !providerId) return;
+      selectModel(providerId, model);
+    });
+  });
+}
+
+function setRecentModel(provider, modelId, label) {
+  const prefs = loadLLMPreferences();
+  prefs.recents = prefs.recents.filter(item => !(item.provider === provider && item.model === modelId));
+  prefs.recents.unshift({ provider, model: modelId, label });
+  prefs.recents = prefs.recents.slice(0, 5);
+  saveLLMPreferences(prefs);
+  updateFavoritesRecentsUI(provider);
+}
+
+function toggleFavoriteModel(provider, modelId, label) {
+  const prefs = loadLLMPreferences();
+  const exists = prefs.favorites.find(item => item.provider === provider && item.model === modelId);
+  if (exists) {
+    prefs.favorites = prefs.favorites.filter(item => !(item.provider === provider && item.model === modelId));
+  } else {
+    prefs.favorites.push({ provider, model: modelId, label });
+  }
+  saveLLMPreferences(prefs);
+  updateFavoritesRecentsUI(provider);
+  updateFavoriteButton(provider, modelId);
+}
+
+function updateFavoriteButton(provider, modelId) {
+  const button = document.getElementById('settings-toggle-favorite');
+  if (!button) return;
+  const prefs = loadLLMPreferences();
+  const exists = prefs.favorites.find(item => item.provider === provider && item.model === modelId);
+  button.innerHTML = exists
+    ? '<i class="fas fa-star"></i> Favorited'
+    : '<i class="far fa-star"></i> Favorite';
+}
+
+function updateProjectDefaultDisplay() {
+  const prefs = loadLLMPreferences();
+  const projectKey = getProjectKey();
+  const display = document.getElementById('settings-project-default');
+  if (!display) return;
+  const entry = prefs.defaults[projectKey];
+  display.textContent = entry ? `${entry.label || entry.model}` : '—';
+}
+
+function setProjectDefault() {
+  const provider = getSelectedSettingsProvider();
+  const model = document.getElementById('settings-llm-model')?.value;
+  const meta = getModelMeta(provider, model);
+  const prefs = loadLLMPreferences();
+  prefs.defaults[getProjectKey()] = { provider, model, label: meta?.name || model };
+  saveLLMPreferences(prefs);
+  updateProjectDefaultDisplay();
+}
+
+function selectModel(provider, modelId) {
+  document.querySelectorAll('.settings-provider-card').forEach(card => {
+    card.classList.toggle('selected', card.dataset.settingsProvider === provider);
+  });
+  updateLLMSettings(provider);
+  const select = document.getElementById('settings-llm-model');
+  if (select) {
+    select.value = modelId;
+  }
+  const meta = getModelMeta(provider, modelId);
+  updateModelDetails(provider, modelId);
+  setRecentModel(provider, modelId, meta?.name || modelId);
+}
+
 function updateLLMSettings(providerOverride) {
   const provider = providerOverride || getSelectedSettingsProvider();
   const apiKeyGroup = document.getElementById('settings-api-key-group');
   const ollamaUrlGroup = document.getElementById('settings-ollama-url-group');
   const modelSelect = document.getElementById('settings-llm-model');
+  const config = AegisConfig.get();
+  const desiredModel = provider === 'ollama'
+    ? config.llm?.ollama?.model
+    : config.llm?.[provider]?.model;
 
   if (provider === 'ollama') {
     if (apiKeyGroup) apiKeyGroup.style.display = 'none';
@@ -805,26 +1000,40 @@ function updateLLMSettings(providerOverride) {
 
   // Load models for provider
   if (modelSelect) {
-    loadSettingsModels(provider, modelSelect);
+    loadSettingsModels(provider, modelSelect, desiredModel);
   }
+
+  updateFavoritesRecentsUI(provider);
 }
 
 /**
  * Load models for settings
  */
-async function loadSettingsModels(provider, select) {
+async function loadSettingsModels(provider, select, desiredModel) {
   select.innerHTML = '<option value="">Loading...</option>';
   try {
     if (provider === 'ollama') {
       const discovery = await AegisAPI.getOllamaModels();
       const models = Array.isArray(discovery.models) ? discovery.models : [];
+      updateModelMeta(provider, models.map((model) => ({ id: model, name: model })));
       select.innerHTML = models.map((model) => `<option value="${model}">${model}</option>`).join('');
+      if (desiredModel && models.includes(desiredModel)) {
+        select.value = desiredModel;
+        updateModelDetails(provider, desiredModel);
+      }
       return;
     }
 
     const data = await AegisAPI.getModelsForProvider(provider);
     const models = Array.isArray(data.models) ? data.models : [];
-    select.innerHTML = models.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+    updateModelMeta(provider, models);
+    select.innerHTML = models.map(m => `<option value="${m.id}" title="${m.description || ''}">${m.name}</option>`).join('');
+    if (desiredModel && models.some((model) => model.id === desiredModel)) {
+      select.value = desiredModel;
+      updateModelDetails(provider, desiredModel);
+    } else if (models[0]?.id) {
+      updateModelDetails(provider, models[0].id);
+    }
   } catch (error) {
     console.warn('Failed to load models from API, using fallback list.', error);
     select.innerHTML = '<option value="">No models available</option>';
@@ -931,6 +1140,9 @@ async function saveSettings() {
     AegisConfig.setValue(`llm.${provider}.model`, model);
   }
 
+  const meta = getModelMeta(provider, model);
+  setRecentModel(provider, model, meta?.name || model);
+
   Toast.success('Settings saved!');
 }
 
@@ -971,19 +1183,44 @@ async function testLLMConnection() {
   const provider = getSelectedSettingsProvider();
   const apiKey = document.getElementById('settings-api-key')?.value;
   const ollamaUrl = document.getElementById('settings-ollama-url')?.value;
+  const statusEl = document.getElementById('settings-inline-status');
 
-  Toast.info('Testing connection...');
+  if (statusEl) {
+    statusEl.textContent = 'Testing connection...';
+    statusEl.className = 'inline-status pending';
+  }
 
   try {
     const result = await AegisAPI.testLLMConnection(provider, apiKey, null, ollamaUrl);
     if (result.success) {
-      Toast.success('Connection successful!');
+      if (statusEl) {
+        statusEl.textContent = 'Connection successful.';
+        statusEl.className = 'inline-status success';
+      }
     } else {
-      Toast.error('Connection failed: ' + (result.message || 'Unknown error'));
+      if (statusEl) {
+        statusEl.textContent = 'Connection failed.';
+        statusEl.className = 'inline-status error';
+      }
     }
   } catch (error) {
-    Toast.error('Connection failed: ' + error.message);
+    if (statusEl) {
+      statusEl.textContent = `Connection failed: ${error.message || 'unknown error'}`;
+      statusEl.className = 'inline-status error';
+    }
   }
+}
+
+async function testSaveSetDefault() {
+  const statusEl = document.getElementById('settings-inline-status');
+  if (statusEl) {
+    statusEl.textContent = 'Testing, saving, and setting default...';
+    statusEl.className = 'inline-status pending';
+  }
+
+  await testLLMConnection();
+  await saveSettings();
+  setProjectDefault();
 }
 
 /**

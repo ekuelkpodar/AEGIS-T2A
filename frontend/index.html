@@ -576,16 +576,60 @@
                                         <option value="codellama">codellama</option>
                                     </select>
                                 </div>
+
+                                <div class="model-details-panel" id="settings-model-details">
+                                    <div class="model-detail">
+                                        <span class="detail-label" title="Maximum context window size">Context</span>
+                                        <span class="detail-value" id="settings-model-context">—</span>
+                                    </div>
+                                    <div class="model-detail">
+                                        <span class="detail-label" title="Input / output pricing per 1M tokens">Pricing</span>
+                                        <span class="detail-value" id="settings-model-pricing">—</span>
+                                    </div>
+                                    <div class="model-detail">
+                                        <span class="detail-label" title="Text-only or multimodal">Modality</span>
+                                        <span class="detail-value" id="settings-model-modality">—</span>
+                                    </div>
+                                </div>
+
+                                <div class="model-meta-row">
+                                    <div class="model-meta-section">
+                                        <div class="meta-title">Favorites</div>
+                                        <div class="model-chips" id="settings-model-favorites"></div>
+                                    </div>
+                                    <div class="model-meta-section">
+                                        <div class="meta-title">Recent</div>
+                                        <div class="model-chips" id="settings-model-recents"></div>
+                                    </div>
+                                </div>
+
+                                <div class="model-default-row">
+                                    <label class="model-default-label">Project default</label>
+                                    <div class="model-default-actions">
+                                        <input type="text" id="settings-project-name" placeholder="Project name (e.g., SOC IR)">
+                                        <button class="btn btn-secondary" id="settings-toggle-favorite">
+                                            <i class="fas fa-star"></i> Favorite
+                                        </button>
+                                        <button class="btn btn-secondary" id="settings-set-default">
+                                            <i class="fas fa-thumbtack"></i> Set Default
+                                        </button>
+                                        <span class="model-default-value" id="settings-project-default">—</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="settings-actions">
                                 <button class="btn btn-secondary" id="test-llm-btn">
                                     <i class="fas fa-vial"></i> Test Connection
                                 </button>
+                                <button class="btn btn-secondary" id="test-save-default-btn">
+                                    <i class="fas fa-bolt"></i> Test + Save + Default
+                                </button>
                                 <button class="btn btn-primary" id="save-llm-btn">
                                     <i class="fas fa-save"></i> Save LLM Settings
                                 </button>
                             </div>
+                            <div class="inline-status" id="settings-inline-status"></div>
                         </div>
 
                         <!-- Cloud Settings Tab -->
