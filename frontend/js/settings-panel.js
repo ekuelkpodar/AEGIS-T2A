@@ -246,6 +246,20 @@ const SettingsPanel = {
     return true;
   },
 
+  detectProviderFromApiKey(apiKey) {
+    const patterns = {
+      anthropic: /^sk-ant-[a-zA-Z0-9\-_]{40,}$/,
+      openai: /^sk-[a-zA-Z0-9]{48,}$/,
+      openrouter: /^sk-or-v1-[a-zA-Z0-9]{64,}$/,
+      gemini: /^AIza[0-9A-Za-z\-_]{30,}$/,
+    };
+
+    for (const [provider, pattern] of Object.entries(patterns)) {
+      if (pattern.test(apiKey)) return provider;
+    }
+    return null;
+  },
+
   /**
    * Auto-save settings with debounce
    */
@@ -855,9 +869,17 @@ const SettingsPanel = {
 
     // API key validation on blur
     document.getElementById('setting-api-key')?.addEventListener('blur', (e) => {
-      const provider = document.getElementById('setting-llm-provider').value;
+      let provider = document.getElementById('setting-llm-provider').value;
       const apiKey = e.target.value;
       if (provider !== 'ollama' && apiKey) {
+        const detectedProvider = this.detectProviderFromApiKey(apiKey);
+        if (detectedProvider && detectedProvider !== provider) {
+          document.getElementById('setting-llm-provider').value = detectedProvider;
+          this.updateProviderFields(detectedProvider);
+          this.populateModelOptions();
+          this.showValidationIndicator('provider-selection', 'success', `Detected ${detectedProvider} key — switched provider`);
+          provider = detectedProvider;
+        }
         this.validateApiKey(provider, apiKey);
       }
     });
