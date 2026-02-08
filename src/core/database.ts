@@ -368,6 +368,52 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_memory_entries_valid_to ON memory_entries(valid_to);
     `,
   },
+  {
+    version: 6,
+    name: 'ontology_store',
+    sql: `
+      CREATE TABLE IF NOT EXISTS ontology_classes (
+        class_id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        description TEXT,
+        parent_class_id TEXT,
+        metadata TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_ontology_classes_parent ON ontology_classes(parent_class_id);
+
+      CREATE TABLE IF NOT EXISTS ontology_properties (
+        property_id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        description TEXT,
+        domain_class_id TEXT,
+        range_class_id TEXT,
+        metadata TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS ontology_instances (
+        instance_id TEXT PRIMARY KEY,
+        class_id TEXT NOT NULL,
+        label TEXT,
+        properties TEXT NOT NULL,
+        metadata TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_ontology_instances_class ON ontology_instances(class_id);
+
+      CREATE TABLE IF NOT EXISTS ontology_edges (
+        edge_id TEXT PRIMARY KEY,
+        from_instance_id TEXT NOT NULL,
+        to_instance_id TEXT NOT NULL,
+        predicate TEXT NOT NULL,
+        metadata TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_ontology_edges_from ON ontology_edges(from_instance_id);
+      CREATE INDEX IF NOT EXISTS idx_ontology_edges_to ON ontology_edges(to_instance_id);
+      CREATE INDEX IF NOT EXISTS idx_ontology_edges_predicate ON ontology_edges(predicate);
+    `,
+  },
 ];
 
 /**
