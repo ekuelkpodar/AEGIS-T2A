@@ -1,0 +1,32 @@
+[
+  {
+    "id": "intent-001",
+    "input": "Create a new Jira ticket for the outage in project OPS",
+    "expected": {
+      "actionType": "create",
+      "riskLevel": "medium",
+      "hasSideEffects": true,
+      "requiredCapabilities": ["jira:issue"]
+    }
+  },
+  {
+    "id": "intent-002",
+    "input": "List all open pull requests in repo org/service",
+    "expected": {
+      "actionType": "query",
+      "riskLevel": "low",
+      "hasSideEffects": false,
+      "requiredCapabilities": ["github:repo"]
+    }
+  },
+  {
+    "id": "intent-003",
+    "input": "Delete the S3 bucket prod-logs",
+    "expected": {
+      "actionType": "delete",
+      "riskLevel": "destructive",
+      "hasSideEffects": true,
+      "requiredCapabilities": ["aws:s3"]
+    }
+  }
+]
