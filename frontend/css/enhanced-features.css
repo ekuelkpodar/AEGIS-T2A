@@ -415,6 +415,31 @@
   color: #eafff3;
 }
 
+.model-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.model-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #2f3b4a;
+  background: rgba(31, 41, 55, 0.8);
+  color: #cbd5f5;
+  font-size: 12px;
+}
+
+.model-badge.positive {
+  border-color: #22c55e;
+  color: #eafff3;
+}
+
+.model-badge.warning {
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
 .setting-value {
   display: inline-block;
   min-width: 40px;

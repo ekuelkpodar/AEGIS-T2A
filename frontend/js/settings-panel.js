@@ -414,6 +414,10 @@ const SettingsPanel = {
                   <div id="validation-model-availability" class="validation-indicator" style="display: none;"></div>
                 </div>
 
+                <div class="setting-group">
+                  <div id="model-details" class="model-details"></div>
+                </div>
+
                 <div class="setting-group" id="api-key-group">
                   <label class="setting-label">
                     <span>API Key</span>
@@ -769,6 +773,7 @@ const SettingsPanel = {
     // Check availability of currently selected model
     if (modelSelect.value) {
       this.checkModelAvailability(provider, modelSelect.value);
+      this.renderModelDetails(provider, modelSelect.value);
     }
   },
 
@@ -779,6 +784,7 @@ const SettingsPanel = {
     document.getElementById('setting-llm-provider').value = this.currentSettings.llm.provider;
     this.populateModelOptions();
     document.getElementById('setting-llm-model').value = this.currentSettings.llm.model;
+    this.renderModelDetails(this.currentSettings.llm.provider, this.currentSettings.llm.model);
     document.getElementById('setting-api-key').value = this.currentSettings.llm.apiKey || '';
     document.getElementById('setting-endpoint').value = this.currentSettings.llm.endpoint || '';
     document.getElementById('setting-temperature').value = this.currentSettings.llm.temperature;
@@ -859,6 +865,7 @@ const SettingsPanel = {
       const provider = document.getElementById('setting-llm-provider').value;
       const model = e.target.value;
       this.checkModelAvailability(provider, model);
+      this.renderModelDetails(provider, model);
     });
 
     // Model search filter
@@ -1004,6 +1011,7 @@ const SettingsPanel = {
     if (model) {
       document.getElementById('setting-llm-model').value = model;
       this.checkModelAvailability(provider, model);
+      this.renderModelDetails(provider, model);
     }
 
     const temperatureInput = document.getElementById('setting-temperature');
@@ -1017,6 +1025,41 @@ const SettingsPanel = {
     }
 
     this.autoSaveSettings();
+  },
+
+  getModelTags(provider, model) {
+    const tags = [];
+    const lower = model.toLowerCase();
+
+    if (provider === 'ollama') tags.push({ label: 'Local', tone: 'positive' });
+    if (provider === 'openrouter') tags.push({ label: 'Routed', tone: 'positive' });
+    if (provider === 'gemini') tags.push({ label: 'Multimodal', tone: 'positive' });
+
+    if (lower.includes('flash') || lower.includes('mini') || lower.includes('haiku')) {
+      tags.push({ label: 'Fast', tone: 'positive' });
+    }
+    if (lower.includes('opus') || lower.includes('pro') || lower.includes('5.1')) {
+      tags.push({ label: 'Quality', tone: 'positive' });
+    }
+    if (lower.includes('preview')) {
+      tags.push({ label: 'Preview', tone: 'warning' });
+    }
+
+    if (tags.length === 0) {
+      tags.push({ label: 'General', tone: 'positive' });
+    }
+
+    return tags;
+  },
+
+  renderModelDetails(provider, model) {
+    const container = document.getElementById('model-details');
+    if (!container) return;
+
+    const tags = this.getModelTags(provider, model);
+    container.innerHTML = tags.map((tag) => `
+      <span class="model-badge ${tag.tone}">${tag.label}</span>
+    `).join('');
   },
 
   async testModelConnection() {
