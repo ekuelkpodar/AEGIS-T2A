@@ -702,6 +702,9 @@ const SettingsPanel = {
 
           <div class="settings-footer">
             <button class="btn-secondary" id="settings-cancel">Cancel</button>
+            <button class="btn-secondary" id="settings-copy-env">
+              <i class="fas fa-copy"></i> Copy .env
+            </button>
             <button class="btn-primary" id="settings-save">
               <i class="fas fa-save"></i> Save Settings
             </button>
@@ -830,6 +833,7 @@ const SettingsPanel = {
     document.getElementById('settings-close')?.addEventListener('click', () => this.close());
     document.getElementById('settings-overlay')?.addEventListener('click', () => this.close());
     document.getElementById('settings-cancel')?.addEventListener('click', () => this.close());
+    document.getElementById('settings-copy-env')?.addEventListener('click', () => this.copyEnvSnippet());
 
     // Tab navigation
     document.querySelectorAll('.settings-nav-item').forEach(item => {
@@ -1060,6 +1064,56 @@ const SettingsPanel = {
     container.innerHTML = tags.map((tag) => `
       <span class="model-badge ${tag.tone}">${tag.label}</span>
     `).join('');
+  },
+
+  buildEnvSnippet() {
+    const provider = document.getElementById('setting-llm-provider').value;
+    const model = document.getElementById('setting-llm-model').value;
+    const apiKey = document.getElementById('setting-api-key').value;
+    const endpoint = document.getElementById('setting-endpoint').value;
+
+    const lines = [`LLM_PROVIDER=${provider}`];
+
+    switch (provider) {
+      case 'anthropic':
+        lines.push(`ANTHROPIC_API_KEY=${apiKey}`);
+        lines.push(`ANTHROPIC_MODEL=${model}`);
+        break;
+      case 'openai':
+        lines.push(`OPENAI_API_KEY=${apiKey}`);
+        lines.push(`OPENAI_MODEL=${model}`);
+        lines.push(`OPENAI_BASE_URL=${endpoint || 'https://api.openai.com/v1'}`);
+        break;
+      case 'openrouter':
+        lines.push(`OPENROUTER_API_KEY=${apiKey}`);
+        lines.push(`OPENROUTER_MODEL=${model}`);
+        break;
+      case 'gemini':
+        lines.push(`GEMINI_API_KEY=${apiKey}`);
+        lines.push(`GEMINI_MODEL=${model}`);
+        lines.push(`GEMINI_BASE_URL=${endpoint || 'https://generativelanguage.googleapis.com/v1beta'}`);
+        break;
+      case 'ollama':
+        lines.push(`OLLAMA_BASE_URL=${endpoint || 'http://localhost:11434'}`);
+        lines.push(`OLLAMA_MODEL=${model}`);
+        break;
+    }
+
+    lines.push(`LLM_TEMPERATURE=${document.getElementById('setting-temperature').value}`);
+    lines.push(`LLM_MODEL=${model}`);
+
+    return lines.join('\n');
+  },
+
+  async copyEnvSnippet() {
+    const snippet = this.buildEnvSnippet();
+    try {
+      await navigator.clipboard.writeText(snippet);
+      this.showValidationIndicator('provider-selection', 'success', 'Copied .env snippet to clipboard');
+    } catch (error) {
+      console.warn('Clipboard copy failed:', error);
+      this.showValidationIndicator('provider-selection', 'warning', 'Copy failed. Check clipboard permissions.');
+    }
   },
 
   async testModelConnection() {
