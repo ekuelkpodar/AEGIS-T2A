@@ -1,0 +1,284 @@
+# SPIRE Server Deployment for AEGIS-T2A
+#
+# Provides SPIFFE-based identity for all agent instances
+# Trust Domain: spiffe://aegis.io
+#
+# References:
+# - SPIFFE/SPIRE Documentation: https://spiffe.io/docs/
+# - Aembit Blended Identity: https://www.aembit.io/blog/agentic-ai-spiffe-workload-identity
+# - CSA Agentic Trust Framework: Cloud Security Alliance, Feb 2026
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aegis-spire
+  labels:
+    name: aegis-spire
+    app.kubernetes.io/part-of: aegis-t2a
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spire-server
+  namespace: aegis-spire
+---
+# RBAC for SPIRE Server
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spire-server-trust-role
+rules:
+# For K8s PSAT (Projected Service Account Token) attestation
+- apiGroups: [""]
+  resources: ["pods", "nodes", "serviceaccounts"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["tokenreviews"]
+  verbs: ["create"]
+# For bundle publishing
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: spire-server-trust-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: spire-server-trust-role
+subjects:
+- kind: ServiceAccount
+  name: spire-server
+  namespace: aegis-spire
+---
+# SPIRE Server Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spire-server
+  namespace: aegis-spire
+data:
+  server.conf: |
+    server {
+      bind_address = "0.0.0.0"
+      bind_port = "8081"
+      socket_path = "/tmp/spire-server/private/api.sock"
+      trust_domain = "aegis.io"
+      data_dir = "/run/spire/data"
+      log_level = "INFO"
+
+      # CA Certificate TTL: 7 days (matches CSA ATF recommendations)
+      ca_ttl = "168h"
+
+      # Default SVID TTL: 1 hour for control-plane agents
+      # Executors use 15min (configured in registration entries)
+      default_x509_svid_ttl = "1h"
+
+      # JWT-SVID TTL
+      default_jwt_svid_ttl = "5m"
+    }
+
+    plugins {
+      # PostgreSQL backend for production durability
+      DataStore "sql" {
+        plugin_data {
+          database_type = "postgres"
+          connection_string = "postgresql://spire:${POSTGRES_PASSWORD}@postgres.aegis-system.svc.cluster.local:5432/spire?sslmode=require"
+          max_open_conns = 10
+          max_idle_conns = 2
+          conn_max_lifetime = "1h"
+        }
+      }
+
+      # Kubernetes PSAT (Projected Service Account Token) Attestation
+      # Solo.io analysis: Pod replicas need unique identities for AI agents
+      NodeAttestor "k8s_psat" {
+        plugin_data {
+          clusters = {
+            "aegis-cluster" = {
+              service_account_allow_list = ["aegis-spire:spire-agent"]
+              audience = ["spire-server"]
+            }
+          }
+        }
+      }
+
+      # Key management using on-disk storage
+      # TODO: Replace with AWS KMS for production (FedRAMP requirement)
+      KeyManager "disk" {
+        plugin_data {
+          keys_path = "/run/spire/data/keys.json"
+        }
+      }
+
+      # Publish trust bundle to Kubernetes ConfigMap
+      Notifier "k8sbundle" {
+        plugin_data {
+          namespace = "aegis-spire"
+          config_map = "spire-bundle"
+          config_map_key = "bundle.crt"
+        }
+      }
+
+      # Upstreaming for SPIFFE Federation (cross-region DR)
+      # Disabled by default, enable for multi-cluster deployments
+      # UpstreamAuthority "spire" {
+      #   plugin_data {
+      #     server_address = "spire-server-region2.aegis.io"
+      #     server_port = 8081
+      #     workload_api_socket = "/tmp/spire-agent/public/api.sock"
+      #   }
+      # }
+    }
+
+    # Health check endpoints
+    health_checks {
+      listener_enabled = true
+      bind_address = "0.0.0.0"
+      bind_port = "8080"
+      live_path = "/live"
+      ready_path = "/ready"
+    }
+
+    # Telemetry (Prometheus metrics)
+    telemetry {
+      Prometheus {
+        port = 9988
+      }
+    }
+---
+# SPIRE Server StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: spire-server
+  namespace: aegis-spire
+  labels:
+    app: spire-server
+    app.kubernetes.io/name: spire-server
+    app.kubernetes.io/part-of: aegis-t2a
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spire-server
+  serviceName: spire-server
+  template:
+    metadata:
+      labels:
+        app: spire-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9988"
+    spec:
+      serviceAccountName: spire-server
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: spire-server
+        image: ghcr.io/spiffe/spire-server:1.10.0
+        args:
+          - -config
+          - /run/spire/config/server.conf
+        ports:
+        - name: grpc
+          containerPort: 8081
+          protocol: TCP
+        - name: health
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9988
+          protocol: TCP
+        volumeMounts:
+        - name: spire-config
+          mountPath: /run/spire/config
+          readOnly: true
+        - name: spire-data
+          mountPath: /run/spire/data
+        - name: spire-server-socket
+          mountPath: /tmp/spire-server/private
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: spire-postgres-credentials
+              key: password
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 60
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      volumes:
+      - name: spire-config
+        configMap:
+          name: spire-server
+      - name: spire-server-socket
+        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: spire-data
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi
+---
+# SPIRE Server Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: spire-server
+  namespace: aegis-spire
+  labels:
+    app: spire-server
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for StatefulSet
+  ports:
+    - name: grpc
+      port: 8081
+      targetPort: 8081
+      protocol: TCP
+  selector:
+    app: spire-server
+---
+# Metrics Service for Prometheus
+apiVersion: v1
+kind: Service
+metadata:
+  name: spire-server-metrics
+  namespace: aegis-spire
+  labels:
+    app: spire-server
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 9988
+      targetPort: 9988
+      protocol: TCP
+  selector:
+    app: spire-server
