@@ -10,6 +10,7 @@ import {
 } from '../core/types.js';
 import { componentLogger, logStep } from '../core/logger.js';
 import type { ExecutionContext } from '../workflow/index.js';
+import { enforceSandboxGuardrails } from './sandbox-guard.js';
 
 // Re-export DLP Filter
 export {
@@ -128,6 +129,10 @@ export class Executor {
       const sanitizedParams = this.options.dlpEnabled
         ? this.sanitizeInputs(step.parameters)
         : step.parameters;
+
+      if (this.options.sandbox) {
+        enforceSandboxGuardrails(sanitizedParams);
+      }
 
       // Execute with timeout
       const outputs = await Promise.race([

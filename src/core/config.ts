@@ -73,6 +73,12 @@ const ConfigSchema = z.object({
   ragVectorDims: z.coerce.number().int().positive().default(256),
   ragHybridWeight: z.coerce.number().min(0).max(1).default(0.6),
   ragMinScore: z.coerce.number().min(0).default(0.0),
+
+  // Sandbox
+  sandboxEnforceEgressAllowlist: z.coerce.boolean().default(false),
+  sandboxAllowLocalhost: z.coerce.boolean().default(false),
+  sandboxAllowedDomains: z.array(z.string()).default([]),
+  sandboxBlockedPaths: z.array(z.string()).default([]),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -120,6 +126,10 @@ function loadConfig(): Config {
     ragVectorDims: process.env['RAG_VECTOR_DIMS'],
     ragHybridWeight: process.env['RAG_HYBRID_WEIGHT'],
     ragMinScore: process.env['RAG_MIN_SCORE'],
+    sandboxEnforceEgressAllowlist: process.env['SANDBOX_ENFORCE_EGRESS_ALLOWLIST'],
+    sandboxAllowLocalhost: process.env['SANDBOX_ALLOW_LOCALHOST'],
+    sandboxAllowedDomains: parseCsv(process.env['SANDBOX_ALLOWED_DOMAINS']),
+    sandboxBlockedPaths: parseCsv(process.env['SANDBOX_BLOCKED_PATHS']),
   };
 
   const result = ConfigSchema.safeParse(rawConfig);
@@ -150,6 +160,14 @@ export function getConfig(): Config {
 
 export function resetConfig(): void {
   config = null;
+}
+
+function parseCsv(value?: string): string[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
 }
 
 // =============================================================================
