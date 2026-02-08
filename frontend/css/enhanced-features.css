@@ -373,6 +373,10 @@
   font-size: 14px;
 }
 
+#setting-model-search {
+  margin-bottom: 10px;
+}
+
 .setting-input:focus,
 .setting-select:focus {
   outline: none;

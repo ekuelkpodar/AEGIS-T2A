@@ -392,6 +392,7 @@ const SettingsPanel = {
                     <span>Model <span class="model-availability checking" id="model-availability-badge" style="display: none;">
                       <i class="fas fa-spinner fa-spin"></i> Checking...
                     </span></span>
+                    <input type="search" id="setting-model-search" class="setting-input" placeholder="Search models (e.g., 2.5, opus, flash)">
                     <select id="setting-llm-model" class="setting-select">
                       <!-- Populated dynamically -->
                     </select>
@@ -708,14 +709,20 @@ const SettingsPanel = {
     const modelSelect = document.getElementById('setting-llm-model');
     if (!modelSelect) return;
 
+    const searchQuery = (document.getElementById('setting-model-search')?.value || '').trim().toLowerCase();
+    const previousValue = modelSelect.value;
+
     modelSelect.innerHTML = '';
 
-    const models = this.availableModels[provider] || [];
+    let models = this.availableModels[provider] || [];
+    if (searchQuery) {
+      models = models.filter((model) => model.toLowerCase().includes(searchQuery));
+    }
 
     if (models.length === 0) {
       const option = document.createElement('option');
       option.value = '';
-      option.textContent = provider === 'ollama' ? 'Loading models...' : 'No models available';
+      option.textContent = provider === 'ollama' && !searchQuery ? 'Loading models...' : 'No matching models';
       option.disabled = true;
       modelSelect.appendChild(option);
       return;
@@ -740,6 +747,10 @@ const SettingsPanel = {
 
       modelSelect.appendChild(option);
     });
+
+    if (previousValue && models.includes(previousValue)) {
+      modelSelect.value = previousValue;
+    }
 
     // Check availability of currently selected model
     if (modelSelect.value) {
@@ -834,6 +845,12 @@ const SettingsPanel = {
       const provider = document.getElementById('setting-llm-provider').value;
       const model = e.target.value;
       this.checkModelAvailability(provider, model);
+    });
+
+    // Model search filter
+    document.getElementById('setting-model-search')?.addEventListener('input', () => {
+      const provider = document.getElementById('setting-llm-provider').value;
+      this.updateModelDropdown(provider);
     });
 
     // API key validation on blur
