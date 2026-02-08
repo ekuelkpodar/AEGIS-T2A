@@ -26,12 +26,23 @@ export function enforceSandboxGuardrails(params: Record<string, unknown>): void 
   const blockedPaths = config.sandboxBlockedPaths.length > 0
     ? config.sandboxBlockedPaths
     : DEFAULT_BLOCKED_PATHS;
+  const readOnlyPaths = config.sandboxReadOnlyPaths;
 
   const strings = extractStrings(params);
+  const payloadSize = JSON.stringify(params).length;
+  if (payloadSize > config.sandboxMaxPayloadBytes) {
+    throw new Error(`Sandbox payload exceeds limit: ${payloadSize} bytes`);
+  }
+
   for (const value of strings) {
     const violation = checkFilesystem(value, blockedPaths);
     if (violation) {
       throw new Error(violation.message);
+    }
+
+    const readOnlyViolation = checkReadOnly(value, readOnlyPaths);
+    if (readOnlyViolation) {
+      throw new Error(readOnlyViolation.message);
     }
 
     const egressViolation = checkEgress(
@@ -54,6 +65,22 @@ function checkFilesystem(value: string, blockedPaths: string[]): GuardViolation 
       return {
         type: 'filesystem',
         message: `Blocked file path access: ${value}`,
+        value,
+      };
+    }
+  }
+  return null;
+}
+
+function checkReadOnly(value: string, readOnlyPaths: string[]): GuardViolation | null {
+  if (readOnlyPaths.length === 0) return null;
+  const normalized = value.replace(/\\/g, '/');
+  for (const ro of readOnlyPaths) {
+    const roNorm = ro.replace(/\\/g, '/');
+    if (normalized.includes(roNorm) || normalized.startsWith(roNorm)) {
+      return {
+        type: 'filesystem',
+        message: `Read-only path access denied: ${value}`,
         value,
       };
     }

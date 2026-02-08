@@ -148,7 +148,12 @@ export class Executor {
         : step.parameters;
 
       if (this.options.sandbox) {
-        enforceSandboxGuardrails(sanitizedParams);
+        try {
+          enforceSandboxGuardrails(sanitizedParams);
+        } catch (error) {
+          getMetricsRegistry().inc('aegis_sandbox_guard_violations_total', 1);
+          throw error;
+        }
       }
 
       // Execute with timeout (traced)

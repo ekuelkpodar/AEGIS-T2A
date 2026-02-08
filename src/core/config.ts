@@ -94,6 +94,8 @@ const ConfigSchema = z.object({
   sandboxAllowLocalhost: z.coerce.boolean().default(false),
   sandboxAllowedDomains: z.array(z.string()).default([]),
   sandboxBlockedPaths: z.array(z.string()).default([]),
+  sandboxReadOnlyPaths: z.array(z.string()).default([]),
+  sandboxMaxPayloadBytes: z.coerce.number().int().positive().default(64 * 1024),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -158,6 +160,8 @@ function loadConfig(): Config {
     sandboxAllowLocalhost: process.env['SANDBOX_ALLOW_LOCALHOST'],
     sandboxAllowedDomains: parseCsv(process.env['SANDBOX_ALLOWED_DOMAINS']),
     sandboxBlockedPaths: parseCsv(process.env['SANDBOX_BLOCKED_PATHS']),
+    sandboxReadOnlyPaths: parseCsv(process.env['SANDBOX_READONLY_PATHS']),
+    sandboxMaxPayloadBytes: process.env['SANDBOX_MAX_PAYLOAD_BYTES'],
   };
 
   const result = ConfigSchema.safeParse(rawConfig);
