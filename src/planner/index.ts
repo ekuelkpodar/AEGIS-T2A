@@ -23,6 +23,9 @@ import { computePlanChecksum, signObject } from '../core/crypto.js';
 import { execute, queryOne, queryAll } from '../core/database.js';
 import { getConfig } from '../core/config.js';
 import { withSpan, setSpanAttributes } from '../observability/index.js';
+import { selectModelForTask } from '../providers/llm/router.js';
+import { getCachedCompletion, setCachedCompletion } from '../providers/llm/prompt-cache.js';
+import { LLMCompletionOptions } from '../providers/llm/index.js';
 import Anthropic from '@anthropic-ai/sdk';
 
 const logger = componentLogger('planner');
@@ -312,7 +315,7 @@ export class PlannerAgent {
    */
   private async generateStepsWithLLM(intent: TypedIntent): Promise<LLMPlanStep[]> {
     const client = getAnthropicClient();
-    const model = 'claude-3-5-sonnet-20241022';
+    const model = selectModelForTask('plan', intent.nlText) || 'claude-3-5-sonnet-20241022';
 
     const intentContext = `
 Intent ID: ${intent.intentId}
@@ -328,6 +331,19 @@ Additional Context:
 ${JSON.stringify(intent.metadata ?? {}, null, 2)}
 `;
 
+    const messages = [
+      {
+        role: 'user' as const,
+        content: `${PLANNING_PROMPT}\n\n${intentContext}`,
+      },
+    ];
+    const options: LLMCompletionOptions = {
+      messages,
+      maxTokens: 4096,
+    };
+
+    const cached = getCachedCompletion(model, options);
+
     const response = await withSpan('gen_ai.plan', {
       'gen_ai.system': 'anthropic',
       'gen_ai.operation.name': 'plan_generation',
@@ -337,15 +353,15 @@ ${JSON.stringify(intent.metadata ?? {}, null, 2)}
       'aegis.intent.action_type': intent.actionType,
       'aegis.intent.risk_level': intent.riskLevel,
     }, async (span) => {
+      if (cached) {
+        setSpanAttributes(span, { 'aegis.cache.hit': true });
+        return { content: [{ type: 'text', text: cached.content }], usage: cached.usage, model: cached.model };
+      }
+
       const result = await client.messages.create({
         model,
         max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: `${PLANNING_PROMPT}\n\n${intentContext}`,
-          },
-        ],
+        messages,
       });
 
       if (result.usage) {
@@ -359,6 +375,8 @@ ${JSON.stringify(intent.metadata ?? {}, null, 2)}
         'gen_ai.response.id': result.id,
         'gen_ai.response.model': result.model,
       });
+
+      setCachedCompletion(model, options, { content: result.content[0]?.text || '', model: result.model });
 
       return result;
     });

@@ -16,6 +16,9 @@ import { generateIntentId, generateIdempotencyKey } from '../core/ids.js';
 import { componentLogger } from '../core/logger.js';
 import { getConfig } from '../core/config.js';
 import Anthropic from '@anthropic-ai/sdk';
+import { selectModelForTask } from '../providers/llm/router.js';
+import { getCachedCompletion, setCachedCompletion } from '../providers/llm/prompt-cache.js';
+import { LLMCompletionOptions } from '../providers/llm/index.js';
 
 const logger = componentLogger('intent-parser');
 
@@ -134,16 +137,26 @@ export async function parseIntent(
       ? `\n\nAdditional context:\n${JSON.stringify(context, null, 2)}`
       : '';
 
-    const response = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: `${INTENT_PARSE_PROMPT}${contextStr}\n\nUser request: "${nlText}"`,
-        },
-      ],
-    });
+    const model = selectModelForTask('intent', nlText) || 'claude-3-5-sonnet-20241022';
+    const messages = [
+      {
+        role: 'user' as const,
+        content: `${INTENT_PARSE_PROMPT}${contextStr}\n\nUser request: "${nlText}"`,
+      },
+    ];
+    const options: LLMCompletionOptions = {
+      messages,
+      maxTokens: 1024,
+    };
+
+    const cached = getCachedCompletion(model, options);
+    const response = cached
+      ? { content: [{ type: 'text', text: cached.content }] }
+      : await client.messages.create({
+          model,
+          max_tokens: 1024,
+          messages,
+        });
 
     const content = response.content[0];
     if (!content || content.type !== 'text') {
@@ -158,6 +171,10 @@ export async function parseIntent(
 
     const parsed = JSON.parse(jsonMatch[0]);
     const validated = ParsedIntentResponseSchema.parse(parsed);
+
+    if (!cached) {
+      setCachedCompletion(model, options, { content: (content as { text: string }).text, model });
+    }
 
     // Check if clarification is needed
     if (validated.confidence < 0.7 || validated.clarificationNeeded) {

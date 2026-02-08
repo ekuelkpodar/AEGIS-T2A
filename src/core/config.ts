@@ -35,6 +35,11 @@ const ConfigSchema = z.object({
   ollamaBaseUrl: z.string().url().optional(),
   llmModel: z.string().optional(),
   llmTemperature: z.coerce.number().min(0).max(2).default(0.7),
+  llmFastModel: z.string().optional(),
+  llmStandardModel: z.string().optional(),
+  llmComplexModel: z.string().optional(),
+  promptCacheEnabled: z.coerce.boolean().default(false),
+  promptCacheTtlSeconds: z.coerce.number().int().positive().default(86400),
 
   // Observability
   otelEnabled: z.coerce.boolean().default(false),
@@ -111,6 +116,11 @@ function loadConfig(): Config {
     ollamaBaseUrl: process.env['OLLAMA_BASE_URL'],
     llmModel: process.env['LLM_MODEL'],
     llmTemperature: process.env['LLM_TEMPERATURE'],
+    llmFastModel: process.env['LLM_FAST_MODEL'],
+    llmStandardModel: process.env['LLM_STANDARD_MODEL'],
+    llmComplexModel: process.env['LLM_COMPLEX_MODEL'],
+    promptCacheEnabled: process.env['PROMPT_CACHE_ENABLED'],
+    promptCacheTtlSeconds: process.env['PROMPT_CACHE_TTL_SECONDS'],
     otelEndpoint: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'],
     otelServiceName: process.env['OTEL_SERVICE_NAME'],
     otelEnabled: process.env['OTEL_ENABLED'],
