@@ -14,6 +14,9 @@ import { getAuditLedger } from '../audit/index.js';
 import { getRegistry } from '../registry/index.js';
 import { getExecutor } from '../executor/index.js';
 import { getIntegrationCatalog } from '../integrations/index.js';
+import { listControlMappings, listControlMappingsByFramework } from '../compliance/mappings.js';
+import { createRopaRecord, listRopaRecords, getRopaRecord, RopaInput } from '../compliance/ropa.js';
+import { ensureDefaultTemplate, listDpiaTemplates, getDpiaTemplate } from '../compliance/dpia.js';
 import { EventType, ActorType } from '../core/types.js';
 import {
   initializeLLMProvider,
@@ -41,6 +44,19 @@ const ApprovalRequestSchema = z.object({
 const IntegrationSearchSchema = z.object({
   q: z.string().min(1),
   limit: z.coerce.number().int().positive().optional(),
+});
+
+const RopaRequestSchema = z.object({
+  tenantId: z.string().min(1),
+  systemName: z.string().min(1),
+  purpose: z.string().min(1),
+  dataCategories: z.array(z.string()).min(1),
+  dataSubjects: z.array(z.string()).min(1),
+  recipients: z.array(z.string()).min(1),
+  retentionPeriod: z.string().optional(),
+  processingBasis: z.string().optional(),
+  crossBorderTransfers: z.boolean().optional(),
+  securityMeasures: z.string().optional(),
 });
 
 // =============================================================================
@@ -497,6 +513,82 @@ export function createRouter(): Router {
       const catalog = getIntegrationCatalog();
       const fallbacks = catalog.listFallbacks();
       res.json({ fallbacks, count: fallbacks.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ==========================================================================
+  // Compliance
+  // ==========================================================================
+
+  router.get('/compliance/controls', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const framework = req.query['framework'] as string | undefined;
+      const mappings = framework
+        ? listControlMappingsByFramework(framework)
+        : listControlMappings();
+      res.json({ mappings, count: mappings.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/compliance/ropa', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = RopaRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors });
+        return;
+      }
+      const record = createRopaRecord(parsed.data as RopaInput);
+      res.status(201).json({ record });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/compliance/ropa', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = req.query['tenantId'] as string | undefined;
+      const records = listRopaRecords(tenantId);
+      res.json({ records, count: records.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/compliance/ropa/:ropaId', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const record = getRopaRecord(req.params['ropaId']!);
+      if (!record) {
+        res.status(404).json({ error: 'RoPA record not found' });
+        return;
+      }
+      res.json({ record });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/compliance/dpia/templates', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      ensureDefaultTemplate();
+      const templates = listDpiaTemplates();
+      res.json({ templates, count: templates.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/compliance/dpia/templates/:templateId', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const template = getDpiaTemplate(req.params['templateId']!);
+      if (!template) {
+        res.status(404).json({ error: 'DPIA template not found' });
+        return;
+      }
+      res.json({ template });
     } catch (error) {
       next(error);
     }

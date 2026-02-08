@@ -1,7 +1,10 @@
 /**
  * AEGIS-T2A Compliance Module
  *
- * SOC 2 Trust Services Criteria compliance reporting and evidence collection.
+ * Compliance reporting, control mapping, and GDPR artifacts.
  */
 
 export * from './soc2-reporter.js';
+export * from './mappings.js';
+export * from './ropa.js';
+export * from './dpia.js';

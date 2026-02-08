@@ -472,6 +472,39 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_integration_fallbacks_primary ON integration_fallbacks(primary_adapter);
     `,
   },
+  {
+    version: 8,
+    name: 'compliance_records',
+    sql: `
+      CREATE TABLE IF NOT EXISTS ropa_records (
+        ropa_id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        system_name TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        data_categories TEXT NOT NULL,
+        data_subjects TEXT NOT NULL,
+        recipients TEXT NOT NULL,
+        retention_period TEXT,
+        processing_basis TEXT,
+        cross_border_transfers INTEGER NOT NULL DEFAULT 0,
+        security_measures TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_ropa_tenant ON ropa_records(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_ropa_system ON ropa_records(system_name);
+
+      CREATE TABLE IF NOT EXISTS dpia_templates (
+        template_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        sections_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_dpia_templates_name ON dpia_templates(name);
+    `,
+  },
 ];
 
 /**

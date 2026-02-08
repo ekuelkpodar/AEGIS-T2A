@@ -165,3 +165,13 @@ export {
   SOC2Report,
   CriteriaReport,
 } from './compliance/index.js';
+export {
+  listControlMappings,
+  listControlMappingsByFramework,
+  createRopaRecord,
+  listRopaRecords,
+  getRopaRecord,
+  ensureDefaultTemplate,
+  listDpiaTemplates,
+  getDpiaTemplate,
+} from './compliance/index.js';
