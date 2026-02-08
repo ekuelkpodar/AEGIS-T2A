@@ -17,6 +17,7 @@ import { componentLogger } from '../../core/logger.js';
 import { savePlanPayload } from './payload-store.js';
 import { getTemporalClient } from './client.js';
 import { registerStepExecutor } from './activities.js';
+import { ensureSchedule } from './schedules.js';
 
 const logger = componentLogger('temporal-workflow');
 
@@ -24,6 +25,7 @@ export interface WorkflowOptions {
   skipApproval?: boolean;
   dryRun?: boolean;
   checkpointInterval?: number;
+  approvalTimeoutHours?: number;
 }
 
 export interface ExecutionContext {
@@ -43,6 +45,17 @@ export class TemporalWorkflowEngine {
   async initialize(): Promise<void> {
     if (this.initialized) return;
     await getTemporalClient();
+    try {
+      await ensureSchedule({
+        scheduleId: 'aegis-daily-compliance',
+        workflowType: 'planWorkflow',
+        taskQueue: this.config.temporalTaskQueue,
+        everyMinutes: 1440,
+        args: [],
+      });
+    } catch (error) {
+      logger.warn({ error }, 'Failed to ensure Temporal schedules');
+    }
     this.initialized = true;
     logger.info('Temporal workflow engine initialized');
   }
@@ -150,12 +163,15 @@ export class TemporalWorkflowEngine {
           intent_id: [plan.intentId],
           plan_id: [plan.planId],
           risk_level: [plan.riskLevel],
+          tenant_id: [plan.intentId.split('-')[0]],
+          cost_estimate: [String(plan.totalEstimatedCost)],
         },
       });
     } catch (error) {
       if (error instanceof WorkflowExecutionAlreadyStartedError) {
         return;
       }
+      logger.warn({ workflowId, error }, 'Failed to start Temporal workflow');
       throw error;
     }
   }
