@@ -8,6 +8,7 @@ import { ToolAdapter, RiskLevel } from '../core/types.js';
 import { componentLogger } from '../core/logger.js';
 import { execute, queryOne, queryAll } from '../core/database.js';
 import { hashObject, verifyObjectSignature, signObject } from '../core/crypto.js';
+import { getIntegrationCatalog } from '../integrations/index.js';
 
 const logger = componentLogger('registry');
 
@@ -141,6 +142,60 @@ const DEFAULT_ADAPTERS: Omit<ToolAdapter, 'signature'>[] = [
     riskLevel: 'low',
     timeout: 10000,
   },
+  {
+    adapterId: 'zapier:mcp',
+    name: 'Zapier MCP Bridge',
+    version: '1.0.0',
+    description: 'Execute actions via Zapier MCP bridge',
+    capabilities: ['zapier:mcp:action'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        actionId: { type: 'string' },
+        input: { type: 'object' },
+      },
+      required: ['actionId'],
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: { type: 'object' },
+      },
+    },
+    sideEffects: true,
+    compensationSupported: false,
+    riskLevel: 'medium',
+    timeout: 30000,
+  },
+  {
+    adapterId: 'webhook:invoke',
+    name: 'Webhook Invoke',
+    version: '1.0.0',
+    description: 'Invoke external webhooks',
+    capabilities: ['webhook:invoke'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string' },
+        method: { type: 'string' },
+        headers: { type: 'object' },
+        body: { type: 'object' },
+      },
+      required: ['url'],
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'number' },
+        body: { type: 'object' },
+      },
+    },
+    sideEffects: true,
+    compensationSupported: false,
+    riskLevel: 'medium',
+    timeout: 30000,
+  },
 ];
 
 // =============================================================================
@@ -209,6 +264,11 @@ export class AgentRegistry {
       };
 
       this.adapters.set(adapter.adapterId, adapter);
+      try {
+        getIntegrationCatalog().indexAdapter(adapter);
+      } catch (error) {
+        logger.warn({ adapterId: adapter.adapterId, error }, 'Failed to index adapter in integration catalog');
+      }
     }
   }
 
@@ -287,6 +347,11 @@ export class AgentRegistry {
 
       const registered: ToolAdapter = { ...adapter, signature };
       this.adapters.set(adapter.adapterId, registered);
+      try {
+        getIntegrationCatalog().indexAdapter(registered);
+      } catch (error) {
+        logger.warn({ adapterId: adapter.adapterId, error }, 'Failed to index adapter in integration catalog');
+      }
 
       logger.info({ adapterId: adapter.adapterId }, 'Adapter registered');
 

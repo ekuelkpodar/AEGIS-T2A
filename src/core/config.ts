@@ -74,6 +74,14 @@ const ConfigSchema = z.object({
   ragHybridWeight: z.coerce.number().min(0).max(1).default(0.6),
   ragMinScore: z.coerce.number().min(0).default(0.0),
 
+  // Integrations
+  integrationVectorDims: z.coerce.number().int().positive().default(192),
+  integrationHybridWeight: z.coerce.number().min(0).max(1).default(0.5),
+  integrationMinScore: z.coerce.number().min(0).default(0.0),
+  zapierMcpEndpoint: z.string().url().optional(),
+  zapierMcpApiKey: z.string().optional(),
+  zapierMcpTimeoutMs: z.coerce.number().int().positive().default(15000),
+
   // Sandbox
   sandboxEnforceEgressAllowlist: z.coerce.boolean().default(false),
   sandboxAllowLocalhost: z.coerce.boolean().default(false),
@@ -126,6 +134,12 @@ function loadConfig(): Config {
     ragVectorDims: process.env['RAG_VECTOR_DIMS'],
     ragHybridWeight: process.env['RAG_HYBRID_WEIGHT'],
     ragMinScore: process.env['RAG_MIN_SCORE'],
+    integrationVectorDims: process.env['INTEGRATION_VECTOR_DIMS'],
+    integrationHybridWeight: process.env['INTEGRATION_HYBRID_WEIGHT'],
+    integrationMinScore: process.env['INTEGRATION_MIN_SCORE'],
+    zapierMcpEndpoint: process.env['ZAPIER_MCP_ENDPOINT'],
+    zapierMcpApiKey: process.env['ZAPIER_MCP_API_KEY'],
+    zapierMcpTimeoutMs: process.env['ZAPIER_MCP_TIMEOUT_MS'],
     sandboxEnforceEgressAllowlist: process.env['SANDBOX_ENFORCE_EGRESS_ALLOWLIST'],
     sandboxAllowLocalhost: process.env['SANDBOX_ALLOW_LOCALHOST'],
     sandboxAllowedDomains: parseCsv(process.env['SANDBOX_ALLOWED_DOMAINS']),

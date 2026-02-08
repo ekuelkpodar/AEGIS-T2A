@@ -101,6 +101,8 @@ Available tool adapters:
 - database:query - Database operations
 - file:* - File system operations
 - notification:* - Send notifications (email, slack, etc.)
+- webhook:invoke - Invoke external webhooks
+- zapier:mcp - Execute Zapier MCP actions
 
 Guidelines:
 - Break complex tasks into atomic, idempotent steps

@@ -13,6 +13,7 @@ import { getWorkflowEngine } from '../workflow/index.js';
 import { getAuditLedger } from '../audit/index.js';
 import { getRegistry } from '../registry/index.js';
 import { getExecutor } from '../executor/index.js';
+import { getIntegrationCatalog } from '../integrations/index.js';
 import { EventType, ActorType } from '../core/types.js';
 import {
   initializeLLMProvider,
@@ -35,6 +36,11 @@ const ApprovalRequestSchema = z.object({
   decision: z.enum(['approved', 'rejected']),
   approverId: z.string(),
   rationale: z.string().optional(),
+});
+
+const IntegrationSearchSchema = z.object({
+  q: z.string().min(1),
+  limit: z.coerce.number().int().positive().optional(),
 });
 
 // =============================================================================
@@ -436,6 +442,61 @@ export function createRouter(): Router {
       }
 
       res.json({ adapter });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ==========================================================================
+  // Integrations
+  // ==========================================================================
+
+  router.get('/integrations/tools', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const catalog = getIntegrationCatalog();
+      const limit = req.query['limit'] ? parseInt(req.query['limit'] as string, 10) : undefined;
+      const tools = catalog.listTools(limit);
+      res.json({ tools, count: tools.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/integrations/tools/:toolId', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const catalog = getIntegrationCatalog();
+      const tool = catalog.getTool(req.params['toolId']!);
+      if (!tool) {
+        res.status(404).json({ error: 'Integration tool not found' });
+        return;
+      }
+      res.json({ tool });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/integrations/search', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = IntegrationSearchSchema.safeParse(req.query);
+      if (!parsed.success) {
+        res.status(400).json({ error: 'Invalid query', details: parsed.error.errors });
+        return;
+      }
+      const { q, limit } = parsed.data;
+      const catalog = getIntegrationCatalog();
+      const results = catalog.search({ query: q, limit });
+      res.json({ results, count: results.length });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/integrations/fallbacks', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const catalog = getIntegrationCatalog();
+      const fallbacks = catalog.listFallbacks();
+      res.json({ fallbacks, count: fallbacks.length });
     } catch (error) {
       next(error);
     }

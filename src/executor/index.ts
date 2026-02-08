@@ -11,6 +11,7 @@ import {
 import { componentLogger, logStep } from '../core/logger.js';
 import type { ExecutionContext } from '../workflow/index.js';
 import { enforceSandboxGuardrails } from './sandbox-guard.js';
+import { getIntegrationCatalog, ZapierMcpClient } from '../integrations/index.js';
 
 // Re-export DLP Filter
 export {
@@ -119,8 +120,17 @@ export class Executor {
     });
 
     try {
-      // Get the handler for this adapter
-      const handler = this.getHandler(step.toolAdapter);
+      // Get the handler for this adapter (with fallback support)
+      let adapterToUse = step.toolAdapter;
+      let handler = this.getHandler(adapterToUse);
+      if (!handler) {
+        const fallback = getIntegrationCatalog().getFallbackAdapter(adapterToUse);
+        if (fallback) {
+          adapterToUse = fallback;
+          handler = this.getHandler(adapterToUse);
+          logger.warn({ adapter: step.toolAdapter, fallback: adapterToUse }, 'Using fallback adapter');
+        }
+      }
       if (!handler) {
         throw new Error(`No handler for adapter: ${step.toolAdapter}`);
       }
@@ -150,7 +160,11 @@ export class Executor {
       return {
         stepId: step.stepId,
         status: 'completed',
-        outputs: sanitizedOutputs,
+        outputs: {
+          ...sanitizedOutputs,
+          usedAdapter: adapterToUse,
+          fallbackApplied: adapterToUse !== step.toolAdapter,
+        },
         durationMs,
         costIncurred: step.estimatedCost,
       };
@@ -289,6 +303,49 @@ export class Executor {
         mock: true,
         channel,
       };
+    });
+
+    // Webhook handler (HTTP passthrough)
+    this.registerHandler('webhook', async (params) => {
+      const url = params['url'] as string;
+      const method = (params['method'] as string) ?? 'POST';
+      const body = params['body'];
+      const headers = (params['headers'] as Record<string, string>) ?? {};
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      const responseBody = await response.text();
+      let parsedBody: unknown;
+      try {
+        parsedBody = JSON.parse(responseBody);
+      } catch {
+        parsedBody = responseBody;
+      }
+
+      return {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: parsedBody,
+      };
+    });
+
+    // Zapier MCP handler
+    const zapierClient = new ZapierMcpClient();
+    this.registerHandler('zapier', async (params) => {
+      const actionId = (params['actionId'] ?? params['action'] ?? params['capability']) as string | undefined;
+      if (!actionId) {
+        throw new Error('Zapier MCP actionId is required');
+      }
+      const input = (params['input'] as Record<string, unknown>) ?? params;
+      return zapierClient.execute(actionId, input);
     });
   }
 

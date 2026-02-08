@@ -414,6 +414,64 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_ontology_edges_predicate ON ontology_edges(predicate);
     `,
   },
+  {
+    version: 7,
+    name: 'integration_catalog',
+    sql: `
+      CREATE TABLE IF NOT EXISTS integration_tools (
+        tool_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        subcategory TEXT,
+        description TEXT,
+        auth_type TEXT,
+        sensitivity TEXT NOT NULL,
+        tier TEXT NOT NULL,
+        metadata TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_integration_tools_name ON integration_tools(name);
+      CREATE INDEX IF NOT EXISTS idx_integration_tools_category ON integration_tools(category);
+
+      CREATE TABLE IF NOT EXISTS integration_entries (
+        entry_id TEXT PRIMARY KEY,
+        tool_id TEXT NOT NULL,
+        capability_key TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        kind TEXT NOT NULL,
+        token_count INTEGER NOT NULL,
+        terms TEXT NOT NULL,
+        vector_json TEXT NOT NULL,
+        norm REAL NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (tool_id) REFERENCES integration_tools(tool_id),
+        UNIQUE (tool_id, capability_key)
+      );
+      CREATE INDEX IF NOT EXISTS idx_integration_entries_tool ON integration_entries(tool_id);
+      CREATE INDEX IF NOT EXISTS idx_integration_entries_kind ON integration_entries(kind);
+
+      CREATE TABLE IF NOT EXISTS integration_terms (
+        term TEXT PRIMARY KEY,
+        df INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS integration_stats (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS integration_fallbacks (
+        primary_adapter TEXT NOT NULL,
+        fallback_adapter TEXT NOT NULL,
+        match_type TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (primary_adapter, fallback_adapter, match_type)
+      );
+      CREATE INDEX IF NOT EXISTS idx_integration_fallbacks_primary ON integration_fallbacks(primary_adapter);
+    `,
+  },
 ];
 
 /**

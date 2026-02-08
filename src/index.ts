@@ -19,6 +19,7 @@ import { initializeExecutor } from './executor/index.js';
 import { initializeRegistry } from './registry/index.js';
 import { initializeAuditLedger } from './audit/index.js';
 import { initializeSecretsVault } from './secrets/index.js';
+import { initializeIntegrations } from './integrations/index.js';
 
 // Identity & Zero-Trust initialization
 import { initializeIdentitySystem, shutdownIdentitySystem } from './identity/initialization.js';
@@ -48,6 +49,7 @@ async function initialize(): Promise<void> {
   await initializeIdentitySystem();
 
   await initializeRegistry();
+  initializeIntegrations();
   await initializeSecretsVault();
   await initializeAuditLedger();
   await initializeGateway();
@@ -119,6 +121,7 @@ export { initializeExecutor, getExecutor, Executor, DLPFilter, getDLPFilter } fr
 export { initializeRegistry, getRegistry, AgentRegistry } from './registry/index.js';
 export { initializeAuditLedger, getAuditLedger, AuditLedger } from './audit/index.js';
 export { initializeSecretsVault, getSecretsVault, SecretsVault } from './secrets/index.js';
+export { initializeIntegrations, getIntegrationCatalog, IntegrationCatalog } from './integrations/index.js';
 export { createRouter, createServer, ApiError } from './api/index.js';
 
 // Identity & Zero-Trust exports
