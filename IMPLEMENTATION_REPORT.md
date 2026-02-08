@@ -17,6 +17,20 @@ All phases are production-ready with comprehensive testing, documentation, and S
 
 ---
 
+## Roadmap Summary (Key Themes)
+
+Concise view of the 250-item roadmap, grouped by implementation focus with primary sources:
+
+- **Identity & zero-trust** — SPIFFE federation across trust domains plus Vault SPIFFE auth for secretless identity-based access. ([SPIFFE Federation spec](https://spiffe.io/docs/latest/spiffe-specs/spiffe_federation/), [Vault SPIFFE auth method](https://developer.hashicorp.com/vault/docs/auth/spiffe))
+- **Policy enforcement** — OPA bundles for hot-reloadable governance and OpenTelemetry-based decision telemetry. ([OPA Bundles](https://www.openpolicyagent.org/docs/management-bundles), [OPA Monitoring](https://www.openpolicyagent.org/docs/monitoring))
+- **Durable orchestration** — Temporal message passing for approvals and state control, plus Search Attributes for visibility. ([Temporal Workflow message passing](https://docs.temporal.io/encyclopedia/workflow-message-passing), [Temporal Search Attributes](https://docs.temporal.io/search-attribute))
+- **Proactive operations** — Temporal Schedules for recurring compliance checks and automation. ([Temporal Schedules](https://docs.temporal.io/schedule))
+- **Observability** — Standardized GenAI spans/attributes for consistent AI telemetry. ([OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/))
+
+For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS.md`.
+
+---
+
 ## Phase 1: Agent Identity & Zero-Trust Security (68%)
 
 ### Implemented Components

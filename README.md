@@ -99,6 +99,32 @@ The AEGIS-T2A web dashboard provides comprehensive visibility and control:
 
 ---
 
+## Research-Backed Roadmap (250 Improvements)
+
+See the full, source-cited report in `AEGIS_T2A_250_IMPROVEMENTS.md`. This roadmap is organized for implementation and highlights key, externally validated foundations:
+
+- **Security & identity** — SPIFFE federation ([SPIFFE Federation spec](https://spiffe.io/docs/latest/spiffe-specs/spiffe_federation/)) and Vault SPIFFE auth ([Vault SPIFFE auth method](https://developer.hashicorp.com/vault/docs/auth/spiffe)) for trust-domain identity and secretless auth foundations.
+- **Policy enforcement** — OPA bundles for hot-reloadable policies ([OPA Bundles](https://www.openpolicyagent.org/docs/management-bundles)) and decision monitoring via OpenTelemetry spans ([OPA Monitoring](https://www.openpolicyagent.org/docs/monitoring)).
+- **Workflow orchestration** — Temporal message passing (Signals/Queries/Updates) ([Temporal Workflow message passing](https://docs.temporal.io/encyclopedia/workflow-message-passing)) plus Search Attributes for visibility and indexing ([Temporal Search Attributes](https://docs.temporal.io/search-attribute)).
+- **Proactive scheduling** — Temporal Schedules for recurring workflow execution ([Temporal Schedules](https://docs.temporal.io/schedule)).
+- **Observability** — OpenTelemetry GenAI semantic conventions for AI-specific spans/attributes ([OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)).
+
+---
+
+## Roadmap Summary (Key Themes)
+
+Concise view of the 250-item roadmap, grouped by implementation focus with primary sources:
+
+- **Identity & zero-trust** — SPIFFE federation across trust domains plus Vault SPIFFE auth for secretless identity-based access. ([SPIFFE Federation spec](https://spiffe.io/docs/latest/spiffe-specs/spiffe_federation/), [Vault SPIFFE auth method](https://developer.hashicorp.com/vault/docs/auth/spiffe))
+- **Policy enforcement** — OPA bundles for hot-reloadable governance and OpenTelemetry-based decision telemetry. ([OPA Bundles](https://www.openpolicyagent.org/docs/management-bundles), [OPA Monitoring](https://www.openpolicyagent.org/docs/monitoring))
+- **Durable orchestration** — Temporal message passing for approvals and state control, plus Search Attributes for visibility. ([Temporal Workflow message passing](https://docs.temporal.io/encyclopedia/workflow-message-passing), [Temporal Search Attributes](https://docs.temporal.io/search-attribute))
+- **Proactive operations** — Temporal Schedules for recurring compliance checks and automation. ([Temporal Schedules](https://docs.temporal.io/schedule))
+- **Observability** — Standardized GenAI spans/attributes for consistent AI telemetry. ([OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/))
+
+For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS.md`.
+
+---
+
 ## 🚀 Enterprise Enhancements (Phases 1-5)
 
 AEGIS-T2A has been enhanced with 90+ production-grade improvements across 5 critical phases:
