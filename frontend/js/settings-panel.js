@@ -52,6 +52,41 @@ const SettingsPanel = {
   modelCache: {},
   saveDebounceTimer: null,
   validationStates: {},
+  modelPresets: {
+    fast: {
+      temperature: 0.3,
+      maxTokens: 2048,
+      models: {
+        anthropic: 'claude-3-5-haiku-20241022',
+        openai: 'gpt-4o-mini',
+        gemini: 'gemini-2.5-flash-lite',
+        openrouter: 'google/gemini-2.5-flash',
+        ollama: 'llama3.2',
+      },
+    },
+    balanced: {
+      temperature: 0.7,
+      maxTokens: 4096,
+      models: {
+        anthropic: 'claude-sonnet-4-20250514',
+        openai: 'gpt-4.1',
+        gemini: 'gemini-2.5-pro',
+        openrouter: 'anthropic/claude-sonnet-4-20250514',
+        ollama: 'llama3.2',
+      },
+    },
+    quality: {
+      temperature: 0.2,
+      maxTokens: 8192,
+      models: {
+        anthropic: 'claude-opus-4-20250514',
+        openai: 'gpt-5.1',
+        gemini: 'gemini-3-pro-preview',
+        openrouter: 'openai/gpt-5.1',
+        ollama: 'llama3-70b',
+      },
+    },
+  },
 
   init() {
     this.loadCurrentSettings();
@@ -338,6 +373,18 @@ const SettingsPanel = {
                     </select>
                   </label>
                   <div id="validation-provider-selection" class="validation-indicator" style="display: none;"></div>
+                </div>
+
+                <div class="setting-group">
+                  <label class="setting-label">
+                    <span>Quick Presets</span>
+                    <div class="preset-buttons" role="group" aria-label="Model presets">
+                      <button type="button" class="preset-button" data-preset="fast">Fast</button>
+                      <button type="button" class="preset-button active" data-preset="balanced">Balanced</button>
+                      <button type="button" class="preset-button" data-preset="quality">Quality</button>
+                    </div>
+                    <small>Applies model + temperature + max tokens for the current provider.</small>
+                  </label>
                 </div>
 
                 <div class="setting-group">
@@ -809,6 +856,18 @@ const SettingsPanel = {
       this.testModelConnection();
     });
 
+    // Preset buttons
+    document.querySelectorAll('.preset-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        const preset = button.getAttribute('data-preset');
+        if (preset) {
+          this.applyPreset(preset);
+          document.querySelectorAll('.preset-button').forEach((btn) => btn.classList.remove('active'));
+          button.classList.add('active');
+        }
+      });
+    });
+
     // Auto-save on input changes
     const autoSaveInputs = [
       'setting-llm-provider',
@@ -895,6 +954,30 @@ const SettingsPanel = {
       apiKeyGroup.style.display = 'block';
       endpointGroup.style.display = provider === 'openrouter' || provider === 'gemini' ? 'block' : 'none';
     }
+  },
+
+  applyPreset(presetName) {
+    const provider = document.getElementById('setting-llm-provider').value;
+    const preset = this.modelPresets[presetName];
+    if (!preset) return;
+
+    const model = preset.models[provider] || this.availableModels[provider]?.[0];
+    if (model) {
+      document.getElementById('setting-llm-model').value = model;
+      this.checkModelAvailability(provider, model);
+    }
+
+    const temperatureInput = document.getElementById('setting-temperature');
+    const maxTokensInput = document.getElementById('setting-max-tokens');
+    if (temperatureInput) {
+      temperatureInput.value = preset.temperature;
+      document.getElementById('temperature-value').textContent = preset.temperature;
+    }
+    if (maxTokensInput) {
+      maxTokensInput.value = preset.maxTokens;
+    }
+
+    this.autoSaveSettings();
   },
 
   async testModelConnection() {
