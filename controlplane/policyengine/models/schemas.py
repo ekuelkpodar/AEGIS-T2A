@@ -178,6 +178,10 @@ class PolicyEvaluationResult(BaseModel):
     decision: PolicyDecision
     allowed: bool
     requires_approval: bool = False
+    shadow_mode: bool = False
+    shadow_decision: Optional[PolicyDecision] = None
+    shadow_denial_reasons: List[str] = Field(default_factory=list)
+    shadow_approval_reasons: List[str] = Field(default_factory=list)
     denial_reasons: List[str] = Field(default_factory=list)
     approval_reasons: List[str] = Field(default_factory=list)
     matched_policies: List[PolicyMatch] = Field(default_factory=list)

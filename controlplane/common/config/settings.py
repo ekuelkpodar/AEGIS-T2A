@@ -59,6 +59,8 @@ class OPASettings(BaseModel):
     policy_path: str = "/v1/data/aegis/policy"
     bundle_url: str = ""
     decision_log_enabled: bool = True
+    shadow_mode: bool = False
+    shadow_mode_until: Optional[str] = None
 
 
 class EventStoreSettings(BaseModel):

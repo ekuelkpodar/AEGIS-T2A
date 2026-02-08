@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .handlers.policies import router as policies_router
+from .handlers.bundles import router as bundles_router
 from .services.opa_client import get_opa_client
 from ..common.config.settings import get_settings
 from ..common.db.database import get_db
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(policies_router, prefix=settings.api_prefix)
+    app.include_router(bundles_router, prefix=settings.api_prefix)
 
     # Health check endpoints
     @app.get("/health", tags=["health"])

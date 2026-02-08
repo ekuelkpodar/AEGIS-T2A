@@ -349,6 +349,7 @@ class PolicyService:
                 result = await self.opa.evaluate(
                     f"aegis/policies/{policy.id}",
                     opa_input,
+                    metrics=True,
                 )
 
                 decision = self._interpret_result(policy, result.result)
@@ -371,17 +372,67 @@ class PolicyService:
         # Determine final decision
         final_decision = self._aggregate_decisions(matched_policies)
         elapsed_ms = (time.time() - start_time) * 1000
+        evaluated_at = datetime.now(timezone.utc)
 
-        return PolicyEvaluationResult(
-            decision=final_decision,
-            allowed=final_decision == PolicyDecision.ALLOW,
-            requires_approval=final_decision == PolicyDecision.REQUIRE_APPROVAL,
-            denial_reasons=denial_reasons,
-            approval_reasons=approval_reasons,
-            matched_policies=matched_policies,
-            evaluation_time_ms=elapsed_ms,
-            evaluated_at=datetime.now(timezone.utc),
-        )
+        # Shadow mode handling
+        shadow_mode = self.settings.opa.shadow_mode
+        if shadow_mode and self.settings.opa.shadow_mode_until:
+            try:
+                shadow_until = datetime.fromisoformat(self.settings.opa.shadow_mode_until)
+                shadow_mode = evaluated_at < shadow_until
+            except ValueError:
+                shadow_mode = True
+
+        if shadow_mode:
+            effective_decision = PolicyDecision.ALLOW
+            result_obj = PolicyEvaluationResult(
+                decision=effective_decision,
+                allowed=True,
+                requires_approval=False,
+                shadow_mode=True,
+                shadow_decision=final_decision,
+                shadow_denial_reasons=denial_reasons,
+                shadow_approval_reasons=approval_reasons,
+                denial_reasons=[],
+                approval_reasons=[],
+                matched_policies=matched_policies,
+                evaluation_time_ms=elapsed_ms,
+                evaluated_at=evaluated_at,
+            )
+        else:
+            result_obj = PolicyEvaluationResult(
+                decision=final_decision,
+                allowed=final_decision == PolicyDecision.ALLOW,
+                requires_approval=final_decision == PolicyDecision.REQUIRE_APPROVAL,
+                denial_reasons=denial_reasons,
+                approval_reasons=approval_reasons,
+                matched_policies=matched_policies,
+                evaluation_time_ms=elapsed_ms,
+                evaluated_at=evaluated_at,
+            )
+
+        # Emit decision event
+        try:
+            await log_event(
+                self.session,
+                event_type="policy.evaluated",
+                actor=request.agent_id,
+                payload={
+                    "decision": result_obj.decision.value,
+                    "shadow_mode": result_obj.shadow_mode,
+                    "shadow_decision": result_obj.shadow_decision.value if result_obj.shadow_decision else None,
+                    "denial_reasons": result_obj.denial_reasons,
+                    "approval_reasons": result_obj.approval_reasons,
+                    "matched_policies": [m.model_dump() for m in matched_policies],
+                    "evaluation_time_ms": elapsed_ms,
+                    "opa_input": opa_input,
+                },
+                actor_type="agent",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to log policy evaluation event: {e}")
+
+        return result_obj
 
     async def _find_applicable_policies(
         self,

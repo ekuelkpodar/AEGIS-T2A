@@ -284,7 +284,7 @@ class OPAClient:
                 code = policy["code"].encode("utf-8")
 
                 # Create file info
-                info = tarfile.TarInfo(name=f"{policy_id}.rego")
+                info = tarfile.TarInfo(name=f"policies/{policy_id}.rego")
                 info.size = len(code)
                 info.mtime = int(datetime.now(timezone.utc).timestamp())
 
