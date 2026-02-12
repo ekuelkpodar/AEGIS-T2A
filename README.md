@@ -39,6 +39,7 @@ docker-compose up -d
 # - Policy Engine: http://localhost:8002
 # - Autonomy Manager: http://localhost:8003
 # - Approval System: http://localhost:8004
+# - Universal Automation Platform: http://localhost:8005
 ```
 
 See [controlplane/README.md](./controlplane/README.md) for full documentation.
@@ -255,6 +256,7 @@ For organizations requiring advanced governance:
 | **Policy Engine** | OPA-based policy enforcement | Fine-grained authorization |
 | **Autonomy Manager** | Time-limited leases with TTL | Controlled autonomous operation |
 | **Approval System** | Multi-level escalation workflows | Human oversight for high-risk actions |
+| **Universal Automation Platform** | Industry-agnostic task definitions, queueing, and secure integrations | Scalable AI co-worker automation with human oversight |
 
 ### Security Architecture
 
@@ -365,6 +367,15 @@ flowchart TB
         SYNC[Multi-Signer<br/>High Risk]
     end
 
+    subgraph ControlPlane["🏢 Enterprise Control Plane"]
+        CP_ID[Identity Service<br/>:8000]
+        CP_EVT[Event Store<br/>:8001]
+        CP_POL[Policy Engine<br/>:8002]
+        CP_AUT[Autonomy Manager<br/>:8003]
+        CP_APP[Approval System<br/>:8004]
+        CP_UAP[Universal Automation Platform<br/>:8005]
+    end
+
     subgraph Observability["📈 Observability"]
         OTEL[OpenTelemetry Tracing]
         METRICS[Prometheus Metrics]
@@ -384,16 +395,25 @@ flowchart TB
     Approval --> Security
     Security --> Execution
     Execution --> Integrations
+    Gateway --> CP_POL
+    Gateway --> CP_ID
+    Planning --> CP_APP
+    Security --> CP_AUT
+    Execution --> CP_UAP
+    CP_UAP --> Integrations
 
     %% Audit connections
     Gateway --> Audit
     Planning --> Audit
     Execution --> Audit
+    CP_EVT --> Audit
+    CP_UAP --> Audit
 
     %% Observability + controls
     Gateway --> Observability
     Planning --> Observability
     Execution --> Observability
+    CP_UAP --> Observability
     FLAGS -.-> Execution
 
     classDef channel fill:#e3f2fd,stroke:#1565c0
@@ -407,6 +427,7 @@ flowchart TB
     classDef approval fill:#fff8e1,stroke:#f57f17
     classDef observability fill:#ede7f6,stroke:#512da8
     classDef controls fill:#f3f4c5,stroke:#827717
+    classDef controlplane fill:#e8eaf6,stroke:#1a237e
 
     class WEB,CLI,TG,WA,SLACK,API channel
     class ANTH,OAI,OR,OLL llm
@@ -419,6 +440,7 @@ flowchart TB
     class AUTO,ASYNC,SYNC approval
     class OTEL,METRICS,LOGS observability
     class FLAGS controls
+    class CP_ID,CP_EVT,CP_POL,CP_AUT,CP_APP,CP_UAP controlplane
 ```
 
 ---

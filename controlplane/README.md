@@ -4,7 +4,7 @@ Enterprise-grade control plane for autonomous AI agent management with comprehen
 
 ## 🏗️ Architecture
 
-The AEGIS-T2A Control Plane consists of five core microservices:
+The AEGIS-T2A Control Plane consists of six core microservices:
 
 ### 1. **Identity Service** (Port 8000)
 - Agent registration and lifecycle management
@@ -41,6 +41,13 @@ The AEGIS-T2A Control Plane consists of five core microservices:
 - Risk-based routing
 - Decision tracking and audit trail
 
+### 6. **Universal Automation Platform** (Port 8005)
+- Industry-agnostic workflow/action definitions
+- Queue-based task orchestration with retries and scheduling
+- RBAC-secured execution and human review gates
+- Modular integrations for HTTP, CRM, ERP, database, and custom adapters
+- Tamper-evident audit trail with GDPR/HIPAA compliance checks
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -76,6 +83,7 @@ Once running, services are available at:
 - **Policy Engine**: http://localhost:8002/docs
 - **Autonomy Manager**: http://localhost:8003/docs
 - **Approval System**: http://localhost:8004/docs
+- **Universal Automation Platform**: http://localhost:8005/docs
 
 ### Infrastructure Components
 
@@ -143,6 +151,23 @@ curl -X POST http://localhost:8004/api/v1/approvals \
   }'
 ```
 
+### Queue an Automation Task
+
+```bash
+curl -X POST http://localhost:8005/api/v1/automation/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "definition_id": "550e8400-e29b-41d4-a716-446655440010",
+    "payload": {"operation": "sync_route_plan"},
+    "priority": 75,
+    "compliance": {
+      "frameworks": ["GDPR"],
+      "contains_personal_data": true,
+      "lawful_basis": "legitimate_interest"
+    }
+  }'
+```
+
 ## 🔐 Security Features
 
 - **mTLS**: Mutual TLS authentication between services
@@ -200,6 +225,7 @@ pytest tests/e2e/
 - [Security Model](./docs/security.md)
 - [Deployment Guide](./docs/deployment.md)
 - [Auditor Runbook](./docs/auditor-runbook.md)
+- [Automation Platform Guide](./automation/README.md)
 
 ## 🤝 Integration with Main Application
 

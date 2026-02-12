@@ -275,6 +275,18 @@ def verify_agent_identity(
     return identity
 
 
+def get_current_identity(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme),
+) -> AgentIdentity:
+    """
+    Backward-compatible alias used by control plane handlers.
+
+    Kept separate from verify_agent_identity so existing imports continue to work.
+    """
+    return verify_agent_identity(request=request, credentials=credentials)
+
+
 def require_permission(permission: str):
     """
     Decorator to require specific permission.
