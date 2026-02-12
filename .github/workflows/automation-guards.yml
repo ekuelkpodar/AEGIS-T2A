@@ -1,0 +1,127 @@
+name: Automation Guards
+
+on:
+  pull_request:
+    paths:
+      - 'docs/automation/**'
+      - 'policies/examples/industry/**'
+      - '.github/workflows/automation-guards.yml'
+  push:
+    branches: ["main"]
+    paths:
+      - 'docs/automation/**'
+      - 'policies/examples/industry/**'
+      - '.github/workflows/automation-guards.yml'
+
+jobs:
+  action-schema-validation:
+    name: Action Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install jsonschema pyyaml
+
+      - name: Validate action examples against schema
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+
+          schema_path = Path('docs/automation/schemas/action.schema.json')
+          schema = json.loads(schema_path.read_text(encoding='utf-8'))
+          validator = Draft202012Validator(schema)
+
+          example_paths = sorted(Path('docs/automation/examples').glob('*.json'))
+          if not example_paths:
+              raise SystemExit('No action examples found to validate')
+
+          failures = []
+          for path in example_paths:
+              payload = json.loads(path.read_text(encoding='utf-8'))
+              errors = sorted(validator.iter_errors(payload), key=lambda e: e.path)
+              if errors:
+                  failures.append((path, errors))
+
+          if failures:
+              for path, errors in failures:
+                  print(f'Validation failed: {path}')
+                  for err in errors:
+                      print(f'  - {err.message}')
+              raise SystemExit(1)
+
+          print(f'Validated {len(example_paths)} action examples against canonical schema')
+          PY
+
+      - name: Validate OpenAPI YAML parse
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          openapi_path = Path('docs/automation/openapi/action-registry.openapi.yaml')
+          yaml.safe_load(openapi_path.read_text(encoding='utf-8'))
+          print(f'Parsed OpenAPI file: {openapi_path}')
+          PY
+
+  opa-policy-checks:
+    name: OPA Policy Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+
+      - name: Verify Rego formatting
+        run: |
+          opa fmt --fail policies/examples/industry/*.rego
+
+      - name: Evaluate industry policy decisions
+        run: |
+          set -euo pipefail
+
+          validate_decision() {
+            local rego_file="$1"
+            local data_path="$2"
+            local input_file="$3"
+
+            decision=$(opa eval -d "$rego_file" -I -f raw "$data_path" < "$input_file")
+            case "$decision" in
+              allow|require_approval|deny)
+                echo "Decision OK for $rego_file: $decision"
+                ;;
+              *)
+                echo "Unexpected decision '$decision' from $rego_file"
+                exit 1
+                ;;
+            esac
+          }
+
+          validate_decision \
+            policies/examples/industry/healthcare.rego \
+            data.aegis.industry.healthcare.output.decision \
+            policies/examples/industry/healthcare.input.json
+
+          validate_decision \
+            policies/examples/industry/logistics.rego \
+            data.aegis.industry.logistics.output.decision \
+            policies/examples/industry/logistics.input.json
+
+          validate_decision \
+            policies/examples/industry/finance.rego \
+            data.aegis.industry.finance.output.decision \
+            policies/examples/industry/finance.input.json
