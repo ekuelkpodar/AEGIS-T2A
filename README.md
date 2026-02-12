@@ -142,6 +142,12 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
 
 This repo now includes implementation-ready assets to accelerate the general-purpose enterprise Text→Action roadmap.
 
+Run local guard checks before pushing changes:
+
+```bash
+npm run validate:automation
+```
+
 ### MVP (0-6 weeks)
 
 - Canonical action contract and registry API:

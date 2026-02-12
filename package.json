@@ -18,7 +18,8 @@
     "clean": "rm -rf dist",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "cli": "tsx src/cli/index.ts",
-    "temporal:worker": "tsx src/workflow/temporal/worker.ts"
+    "temporal:worker": "tsx src/workflow/temporal/worker.ts",
+    "validate:automation": "bash scripts/validate-automation-guards.sh"
   },
   "keywords": [
     "ai",
