@@ -1,0 +1,25 @@
+{
+  "actor": {
+    "id": "agent-care-1",
+    "roles": ["industry_operator", "reviewer"]
+  },
+  "action": {
+    "id": "healthcare.patient.followup.call",
+    "risk_level": "high",
+    "safety_score": 64,
+    "blast_radius": {
+      "max_records": 1,
+      "level": "high"
+    },
+    "compliance": {
+      "frameworks": ["hipaa"],
+      "contains_phi": true,
+      "contains_personal_data": true
+    }
+  },
+  "context": {
+    "minimum_necessary": true,
+    "requires_human_review": true,
+    "approvals": []
+  }
+}

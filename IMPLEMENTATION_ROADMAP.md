@@ -14,6 +14,49 @@ This roadmap implements 250 specific, technically detailed improvements to trans
 
 ---
 
+## Priority Delivery Plan (MVP -> Next -> Long Term)
+
+This section sequences near-term execution into concrete deliverables that map directly to artifacts in this repository.
+
+### MVP (Weeks 1-6)
+
+- [ ] 1. Adopt canonical action schema and contract validation in CI.
+  - Assets: `docs/automation/schemas/action.schema.json`, `docs/automation/openapi/action-registry.openapi.yaml`
+- [ ] 2. Launch action definition registry endpoints and versioning workflow.
+- [ ] 3. Ship adapter SDK templates and first production adapters.
+  - Starter templates: `templates/adapters/node/`, `templates/adapters/python/`
+  - First adapters: Twilio/telephony, Salesforce (or generic CRM), Postgres
+- [ ] 4. Enforce simulation-first execution (`simulate` before `execute`) for high-risk actions.
+- [ ] 5. Implement policy packs for healthcare/logistics/finance and add `opa eval/test` checks in CI.
+  - Assets: `policies/examples/industry/`
+- [ ] 6. Add RAG ingestion and grounded-prompt provenance logging for action planning.
+  - Assets: `docs/automation/rag/ingest_pinecone.py`, `docs/automation/rag/provenance_prompt_template.md`
+- [ ] 7. Ensure audit records persist plan, retrieval provenance, policy decision, approval outcome, and execution result.
+
+### Next (Weeks 7-12)
+
+- [ ] 8. Build policy-authoring UX that compiles high-level policy DSL to Rego.
+- [ ] 9. Harden agent identity with ephemeral credential flows (SPIFFE + NHI IAM integration).
+- [ ] 10. Expand HITL controls using confidence/cost/blast-radius thresholds.
+- [ ] 11. Publish SDK usage docs and industry starter templates.
+- [ ] 12. Add action-level SLOs and OTEL traces spanning policy + planner + executor.
+
+### Long Term (Weeks 13+)
+
+- [ ] 13. Deliver tenant-isolated ABAC governance with delegated admin and scoped approvals.
+- [ ] 14. Scale adapter catalog (ERP/TMS/healthcare systems) with signed adapter packages.
+- [ ] 15. Automate compliance evidence exports (SOC2, HIPAA, GDPR packs).
+- [ ] 16. Implement large-scale scenario simulation, canary rollout, and chaos safety testing.
+
+### Exit Criteria for Enterprise Readiness
+
+- [ ] All production actions conform to canonical schema and have compensation metadata.
+- [ ] High-risk actions cannot execute without explicit human approval.
+- [ ] Every action trace has provenance and policy evidence suitable for audit export.
+- [ ] Adapter integrations pass sandbox parity and rollback validation tests.
+
+---
+
 ## Implementation Phases
 
 ### Phase 1: Foundation & Security (Improvements 1-60) - **PRIORITY: CRITICAL**

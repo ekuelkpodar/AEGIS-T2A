@@ -1,0 +1,11 @@
+{
+  "user_intent": "Trigger a patient follow-up call and log outcome",
+  "hits": [
+    {
+      "source_uri": "https://compliance.example.local/hipaa/minimum-necessary",
+      "source_timestamp": "2026-01-12T09:00:00Z",
+      "score": 0.93,
+      "text": "For PHI processing, only the minimum necessary information should be used or disclosed for the intended purpose."
+    }
+  ]
+}

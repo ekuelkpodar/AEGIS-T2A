@@ -1,0 +1,62 @@
+{
+  "action_id": "energy.grid.load_shed.request",
+  "name": "Request Controlled Load Shedding",
+  "version": "1.0.0",
+  "description": "Issue a controlled load shedding request for specified feeders after policy and operator approval.",
+  "industry_tags": ["energy", "grid-operations"],
+  "parameters": [
+    {"name": "region_id", "type": "string", "required": true, "description": "Target region"},
+    {"name": "feeder_ids", "type": "array", "required": true, "description": "Feeder list"},
+    {"name": "duration_minutes", "type": "integer", "required": true, "description": "Requested duration"}
+  ],
+  "preconditions": [
+    {"id": "human.approved", "description": "Control room supervisor approves the action", "enforcement": "human"},
+    {"id": "interlock.ok", "description": "Safety interlocks are satisfied", "enforcement": "system"}
+  ],
+  "postconditions": [
+    {"id": "grid.state.updated", "description": "SCADA reflects planned state transition", "enforcement": "system"}
+  ],
+  "required_roles": ["platform_admin", "grid_operator"],
+  "required_permissions": ["automation:tasks:execute", "automation:tasks:review"],
+  "blast_radius": {
+    "level": "critical",
+    "scope": "regional power distribution",
+    "max_records": 50,
+    "max_systems": 4,
+    "reversible": true
+  },
+  "compensation": {
+    "strategy": "automatic",
+    "undo_action_id": "energy.grid.load_restore.request",
+    "manual_playbook_required": true,
+    "playbook_ref": "playbooks/energy/load-shed-rollback.md"
+  },
+  "safety_score": 55,
+  "expected_cost": {
+    "unit": "seconds",
+    "value": 180,
+    "max_allowed": 900,
+    "estimated_duration_seconds": 180
+  },
+  "execution": {
+    "adapter_type": "custom",
+    "operation": {
+      "provider": "scada_orchestrator",
+      "command": "load_shed"
+    },
+    "timeout_seconds": 45,
+    "retry_policy": {
+      "max_attempts": 1,
+      "backoff_seconds": 0
+    }
+  },
+  "compliance": {
+    "frameworks": ["soc2"],
+    "contains_personal_data": false,
+    "contains_phi": false,
+    "lawful_basis_required": false
+  },
+  "metadata": {
+    "owner_team": "grid-control"
+  }
+}

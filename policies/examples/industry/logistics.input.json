@@ -1,0 +1,23 @@
+{
+  "actor": {
+    "id": "agent-dispatch-1",
+    "roles": ["industry_operator", "dispatcher"]
+  },
+  "action": {
+    "id": "logistics.dispatch.driver.notify",
+    "risk_level": "medium",
+    "safety_score": 76,
+    "blast_radius": {
+      "max_records": 2,
+      "level": "medium"
+    },
+    "compliance": {
+      "frameworks": ["gdpr"],
+      "contains_phi": false,
+      "contains_personal_data": true
+    }
+  },
+  "context": {
+    "approvals": []
+  }
+}

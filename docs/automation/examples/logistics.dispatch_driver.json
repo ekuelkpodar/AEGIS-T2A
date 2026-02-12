@@ -1,0 +1,62 @@
+{
+  "action_id": "logistics.dispatch.driver.notify",
+  "name": "Notify Driver of Route Change",
+  "version": "1.0.0",
+  "description": "Send updated route instructions to a driver through telephony and SMS channel.",
+  "industry_tags": ["logistics", "dispatch"],
+  "parameters": [
+    {"name": "driver_id", "type": "string", "required": true, "description": "Driver unique ID"},
+    {"name": "route_id", "type": "string", "required": true, "description": "Route to assign"},
+    {"name": "message", "type": "string", "required": true, "description": "Human readable route update"}
+  ],
+  "preconditions": [
+    {"id": "driver.active", "description": "Driver is active and on shift", "enforcement": "system"},
+    {"id": "route.approved", "description": "Route has dispatch approval", "enforcement": "policy"}
+  ],
+  "postconditions": [
+    {"id": "notification.sent", "description": "Driver receives the update", "enforcement": "system"}
+  ],
+  "required_roles": ["industry_operator", "dispatcher"],
+  "required_permissions": ["automation:tasks:write", "automation:tasks:execute"],
+  "blast_radius": {
+    "level": "medium",
+    "scope": "single-route reassignment",
+    "max_records": 2,
+    "max_systems": 2,
+    "reversible": true
+  },
+  "compensation": {
+    "strategy": "hybrid",
+    "undo_action_id": "logistics.dispatch.driver.revert",
+    "manual_playbook_required": true,
+    "playbook_ref": "playbooks/logistics/dispatch-revert.md"
+  },
+  "safety_score": 76,
+  "expected_cost": {
+    "unit": "usd",
+    "value": 0.04,
+    "max_allowed": 2.0,
+    "estimated_duration_seconds": 8
+  },
+  "execution": {
+    "adapter_type": "telephony",
+    "operation": {
+      "provider": "twilio",
+      "channel": "sms"
+    },
+    "timeout_seconds": 20,
+    "retry_policy": {
+      "max_attempts": 3,
+      "backoff_seconds": 2
+    }
+  },
+  "compliance": {
+    "frameworks": ["gdpr"],
+    "contains_personal_data": true,
+    "contains_phi": false,
+    "lawful_basis_required": true
+  },
+  "metadata": {
+    "owner_team": "logistics-ops"
+  }
+}

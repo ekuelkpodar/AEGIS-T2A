@@ -138,6 +138,42 @@ Concise view of the 250-item roadmap, grouped by implementation focus with prima
 For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS.md`.
 
 ---
+## Enterprise Expansion Blueprint (MVP → Next → Long Term)
+
+This repo now includes implementation-ready assets to accelerate the general-purpose enterprise Text→Action roadmap.
+
+### MVP (0-6 weeks)
+
+- Canonical action contract and registry API:
+  - `docs/automation/schemas/action.schema.json`
+  - `docs/automation/openapi/action-registry.openapi.yaml`
+  - `docs/automation/examples/*.json`
+- Adapter SDK templates with simulation-first execution:
+  - `templates/adapters/node/`
+  - `templates/adapters/python/`
+- Initial policy packs for regulated workflows:
+  - `policies/examples/industry/`
+- RAG grounding proof-of-concept with provenance:
+  - `docs/automation/rag/ingest_pinecone.py`
+  - `docs/automation/rag/provenance_prompt_template.md`
+
+### Next (6-12 weeks)
+
+- Policy authoring UX that compiles high-level policies into Rego.
+- Production adapter rollout (CRM, ERP, telephony, databases) with sandbox parity tests.
+- Expanded HITL gates tied to risk, confidence, and cost thresholds.
+- OpenTelemetry extension for policy decision traces and action-level SLOs.
+
+### Long Term (12+ weeks)
+
+- Full multi-tenant ABAC governance and delegated administration.
+- Large integration marketplace with signed adapter packages.
+- Compliance automation packs (SOC2/HIPAA/GDPR evidence generation).
+- Scenario simulation at scale with canary and chaos validation modes.
+
+See `IMPLEMENTATION_ROADMAP.md` for the prioritized delivery sequence.
+
+---
 
 ## 🚀 Implemented Enterprise Enhancements (Phases 1-16)
 

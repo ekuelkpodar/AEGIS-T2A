@@ -1,0 +1,61 @@
+{
+  "action_id": "healthcare.patient.followup.call",
+  "name": "Patient Follow-Up Call",
+  "version": "1.0.0",
+  "description": "Trigger a follow-up call workflow for a discharged patient.",
+  "industry_tags": ["healthcare", "care-management"],
+  "parameters": [
+    {"name": "patient_id", "type": "string", "required": true, "description": "Patient record identifier"},
+    {"name": "encounter_id", "type": "string", "required": true, "description": "Encounter identifier"},
+    {"name": "call_script_id", "type": "string", "required": true, "description": "Approved script template"}
+  ],
+  "preconditions": [
+    {"id": "consent.valid", "description": "Patient contact consent is recorded", "enforcement": "policy"},
+    {"id": "minimum.necessary", "description": "Only required PHI fields are exposed", "enforcement": "system"}
+  ],
+  "postconditions": [
+    {"id": "call.logged", "description": "Outcome is recorded in EHR", "enforcement": "system"}
+  ],
+  "required_roles": ["reviewer", "care_coordinator"],
+  "required_permissions": ["automation:tasks:write", "automation:tasks:review"],
+  "blast_radius": {
+    "level": "high",
+    "scope": "single patient interaction with PHI",
+    "max_records": 1,
+    "max_systems": 2,
+    "reversible": false
+  },
+  "compensation": {
+    "strategy": "manual",
+    "manual_playbook_required": true,
+    "playbook_ref": "playbooks/healthcare/privacy-incident.md"
+  },
+  "safety_score": 64,
+  "expected_cost": {
+    "unit": "usd",
+    "value": 0.12,
+    "max_allowed": 5.0,
+    "estimated_duration_seconds": 60
+  },
+  "execution": {
+    "adapter_type": "crm",
+    "operation": {
+      "provider": "ehr_api",
+      "endpoint": "calls/followup"
+    },
+    "timeout_seconds": 30,
+    "retry_policy": {
+      "max_attempts": 2,
+      "backoff_seconds": 5
+    }
+  },
+  "compliance": {
+    "frameworks": ["hipaa"],
+    "contains_personal_data": true,
+    "contains_phi": true,
+    "lawful_basis_required": false
+  },
+  "metadata": {
+    "owner_team": "care-ops"
+  }
+}

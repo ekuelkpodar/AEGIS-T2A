@@ -1,0 +1,12 @@
+[project]
+name = "aegis-adapter-template-python"
+version = "0.1.0"
+description = "Adapter template for AEGIS Text-to-Action platform"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]

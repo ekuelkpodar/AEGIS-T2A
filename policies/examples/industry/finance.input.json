@@ -1,0 +1,24 @@
+{
+  "actor": {
+    "id": "agent-finance-1",
+    "roles": ["finance_operator", "reviewer"]
+  },
+  "action": {
+    "id": "finance.payment.execute",
+    "risk_level": "high",
+    "safety_score": 70,
+    "blast_radius": {
+      "max_records": 1,
+      "level": "high"
+    },
+    "compliance": {
+      "frameworks": ["soc2"],
+      "contains_phi": false,
+      "contains_personal_data": false
+    }
+  },
+  "context": {
+    "amount_usd": 25000,
+    "approvals": []
+  }
+}

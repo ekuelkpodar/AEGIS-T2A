@@ -1,0 +1,195 @@
+openapi: 3.1.0
+info:
+  title: AEGIS Action Registry API
+  version: 1.0.0
+  description: |
+    API contract for managing canonical action definitions and validating tasks
+    against the action schema.
+servers:
+  - url: https://api.aegis-t2a.local
+paths:
+  /api/v1/action-definitions:
+    get:
+      summary: List action definitions
+      parameters:
+        - in: query
+          name: industry_tag
+          schema:
+            type: string
+        - in: query
+          name: version
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of action definitions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  definitions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActionDefinition'
+    post:
+      summary: Create action definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionDefinition'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionDefinition'
+        '400':
+          description: Validation failure
+  /api/v1/action-definitions/{action_id}/validate:
+    post:
+      summary: Validate action payload against registered schema
+      parameters:
+        - in: path
+          name: action_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+              required: [payload]
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+  /api/v1/action-definitions/{action_id}/simulate:
+    post:
+      summary: Run sandbox simulation for a proposed action execution
+      parameters:
+        - in: path
+          name: action_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+                tenant_id:
+                  type: string
+              required: [payload]
+      responses:
+        '200':
+          description: Simulation output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResult'
+components:
+  schemas:
+    ActionDefinition:
+      type: object
+      description: Canonical action object. See docs/automation/schemas/action.schema.json for full constraints.
+      required:
+        - action_id
+        - name
+        - version
+        - description
+        - parameters
+        - preconditions
+        - postconditions
+        - required_roles
+        - blast_radius
+        - compensation
+        - safety_score
+        - expected_cost
+        - execution
+      properties:
+        action_id:
+          type: string
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        industry_tags:
+          type: array
+          items:
+            type: string
+        parameters:
+          type: array
+          items:
+            type: object
+        preconditions:
+          type: array
+          items:
+            type: object
+        postconditions:
+          type: array
+          items:
+            type: object
+        required_roles:
+          type: array
+          items:
+            type: string
+        required_permissions:
+          type: array
+          items:
+            type: string
+        blast_radius:
+          type: object
+        compensation:
+          type: object
+        safety_score:
+          type: integer
+        expected_cost:
+          type: object
+        execution:
+          type: object
+        compliance:
+          type: object
+        metadata:
+          type: object
+    ValidationResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        violations:
+          type: array
+          items:
+            type: string
+    SimulationResult:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+        blast_radius_score:
+          type: number
+        estimated_duration_seconds:
+          type: integer
+        estimated_cost:
+          type: number
+        warnings:
+          type: array
+          items:
+            type: string
