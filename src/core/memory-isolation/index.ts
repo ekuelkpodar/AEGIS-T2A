@@ -305,14 +305,14 @@ const DLP_PATTERNS: Array<{
   {
     name: 'aws_secret_key',
     category: 'credential',
-    pattern: /(?:aws)?_?(?:secret)?_?(?:access)?_?key[=:]\s*['\"]?[A-Za-z0-9/+=]{40}['\"]?/gi,
+    pattern: /(?:aws)?_?(?:secret)?_?(?:access)?_?key["']?\s*[=:]\s*['\"]?[A-Za-z0-9/+=]{40}['\"]?/gi,
     severity: 'critical',
     recommendation: 'NEVER store AWS secret keys',
   },
   {
     name: 'api_key',
     category: 'credential',
-    pattern: /(?:api[_-]?key|apikey)[=:]\s*['\"]?[\w-]{20,}['\"]?/gi,
+    pattern: /(?:api[_-]?key|apikey)["']?\s*[=:]\s*['\"]?[\w-]{20,}['\"]?/gi,
     severity: 'critical',
     recommendation: 'Use ephemeral credentials instead of API keys',
   },
@@ -333,7 +333,7 @@ const DLP_PATTERNS: Array<{
   {
     name: 'password_field',
     category: 'credential',
-    pattern: /(?:password|passwd|pwd)[=:]\s*['\"]?[^\s'\"]{8,}['\"]?/gi,
+    pattern: /(?:password|passwd|pwd)["']?\s*[=:]\s*['\"]?[^\s'\"]{8,}['\"]?/gi,
     severity: 'critical',
     recommendation: 'Never store passwords in memory',
   },
@@ -349,7 +349,7 @@ const DLP_PATTERNS: Array<{
   {
     name: 'generic_secret',
     category: 'secret',
-    pattern: /(?:secret|token)[=:]\s*['\"]?[\w-]{20,}['\"]?/gi,
+    pattern: /(?:secret|token)["']?\s*[=:]\s*['\"]?[\w-]{20,}['\"]?/gi,
     severity: 'high',
     recommendation: 'Evaluate if secret storage is necessary',
   },

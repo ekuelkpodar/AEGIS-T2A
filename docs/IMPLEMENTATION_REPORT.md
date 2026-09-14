@@ -48,56 +48,56 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
 
 #### Core Identity (17+ Modules)
 
-1. **SPIFFE/SPIRE Foundation** ([identity/spiffe.ts](src/identity/spiffe.ts))
+1. **SPIFFE/SPIRE Foundation** ([identity/spiffe.ts](../src/identity/spiffe.ts))
    - Cryptographic identity for every agent/workflow/service
    - Format: `spiffe://aegis-t2a.local/ns/{namespace}/agent/{type}/{id}`
    - SVID interface for X.509 and JWT tokens
    - Trust domain: `aegis-t2a.local` (configurable)
 
-2. **Hierarchical Scopes** ([identity/scopes.ts](src/identity/scopes.ts))
+2. **Hierarchical Scopes** ([identity/scopes.ts](../src/identity/scopes.ts))
    - Levels: READ → WRITE → EXECUTE → ADMIN
    - Time-boxed grants with automatic expiration
    - Scope inheritance and least privilege
    - Compliance reporting (CC6.1, CC6.6)
 
-3. **Workload IAM** ([identity/workload-iam.ts](src/identity/workload-iam.ts))
+3. **Workload IAM** ([identity/workload-iam.ts](../src/identity/workload-iam.ts))
    - Context-aware access control (Aembit-style)
    - Environment-specific policies (dev/staging/prod)
    - Time-of-day restrictions
    - Role-based access control (RBAC)
 
-4. **NHI Lifecycle Management** ([identity/nhi-lifecycle.ts](src/identity/nhi-lifecycle.ts))
+4. **NHI Lifecycle Management** ([identity/nhi-lifecycle.ts](../src/identity/nhi-lifecycle.ts))
    - States: PROVISIONED → ACTIVE → SUSPENDED → REVOKED → DECOMMISSIONED
    - Automatic state transitions
    - Alert system for expiration/rotation
    - Monitoring with configurable intervals
 
-5. **SPIRE Agent Integration** ([identity/spire-agent.ts](src/identity/spire-agent.ts))
+5. **SPIRE Agent Integration** ([identity/spire-agent.ts](../src/identity/spire-agent.ts))
    - Production SPIRE server integration
    - SVID fetching and validation
    - Attestation workflows
 
-6. **Token Delegation** ([identity/delegation.ts](src/identity/delegation.ts))
+6. **Token Delegation** ([identity/delegation.ts](../src/identity/delegation.ts))
    - Delegate authority to sub-agents
    - Constraint enforcement (time, resource scope)
    - Revocation support
 
-7. **Trust Federation** ([identity/federation.ts](src/identity/federation.ts))
+7. **Trust Federation** ([identity/federation.ts](../src/identity/federation.ts))
    - Cross-organization trust boundaries
    - Federation policies and validation
    - Trust bundle management
 
-8. **Agent Genealogy** ([identity/genealogy.ts](src/identity/genealogy.ts))
+8. **Agent Genealogy** ([identity/genealogy.ts](../src/identity/genealogy.ts))
    - Parent-child spawn tracking
    - Blast radius calculation via ancestry
    - Cryptographic proof of spawn chains
 
-9. **Compliance Reporting** ([identity/compliance-report.ts](src/identity/compliance-report.ts))
+9. **Compliance Reporting** ([identity/compliance-report.ts](../src/identity/compliance-report.ts))
    - SOC 2 evidence collection
    - Control mapping: CC6.1, CC6.6, CC6.7, CC6.8, CC7.3
    - Automated report generation
 
-10. **Workload Attestation** ([identity/attestors/](src/identity/attestors/))
+10. **Workload Attestation** ([identity/attestors/](../src/identity/attestors/))
     - **Docker**: Container ID, image hash, labels
     - **Kubernetes**: Pod name, namespace, service account
     - **Unix**: PID, UID, binary hash
@@ -106,38 +106,38 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
     - **Azure**: VM ID, subscription, resource group
     - Dynamic attestor loading
 
-11. **Token Bucket Rate Limiting** ([identity/rate-limiter.ts](src/identity/rate-limiter.ts))
+11. **Token Bucket Rate Limiting** ([identity/rate-limiter.ts](../src/identity/rate-limiter.ts))
     - Per-SPIFFE ID rate limits
     - Configurable tokens/second
     - Automatic token refill
 
-12. **Emergency Revocation** ([identity/revocation.ts](src/identity/revocation.ts))
+12. **Emergency Revocation** ([identity/revocation.ts](../src/identity/revocation.ts))
     - Instant identity revocation
     - Kill switch for all identities
     - Revocation propagation
     - Audit trail
 
-13. **SVID Rotation** ([identity/svid-rotation.ts](src/identity/svid-rotation.ts))
+13. **SVID Rotation** ([identity/svid-rotation.ts](../src/identity/svid-rotation.ts))
     - Automatic rotation at 2/3 TTL
     - Envoy SDS pattern
     - Graceful rollover
 
-14. **Bilateral Authorization** ([identity/bilateral-auth.ts](src/identity/bilateral-auth.ts))
+14. **Bilateral Authorization** ([identity/bilateral-auth.ts](../src/identity/bilateral-auth.ts))
     - Mutual agent authorization
     - Bidirectional trust verification
 
-15. **Capability Tokens** ([identity/capabilities.ts](src/identity/capabilities.ts))
+15. **Capability Tokens** ([identity/capabilities.ts](../src/identity/capabilities.ts))
     - Bearer tokens bound to SPIFFE IDs
     - Fine-grained delegation
     - Constraints: maxUses, validUntil, ipWhitelist
     - Automatic cleanup
 
-16. **Identity Observability** ([identity/observability.ts](src/identity/observability.ts))
+16. **Identity Observability** ([identity/observability.ts](../src/identity/observability.ts))
     - SPIFFE IDs in all logs/metrics/traces
     - Identity-aware logger
     - OpenTelemetry integration ready
 
-17. **Cloud Attestors** ([identity/attestors/](src/identity/attestors/))
+17. **Cloud Attestors** ([identity/attestors/](../src/identity/attestors/))
     - AWS, GCP, Azure instance verification
     - Metadata service integration
     - Secure identity bootstrapping
@@ -155,7 +155,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
 
 ### Implemented Components
 
-1. **Bayesian Confidence Scoring** ([gateway/bayesian-confidence.ts](src/gateway/bayesian-confidence.ts))
+1. **Bayesian Confidence Scoring** ([gateway/bayesian-confidence.ts](../src/gateway/bayesian-confidence.ts))
    - Prior probability from historical data
    - Likelihood from multiple evidence sources
    - Posterior calculation via Bayes' theorem
@@ -163,14 +163,14 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Bayesian credible intervals
    - Adaptive learning from observations
 
-2. **Multi-Model Ensemble Voting** ([gateway/ensemble-voter.ts](src/gateway/ensemble-voter.ts))
+2. **Multi-Model Ensemble Voting** ([gateway/ensemble-voter.ts](../src/gateway/ensemble-voter.ts))
    - Parallel queries to Claude, GPT-4, heuristic
    - Voting strategies: majority, weighted average, Bayesian
    - Model agreement scoring (Fleiss' kappa-like)
    - Disagreement detection and analysis
    - Automatic fallback on failure
 
-3. **Confidence Threshold Enforcement** ([gateway/confidence-threshold.ts](src/gateway/confidence-threshold.ts))
+3. **Confidence Threshold Enforcement** ([gateway/confidence-threshold.ts](../src/gateway/confidence-threshold.ts))
    - Risk-adjusted thresholds:
      * Destructive: ≥0.95 auto-approve
      * High: ≥0.9 auto-approve
@@ -180,7 +180,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Override system with justification
    - Rejection history and appeals
 
-4. **Real-Time Confidence Telemetry** ([gateway/confidence-telemetry.ts](src/gateway/confidence-telemetry.ts))
+4. **Real-Time Confidence Telemetry** ([gateway/confidence-telemetry.ts](../src/gateway/confidence-telemetry.ts))
    - Sliding window statistics (avg, median, p50/p95/p99)
    - Anomaly detection:
      * Low confidence spikes (>20%)
@@ -211,7 +211,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
 
 ### Implemented Components
 
-1. **Policy Versioning & History** ([gateway/policy-versioning.ts](src/gateway/policy-versioning.ts))
+1. **Policy Versioning & History** ([gateway/policy-versioning.ts](../src/gateway/policy-versioning.ts))
    - Semantic versioning for policies (major.minor.patch)
    - Full change history with diffs
    - Rollback to any previous version
@@ -220,7 +220,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Content-addressable hashing
    - Automated version tagging
 
-2. **Policy Templates Library** ([gateway/policy-templates.ts](src/gateway/policy-templates.ts))
+2. **Policy Templates Library** ([gateway/policy-templates.ts](../src/gateway/policy-templates.ts))
    - 17+ ready-to-use policy templates
    - Categories: Access Control, Data Protection, Cost Management, Security, Compliance, Change Management, Business Continuity
    - Compliance mappings: SOC 2, ISO 27001, NIST 800-53, PCI-DSS, GDPR, HIPAA
@@ -228,7 +228,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Template search and discovery
    - Auto-instantiation with parameter substitution
 
-3. **Policy Testing Framework** ([gateway/policy-testing.ts](src/gateway/policy-testing.ts))
+3. **Policy Testing Framework** ([gateway/policy-testing.ts](../src/gateway/policy-testing.ts))
    - Test case management
    - Assertion framework for policy validation
    - Coverage analysis
@@ -237,7 +237,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Performance testing
    - Test suite execution with detailed results
 
-4. **Policy Conflict Detection** ([gateway/policy-conflict-detector.ts](src/gateway/policy-conflict-detector.ts))
+4. **Policy Conflict Detection** ([gateway/policy-conflict-detector.ts](../src/gateway/policy-conflict-detector.ts))
    - Conflict types: Contradictory, Redundant, Shadowed, Overlapping, Priority Conflicts, Unreachable
    - Health score calculation (0-100)
    - Automatic resolution suggestions
@@ -245,7 +245,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Dead code elimination
    - Impact severity scoring
 
-5. **RBAC Integration with SPIFFE** ([gateway/policy-rbac.ts](src/gateway/policy-rbac.ts))
+5. **RBAC Integration with SPIFFE** ([gateway/policy-rbac.ts](../src/gateway/policy-rbac.ts))
    - SPIFFE ID to role mapping
    - Built-in roles: Admin, Operator, Developer, Auditor, Security
    - Dynamic role assignment
@@ -254,7 +254,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Time-boxed role grants
    - Resource and action wildcards
 
-6. **Policy Impact Analysis** ([gateway/policy-impact-analyzer.ts](src/gateway/policy-impact-analyzer.ts))
+6. **Policy Impact Analysis** ([gateway/policy-impact-analyzer.ts](../src/gateway/policy-impact-analyzer.ts))
    - What-if analysis for policy changes
    - Historical request replay
    - Impact prediction (newly allowed/denied)
@@ -263,7 +263,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Automated recommendations
    - Canary rollout suggestions
 
-7. **Policy Compliance Mapper** ([gateway/policy-compliance-mapper.ts](src/gateway/policy-compliance-mapper.ts))
+7. **Policy Compliance Mapper** ([gateway/policy-compliance-mapper.ts](../src/gateway/policy-compliance-mapper.ts))
    - Framework support: SOC 2, ISO 27001, NIST 800-53, PCI-DSS, GDPR, HIPAA, FedRAMP
    - 16+ compliance controls database
    - Auto-mapping from policy content
@@ -272,7 +272,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Compliance report generation
    - Control status tracking
 
-8. **Policy Analytics Engine** ([gateway/policy-analytics.ts](src/gateway/policy-analytics.ts))
+8. **Policy Analytics Engine** ([gateway/policy-analytics.ts](../src/gateway/policy-analytics.ts))
    - Real-time enforcement metrics
    - Trend analysis (increasing/stable/decreasing)
    - Per-rule analytics (allowed/denied/approval rates)
@@ -281,7 +281,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Effectiveness scoring
    - Time-series data retention
 
-9. **Policy Exception Management** ([gateway/policy-exception-manager.ts](src/gateway/policy-exception-manager.ts))
+9. **Policy Exception Management** ([gateway/policy-exception-manager.ts](../src/gateway/policy-exception-manager.ts))
    - Temporary policy overrides
    - Justification requirements
    - Approval workflows
@@ -290,7 +290,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Automatic expiration
    - Audit trail
 
-10. **Policy Inheritance** ([gateway/policy-inheritance.ts](src/gateway/policy-inheritance.ts))
+10. **Policy Inheritance** ([gateway/policy-inheritance.ts](../src/gateway/policy-inheritance.ts))
     - Hierarchical policy structure (Global → Environment → Team → User)
     - Effective rule aggregation
     - Parent-child scope relationships
@@ -322,7 +322,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
 
 ### Implemented Components
 
-1. **Shadow Execution Environment** ([simulation/shadow-executor.ts](src/simulation/shadow-executor.ts))
+1. **Shadow Execution Environment** ([simulation/shadow-executor.ts](../src/simulation/shadow-executor.ts))
    - Sandboxed plan execution before production
    - Copy-on-write state management
    - State snapshots at every step
@@ -332,7 +332,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Confidence scoring (0-1) for production readiness
    - Simulated time (10x faster than real-time)
 
-2. **Resource Dependency Graph** ([simulation/resource-dependency-graph.ts](src/simulation/resource-dependency-graph.ts))
+2. **Resource Dependency Graph** ([simulation/resource-dependency-graph.ts](../src/simulation/resource-dependency-graph.ts))
    - Directed acyclic graph (DAG) construction
    - Topological sorting for optimal execution order
    - Critical path analysis (longest weighted paths)
@@ -341,7 +341,7 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
    - Parallelization potential scoring (0-1)
    - Bottleneck identification
 
-3. **What-If Scenario Testing** ([simulation/what-if-scenarios.ts](src/simulation/what-if-scenarios.ts))
+3. **What-If Scenario Testing** ([simulation/what-if-scenarios.ts](../src/simulation/what-if-scenarios.ts))
    - Scenario types: failure, optimization, constraint, alternative
    - Modifications: fail_step, skip_step, modify_parameter, change_order
    - Auto-suggested what-if questions
@@ -369,14 +369,14 @@ For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS
 
 ### Implemented Components
 
-1. **Idempotency Manager** ([executor/idempotency-manager.ts](src/executor/idempotency-manager.ts))
+1. **Idempotency Manager** ([executor/idempotency-manager.ts](../src/executor/idempotency-manager.ts))
    - Content-addressed keys (hash of params)
    - 24-hour response caching
    - In-progress operation detection
    - Automatic cleanup (5-minute intervals)
    - Exactly-once execution guarantee
 
-2. **Resilient Executor** ([executor/resilient-executor.ts](src/executor/resilient-executor.ts))
+2. **Resilient Executor** ([executor/resilient-executor.ts](../src/executor/resilient-executor.ts))
 
    **Circuit Breaker**:
    - States: closed → open → half-open
@@ -606,11 +606,11 @@ The platform is now ready for production deployment with comprehensive fault tol
 
 ### Implemented Components
 
-1. **CLAUDE.md conventions** (`/Users/ekuekpodar/Desktop/AEGIS-T2A/CLAUDE.md`)
+1. **CLAUDE.md conventions** (`CLAUDE.md`)
    - Project norms for AI assistants
    - Safety and testing expectations
 
-2. **Contribution guide** (`/Users/ekuekpodar/Desktop/AEGIS-T2A/CONTRIBUTING.md`)
+2. **Contribution guide** (`CONTRIBUTING.md`)
    - Tool adapter standards
    - PR checklist and testing guidance
 
