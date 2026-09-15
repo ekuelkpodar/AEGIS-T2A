@@ -3,6 +3,7 @@
 **Text-to-Action Anywhere** — Enterprise-grade governed automation from natural language.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Automation Guards](https://github.com/ekuelkpodar/aegis-t2a/actions/workflows/automation-guards.yml/badge.svg)](https://github.com/ekuelkpodar/aegis-t2a/actions/workflows/automation-guards.yml)
 [![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-green.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 
@@ -14,7 +15,7 @@ Transform natural language into safe, auditable, compensatable actions across an
 
 ```bash
 # Clone and install
-git clone https://github.com/your-org/aegis-t2a.git && cd aegis-t2a
+git clone https://github.com/ekuelkpodar/aegis-t2a.git && cd aegis-t2a
 npm install
 
 # Launch with setup wizard
@@ -100,22 +101,42 @@ The AEGIS-T2A web dashboard provides comprehensive visibility and control:
 
 ---
 
-## Current Capabilities (Implemented)
+## Current Capabilities
 
-- **Identity & Zero-Trust** — SPIFFE-based identity, attestors, delegation, and lifecycle management
-- **Policy Enforcement** — OPA bundle support, shadow mode, and policy telemetry
-- **Temporal Workflows** — Durable orchestration, signals/queries, schedules, claim-check payloads
-- **Integrations** — Catalog + Zapier MCP fallback, rate limits, circuit breaker, health checks
-- **Observability** — OpenTelemetry tracing and `/metrics` endpoint
-- **Compliance** — SOC2 reports, RoPA records, DPIA templates
-- **Safety** — Prompt injection detection, LLM output guardrails, intent/plan alignment checks
-- **DevEx** — CLI, evaluation harness, feature flags, prompt cache + model routing
+Capabilities are grouped by how they are actually delivered today — **in the app**, **via the optional control-plane stack**, or **specified but not yet wired**. Per-phase completion percentages live in `docs/IMPLEMENTATION_REPORT.md`; this section intentionally does not repeat roadmap items as shipped features.
+
+### ✅ Implemented in the app
+
+- **Temporal Workflows** — Durable orchestration with signals/queries and schedules via a real `@temporalio/*` integration.
+- **Hash-chained audit ledger** — Append-only event store with tamper-evident chaining, forensic search, and export.
+- **Policy engine with OPA integration** — Evaluates against a configured OPA server (`/v1/data/aegis/authz/decision`) and falls back to a built-in evaluator when OPA is unreachable. Rego bundles ship in `src/governance/policy/opa/` and industry packs in `policies/examples/industry/`; both are evaluated by the real OPA binary in CI.
+- **Identity & lifecycle** — SPIFFE-format workload IDs (`spiffe://aegis-t2a.local/...`), attestor modules (Docker, AWS, Azure, GCP), delegation, non-human-identity lifecycle, revocation.
+- **Safety** — Pattern-based prompt-injection detection with auto-blocking, PII/secret redaction, LLM output guardrails, intent/plan alignment checks, risk-based human approvals, autonomy leases, emergency stop.
+- **Resilience** — Idempotency, per-resource circuit breakers, exponential backoff with jitter, rate limiting.
+- **Observability** — OpenTelemetry tracing and a Prometheus-format `/metrics` endpoint.
+- **Compliance tooling** — SOC 2 report generator, RoPA records, DPIA templates, and control mappings for SOC 2, ISO 27001, NIST 800-53, PCI-DSS, GDPR, and HIPAA.
+- **DevEx** — CLI, web dashboard, evaluation harness, feature flags, model routing, prompt cache, Telegram/Slack/WhatsApp channels.
+
+### 🐳 Available via the optional control-plane stack
+
+`controlplane/docker-compose.yml` stands up the enterprise services as real containers. The main app degrades gracefully when they are absent:
+
+- **OPA** (policy decision point), **PostgreSQL** (control-plane state), **HashiCorp Vault** in dev mode (secrets/PKI), **MinIO** (S3-compatible event-store archival), plus identity, event-store, policy-engine, autonomy-manager, and approval services. A SPIRE server deployment manifest is provided for Kubernetes (`controlplane/spire/`).
+
+### 📋 Specified, not yet wired
+
+Documented in the roadmap but not current capability:
+
+- **Real SPIRE-issued SVIDs** — the app generates SPIFFE-format IDs locally; X.509/JWT-SVID issuance from a live SPIRE server is planned.
+- **In-app Vault client** — the app uses its own encrypted SQLite-backed secrets vault; HashiCorp Vault integration for the main runtime is planned.
+- **Postgres for the main runtime** — the app persists to SQLite (`better-sqlite3`); Postgres currently serves only the control-plane services.
+- **Redis-backed caching** — the app caches in-process (`node-cache`); shared/distributed caching is planned.
 
 ---
 
 ## Research-Backed Roadmap (250 Improvements)
 
-See the full, source-cited report in `AEGIS_T2A_250_IMPROVEMENTS.md`. This roadmap is organized for implementation and highlights key, externally validated foundations:
+See the full, source-cited report in `docs/AEGIS_T2A_250_IMPROVEMENTS.md`. This roadmap is organized for implementation and highlights key, externally validated foundations:
 
 - **Security & identity** — SPIFFE federation ([SPIFFE Federation spec](https://spiffe.io/docs/latest/spiffe-specs/spiffe_federation/)) and Vault SPIFFE auth ([Vault SPIFFE auth method](https://developer.hashicorp.com/vault/docs/auth/spiffe)) for trust-domain identity and secretless auth foundations.
 - **Policy enforcement** — OPA bundles for hot-reloadable policies ([OPA Bundles](https://www.openpolicyagent.org/docs/management-bundles)) and decision monitoring via OpenTelemetry spans ([OPA Monitoring](https://www.openpolicyagent.org/docs/monitoring)).
@@ -135,7 +156,7 @@ Concise view of the 250-item roadmap, grouped by implementation focus with prima
 - **Proactive operations** — Temporal Schedules for recurring compliance checks and automation. ([Temporal Schedules](https://docs.temporal.io/schedule))
 - **Observability** — Standardized GenAI spans/attributes for consistent AI telemetry. ([OTel GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/))
 
-For the full, detailed list of 250 improvements, see `AEGIS_T2A_250_IMPROVEMENTS.md`.
+For the full, detailed list of 250 improvements, see `docs/AEGIS_T2A_250_IMPROVEMENTS.md`.
 
 ---
 ## Enterprise Expansion Blueprint (MVP → Next → Long Term)
@@ -177,7 +198,7 @@ npm run validate:automation
 - Compliance automation packs (SOC2/HIPAA/GDPR evidence generation).
 - Scenario simulation at scale with canary and chaos validation modes.
 
-See `IMPLEMENTATION_ROADMAP.md` for the prioritized delivery sequence.
+See `docs/IMPLEMENTATION_ROADMAP.md` for the prioritized delivery sequence.
 
 ---
 
@@ -185,11 +206,11 @@ See `IMPLEMENTATION_ROADMAP.md` for the prioritized delivery sequence.
 
 AEGIS-T2A now includes identity, policy enforcement, Temporal workflows, hybrid RAG, memory/ontology storage, integration catalog + Zapier MCP fallback, observability (OTel + metrics), compliance tooling (RoPA + DPIA templates), model routing + prompt cache, evaluation harness, feature flags, and sandbox guardrails.
 
-For the full phase-by-phase implementation status, see `IMPLEMENTATION_REPORT.md`.
+For the full phase-by-phase implementation status, see `docs/IMPLEMENTATION_REPORT.md`.
 - **Side-Effect Tracking**: Categorized effect analysis
 - **Scenario Comparison**: A/B testing for execution strategies
 
-**Status**: ✅ Production-Ready | **SOC 2**: CC7.4, CC8.1
+**Status**: ✅ Implemented (v0.1.0 — per-phase completion in `docs/IMPLEMENTATION_REPORT.md`) | **SOC 2 mappings**: CC7.4, CC8.1
 
 ### **Phase 5: Execution Resilience** (15+ Components) ✅
 
@@ -206,7 +227,7 @@ Production-grade fault tolerance with circuit breakers and intelligent retry:
 - **Event Emissions**: Full observability (idempotent_hit, circuit_breaker_open, etc.)
 - **Statistics API**: Circuit breaker states, idempotency hit rates
 
-**Status**: ✅ Production-Ready | **SOC 2**: CC7.1, CC9.2
+**Status**: ✅ Implemented (v0.1.0 — per-phase completion in `docs/IMPLEMENTATION_REPORT.md`) | **SOC 2 mappings**: CC7.1, CC9.2
 
 ### Implementation Metrics
 
@@ -219,56 +240,56 @@ Production-grade fault tolerance with circuit breakers and intelligent retry:
 - **Policy Templates**: 17 ready-to-use
 - **Compliance Frameworks**: 7 supported (SOC 2, ISO 27001, NIST 800-53, PCI-DSS, GDPR, HIPAA, FedRAMP)
 
-📖 **Full Report**: See [IMPLEMENTATION_REPORT.md](./IMPLEMENTATION_REPORT.md) for detailed documentation.
+📖 **Full Report**: See [IMPLEMENTATION_REPORT.md](./docs/IMPLEMENTATION_REPORT.md) for detailed documentation.
 
 ---
 
 ## 🔒 Three-Tier Security Architecture
 
-AEGIS-T2A implements a comprehensive three-tier security model for production-ready AI automation:
+AEGIS-T2A is built around a three-tier security model. Each component is labeled by where it actually runs — **✅ in-app**, **🐳 control-plane service**, or **📋 planned** — so the table below reflects the code, not the roadmap.
 
-### **TIER 1: Identity & Zero-Trust Foundation** ✅
+### **TIER 1: Identity & Zero-Trust Foundation**
 
-Complete SPIFFE/SPIRE-based workload identity with zero-trust principles:
+Zero-trust workload identity:
 
 | Component | Description | Status |
 |-----------|-------------|--------|
-| **SPIFFE Identity** | Cryptographic IDs for every agent: `spiffe://aegis-t2a.local/ns/{ns}/agent/{type}/{id}` | ✅ Implemented |
-| **SPIRE Agent Integration** | X.509-SVID and JWT-SVID issuance with automatic rotation | ✅ Implemented |
-| **Workload Attestation** | Docker, Kubernetes, Unix process identity verification | ✅ Implemented |
-| **Node Attestation** | AWS, Azure, GCP cloud provider verification | ✅ Implemented |
-| **Workload IAM** | Aembit-style context-aware access (identity + context + sensitivity) | ✅ Implemented |
-| **Hierarchical Scopes** | OpenClaw.ai-style: read → write → execute → admin | ✅ Implemented |
-| **Trust Federation** | Multi-org identity verification across trust domains | ✅ Implemented |
-| **NHI Lifecycle** | Provision → Rotate → Suspend → Revoke → Decommission | ✅ Implemented |
-| **Agent Genealogy** | Parent-child spawn tracking for incident response | ✅ Implemented |
-| **Identity Compliance** | Automated SOC 2 CC6.1/CC6.6/CC6.7/CC6.8 reporting | ✅ Implemented |
+| **SPIFFE Identity** | IDs for every agent: `spiffe://aegis-t2a.local/ns/{ns}/agent/{type}/{id}` | ✅ In-app — SPIFFE-format IDs generated locally |
+| **SPIRE Agent Integration** | X.509-SVID and JWT-SVID issuance with automatic rotation | 📋 Planned — Workload API client is stubbed; SPIRE server manifest provided in `controlplane/spire/` |
+| **Workload Attestation** | Docker, Kubernetes, Unix process attestor modules | ✅ In-app |
+| **Node Attestation** | AWS, Azure, GCP cloud attestor modules | ✅ In-app |
+| **Workload IAM** | Context-aware access (identity + context + sensitivity) | ✅ In-app |
+| **Hierarchical Scopes** | read → write → execute → admin | ✅ In-app |
+| **Trust Federation** | Multi-org identity verification across trust domains | ✅ In-app (federation module) |
+| **NHI Lifecycle** | Provision → Rotate → Suspend → Revoke → Decommission | ✅ In-app |
+| **Agent Genealogy** | Parent-child spawn tracking for incident response | ✅ In-app |
+| **Identity Compliance** | SOC 2 CC6.1/CC6.6/CC6.7/CC6.8 control-mapping reports | ✅ In-app (reports — not a certification) |
 
-### **TIER 2: LLM Security & Control Plane** ✅
+### **TIER 2: LLM Security & Control Plane**
 
-Advanced security features specifically designed for LLM-based systems:
+Security features for LLM-based systems:
 
 | Component | Description | Coverage |
 |-----------|-------------|----------|
-| **Prompt Injection Detection** | 30+ attack patterns, 3-layer defense, auto-blocking | OWASP LLM01 |
+| **Prompt Injection Detection** | Pattern-based detection with auto-blocking | OWASP LLM01 |
 | **Output Guardrails** | PII/secret redaction, harmful content filtering | OWASP LLM02, LLM06 |
 | **Rate Limiting** | Request throttling and cost controls | OWASP LLM10 |
 | **Approval System** | Risk-based human-in-the-loop workflows | OWASP LLM09 |
 | **Autonomy Manager** | Time-limited leases (6 levels: 0-5) with automatic expiration | SOC 2 CC6.1 |
 | **Emergency Stop** | Instant revocation of all agent permissions | Incident Response |
 
-### **TIER 3: Enterprise Compliance & Audit** ✅
+### **TIER 3: Enterprise Compliance & Audit**
 
-SOC 2 compliance features with immutable audit logs and policy enforcement:
+Compliance features with immutable audit logs and policy enforcement:
 
 | Component | Description | Compliance |
 |-----------|-------------|------------|
 | **Event Store** | Immutable append-only log with hash-chaining | SOC 2 CC7.2 |
 | **Queryable Audit Index** | Fast forensic search + evidence export | CC7.2 |
-| **Policy Engine** | OPA-based Rego policies with versioning | CC6.1, CC8.1 |
-| **SOC 2 Reporter** | Automated compliance reports for 5 TSC criteria | All TSC |
+| **Policy Engine** | OPA-integrated Rego policies with versioning (local fallback when OPA is unreachable) | CC6.1, CC8.1 |
+| **SOC 2 Reporter** | Compliance report generator for 5 TSC criteria (mappings — not a certification) | All TSC |
 | **Chain Verification** | Real-time tamper detection in audit logs | CC7.3 |
-| **S3 Archival** | Long-term immutable storage with Object Lock | Retention |
+| **S3 Archival** | Long-term immutable storage with Object Lock | 🐳 Control-plane (event export to S3/MinIO via the event-store service) |
 
 ---
 
@@ -420,7 +441,7 @@ flowchart TB
 
     subgraph Observability["📈 Observability"]
         OTEL[OpenTelemetry Tracing]
-        METRICS[Prometheus Metrics]
+        METRICS[Prometheus-format metrics]
         LOGS[Structured Logs]
     end
 
@@ -680,7 +701,7 @@ Create `config/aegis.json` for advanced settings:
 | `GET` | `/api/v1/integrations/health` | Integration health status |
 | `GET` | `/api/v1/compliance/controls` | Compliance control mappings |
 | `GET` | `/api/v1/feature-flags` | List feature flags |
-| `GET` | `/api/v1/metrics` | Prometheus metrics |
+| `GET` | `/api/v1/metrics` | Prometheus-format metrics endpoint |
 
 ### Example: Create and Execute Intent
 
@@ -835,6 +856,10 @@ npm test -- tests/security/enterprise-security.test.ts
 npm test -- tests/security/phase2-components.test.ts
 ```
 
+> **Test status (measured 2026-09-14, `npm run test:coverage`, Node v24.20.0):**
+> 212 tests — **184 passing, 28 failing**. Coverage: **26.5% lines** (71.8% branches, 72.8% functions).
+> The 28 failures are pre-existing test/implementation contract mismatches (compensation validator, Merkle proof timing, ACL semantics, sandbox tuning, risk weights) — none were introduced by this branch. Note: the suite could not run at all before this change because vitest 1.x is incompatible with current Node; upgrading to vitest 3 was required to measure anything.
+
 ---
 
 ## Constraint Documentation
@@ -858,6 +883,6 @@ MIT License — See [LICENSE](./LICENSE) for details.
 
 **Built with defense-in-depth security for enterprise automation.**
 
-[Documentation](./docs/) · [API Reference](#api-reference) · [Report Issue](https://github.com/your-org/aegis-t2a/issues)
+[Documentation](./docs/) · [API Reference](#api-reference) · [Report Issue](https://github.com/ekuelkpodar/aegis-t2a/issues)
 
 </div>

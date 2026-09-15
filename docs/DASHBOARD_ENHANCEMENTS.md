@@ -281,7 +281,7 @@ frontend/
 ### Start the Server
 
 ```bash
-cd /Users/ekuekpodar/Desktop/AEGIS-T2A
+cd AEGIS-T2A
 npm start
 ```
 

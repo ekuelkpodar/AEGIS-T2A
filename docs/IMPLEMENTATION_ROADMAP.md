@@ -245,4 +245,4 @@ This section sequences near-term execution into concrete deliverables that map d
 
 Begin with **Phase 1, Week 1** (SPIFFE/SPIRE Identity). Each improvement is tracked as a separate commit to maintain clear history.
 
-**Next Step**: [IMPLEMENTATION_WEEK_01.md](./docs/implementation/week-01-spiffe-identity.md)
+**Next Step**: [IMPLEMENTATION_WEEK_01.md](./implementation/week-01-spiffe-identity.md)
