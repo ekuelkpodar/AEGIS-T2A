@@ -109,13 +109,15 @@ Capabilities are grouped by how they are actually delivered today — **in the a
 
 - **Temporal Workflows** — Durable orchestration with signals/queries and schedules via a real `@temporalio/*` integration.
 - **Hash-chained audit ledger** — Append-only event store with tamper-evident chaining, forensic search, and export.
-- **Policy engine with OPA integration** — Evaluates against a configured OPA server (`/v1/data/aegis/authz/decision`) and falls back to a built-in evaluator when OPA is unreachable. Rego bundles ship in `src/governance/policy/opa/` and industry packs in `policies/examples/industry/`; both are evaluated by the real OPA binary in CI.
+- **Policy engine with OPA integration** — Evaluates against a configured OPA server (`/v1/data/aegis/authz/decision`) and falls back to a built-in evaluator when OPA is unreachable. Rego bundles ship in `src/governance/policy/opa/` and industry packs in `policies/examples/industry/`; both are evaluated by the real OPA binary in CI, and the runtime policy has `opa test` unit coverage. Policy `approval_config` (timeouts, min-approvals, auto-deny) flows through to the approval service on both OPA and local paths.
 - **Identity & lifecycle** — SPIFFE-format workload IDs (`spiffe://aegis-t2a.local/...`), attestor modules (Docker, AWS, Azure, GCP), delegation, non-human-identity lifecycle, revocation.
-- **Safety** — Pattern-based prompt-injection detection with auto-blocking, PII/secret redaction, LLM output guardrails, intent/plan alignment checks, risk-based human approvals, autonomy leases, emergency stop.
+- **Safety** — Pattern + statistical-anomaly prompt-injection detection with auto-blocking, Luhn-validated credit-card detection, PII/secret redaction, LLM output guardrails wired into the completion path, intent/plan alignment checks, risk-based human approvals, autonomy leases, emergency stop.
 - **Resilience** — Idempotency, per-resource circuit breakers, exponential backoff with jitter, rate limiting.
 - **Observability** — OpenTelemetry tracing and a Prometheus-format `/metrics` endpoint.
 - **Compliance tooling** — SOC 2 report generator, RoPA records, DPIA templates, and control mappings for SOC 2, ISO 27001, NIST 800-53, PCI-DSS, GDPR, and HIPAA.
 - **DevEx** — CLI, web dashboard, evaluation harness, feature flags, model routing, prompt cache, Telegram/Slack/WhatsApp channels.
+- **Cost attribution** — Measured per-agent LLM token usage with per-model pricing, wired into the completion path (`TokenUsageTracker`; forwards to budget recording when attached).
+- **Supply chain** — SPDX SBOM generated on every push/schedule and uploaded as a CI artifact; weekly Dependabot for npm + GitHub Actions; advisory `npm audit` (high/critical) scan.
 
 ### 🐳 Available via the optional control-plane stack
 

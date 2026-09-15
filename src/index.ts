@@ -64,6 +64,20 @@ async function initialize(): Promise<void> {
   await initializeExecutor();
   await initializeWorkflowEngine();
 
+  // Wire measured LLM token usage into per-agent accounting
+  const { setUsageReporter } = await import('./providers/llm/index.js');
+  const { getTokenUsageTracker } = await import('./governance/budget/token-usage.js');
+  const tokenUsageTracker = getTokenUsageTracker();
+  setUsageReporter(async (report) => {
+    await tokenUsageTracker.record(
+      report.agentId,
+      report.tenantId,
+      report.model,
+      report.inputTokens,
+      report.outputTokens
+    );
+  });
+
   logger.info('All components initialized');
 }
 

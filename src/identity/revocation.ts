@@ -1,6 +1,6 @@
 /**
  * Emergency Identity Revocation System
- * Broadcasts identity revocations in < 5s using Redis pub/sub
+ * Broadcasts identity revocations to connected control-plane services.
  */
 
 import { SPIFFEId } from './spiffe.js';

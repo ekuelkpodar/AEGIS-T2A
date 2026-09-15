@@ -17,7 +17,6 @@ import { componentLogger } from '../../core/logger.js';
 import { savePlanPayload } from './payload-store.js';
 import { getTemporalClient } from './client.js';
 import { registerStepExecutor } from './activities.js';
-import { ensureSchedule } from './schedules.js';
 
 const logger = componentLogger('temporal-workflow');
 
@@ -45,17 +44,11 @@ export class TemporalWorkflowEngine {
   async initialize(): Promise<void> {
     if (this.initialized) return;
     await getTemporalClient();
-    try {
-      await ensureSchedule({
-        scheduleId: 'aegis-daily-compliance',
-        workflowType: 'planWorkflow',
-        taskQueue: this.config.temporalTaskQueue,
-        everyMinutes: 1440,
-        args: [],
-      });
-    } catch (error) {
-      logger.warn({ error }, 'Failed to ensure Temporal schedules');
-    }
+    // NOTE: no default schedule is created here. The previous
+    // 'aegis-daily-compliance' schedule started planWorkflow with an empty
+    // argument list, which the workflow rejects ('Plan payload missing') on
+    // every run. Schedules must be created explicitly via ensureSchedule()
+    // with a valid PlanWorkflowInput.
     this.initialized = true;
     logger.info('Temporal workflow engine initialized');
   }

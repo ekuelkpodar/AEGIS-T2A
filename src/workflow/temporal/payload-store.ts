@@ -36,11 +36,17 @@ export function savePlanPayload(
       payloadJson,
       sizeBytes,
       createdAt,
-      expiresAt ?? null,
+      expiresAt ?? defaultExpiry(createdAt),
     ]
   );
 
   return payloadId;
+}
+
+const DEFAULT_PAYLOAD_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function defaultExpiry(createdAt: string): string {
+  return new Date(new Date(createdAt).getTime() + DEFAULT_PAYLOAD_TTL_MS).toISOString();
 }
 
 export function loadPlanPayload(payloadId: string): PlanManifest | null {
@@ -54,5 +60,23 @@ export function loadPlanPayload(payloadId: string): PlanManifest | null {
   );
 
   if (!row) return null;
+
+  if (row.expiresAt && new Date(row.expiresAt).getTime() <= Date.now()) {
+    execute(`DELETE FROM workflow_payloads WHERE payload_id = ?`, [payloadId]);
+    return null;
+  }
+
   return JSON.parse(row.payloadJson) as PlanManifest;
+}
+
+/**
+ * Delete all expired payloads. Returns the number of rows removed.
+ * Intended to run on a periodic maintenance schedule.
+ */
+export function purgeExpiredPayloads(): number {
+  const result = execute(
+    `DELETE FROM workflow_payloads WHERE expires_at IS NOT NULL AND expires_at <= ?`,
+    [new Date().toISOString()]
+  );
+  return Number(result.changes ?? 0);
 }

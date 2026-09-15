@@ -22,6 +22,7 @@ export {
   getDLPFilter,
   initializeDLPFilter,
   defaultDLPConfig,
+  luhnCheck,
 } from './dlp-filter.js';
 export type {
   DLPConfig,

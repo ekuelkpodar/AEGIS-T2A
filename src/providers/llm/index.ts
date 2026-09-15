@@ -22,6 +22,14 @@ export interface LLMCompletionOptions {
   temperature?: number;
   topP?: number;
   stop?: string[];
+  /**
+   * Agent attribution for token-usage accounting. When present, measured
+   * token consumption is reported to the registered usage reporter.
+   */
+  agentContext?: {
+    agentId: string;
+    tenantId: string;
+  };
 }
 
 export interface LLMCompletionResult {
@@ -909,13 +917,88 @@ export function getLLMProvider(): LLMProvider {
 }
 
 /**
- * Complete a prompt using the current provider
+ * Override the active provider (embedding/testing). Prefer
+ * initializeLLMProvider in production code paths.
+ */
+export function setActiveProvider(provider: LLMProvider): void {
+  currentProvider = provider;
+}
+
+export interface UsageReport {
+  agentId: string;
+  tenantId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export type UsageReporter = (report: UsageReport) => void | Promise<void>;
+
+let usageReporter: UsageReporter | null = null;
+
+/**
+ * Register a callback invoked with measured token usage after every
+ * completion that carries agentContext. The governance layer wires this
+ * to TokenUsageTracker/BudgetService at startup.
+ */
+export function setUsageReporter(reporter: UsageReporter | null): void {
+  usageReporter = reporter;
+}
+
+/**
+ * Thrown when output guardrails block an LLM response.
+ */
+export class LLMSafetyError extends Error {
+  public readonly violations: string[];
+
+  constructor(violations: string[]) {
+    super(`LLM output blocked by safety guardrails: ${violations.join(', ')}`);
+    this.name = 'LLMSafetyError';
+    this.violations = violations;
+  }
+}
+
+/**
+ * Complete a prompt using the current provider.
+ *
+ * Applies (in order): measured token-usage reporting, then output safety
+ * guardrails (blocks on critical violations, returns sanitized content
+ * for warnings).
  */
 export async function complete(
   options: LLMCompletionOptions
 ): Promise<LLMCompletionResult> {
   const provider = getLLMProvider();
-  return provider.complete(options);
+  const result = await provider.complete(options);
+
+  // Measured token-usage accounting (per-agent cost attribution)
+  if (usageReporter && options.agentContext && result.usage) {
+    await usageReporter({
+      agentId: options.agentContext.agentId,
+      tenantId: options.agentContext.tenantId,
+      model: result.model,
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+    });
+  }
+
+  // Output safety guardrails
+  if (getConfig().llmGuardrailsEnabled) {
+    const { getLLMGuardrails } = await import('../../security/llm-guardrails.js');
+    const check = await getLLMGuardrails().checkOutput(result.content, {
+      modelName: result.model,
+      promptTokens: result.usage?.inputTokens,
+      completionTokens: result.usage?.outputTokens,
+    });
+    if (!check.safe) {
+      throw new LLMSafetyError(check.violations.map((v) => v.type));
+    }
+    if (check.sanitizedOutput !== undefined) {
+      return { ...result, content: check.sanitizedOutput };
+    }
+  }
+
+  return result;
 }
 
 /**

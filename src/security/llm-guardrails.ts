@@ -14,7 +14,6 @@
  */
 
 import { logger } from '../core/logger.js';
-import { getDLPFilter } from '../executor/index.js';
 
 export enum SafetyViolationType {
   PII_EXPOSURE = 'pii_exposure',
@@ -58,6 +57,8 @@ export interface LLMGuardrailsConfig {
 export class LLMGuardrails {
   private readonly config: LLMGuardrailsConfig;
   private requestCount = 0;
+  private blockedCount = 0;
+  private warningCount = 0;
   private lastResetTime = Date.now();
   private readonly requestTimestamps: number[] = [];
 
@@ -90,6 +91,9 @@ export class LLMGuardrails {
   ): Promise<SafetyCheckResult> {
     const violations: SafetyViolation[] = [];
     let sanitizedOutput = output;
+
+    this.requestCount++;
+    this.requestTimestamps.push(Date.now());
 
     // Check 1: PII Detection
     if (this.config.enablePIIDetection) {
@@ -146,12 +150,14 @@ export class LLMGuardrails {
     const allowWithWarning = riskScore < this.config.riskThreshold && violations.length > 0;
 
     if (!safe) {
+      this.blockedCount++;
       logger.warn('LLM output blocked by guardrails', {
         riskScore,
         violations: violations.length,
         criticalCount: criticalViolations.length,
       });
     } else if (violations.length > 0) {
+      this.warningCount++;
       logger.info('LLM output has warnings', {
         riskScore,
         violations: violations.length,
@@ -172,7 +178,6 @@ export class LLMGuardrails {
    */
   private async detectPII(output: string): Promise<SafetyViolation[]> {
     const violations: SafetyViolation[] = [];
-    const dlp = getDLPFilter();
 
     // Use existing DLP patterns
     const patterns = [
@@ -411,8 +416,8 @@ export class LLMGuardrails {
 
     return {
       totalRequests: this.requestCount,
-      blockedRequests: 0, // Would track this in production
-      warningRequests: 0, // Would track this in production
+      blockedRequests: this.blockedCount,
+      warningRequests: this.warningCount,
       currentRPM: recentRequests.length,
     };
   }

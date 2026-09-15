@@ -75,6 +75,29 @@ describe('Cryptography', () => {
     expect(hashObject(obj1)).toBe(hashObject(obj2));
   });
 
+  it('hashes nested objects deterministically regardless of key order', () => {
+    const obj1 = { b: { d: 4, c: 3 }, a: [{ y: 2, x: 1 }] };
+    const obj2 = { a: [{ x: 1, y: 2 }], b: { c: 3, d: 4 } };
+
+    expect(hashObject(obj1)).toBe(hashObject(obj2));
+  });
+
+  it('preserves nested keys that are absent at the top level', () => {
+    // Regression test: the old replacer-array implementation silently
+    // dropped nested keys not present at the top level, producing
+    // collisions between structurally different payloads.
+    const withNested = { tool: 'aws', parameters: { instanceId: 'i-123' } };
+    const withoutNested = { tool: 'aws', parameters: {} };
+
+    expect(hashObject(withNested)).not.toBe(hashObject(withoutNested));
+  });
+
+  it('handles null, arrays, and primitives without throwing', () => {
+    expect(hashObject(null)).toHaveLength(64);
+    expect(hashObject([3, 2, 1])).not.toBe(hashObject([1, 2, 3]));
+    expect(hashObject('x')).toBe(hashObject('x'));
+  });
+
   it('signs and verifies data', () => {
     const data = 'test data';
     const signature = sign(data);
