@@ -508,6 +508,214 @@ flowchart TB
 
 ---
 
+## 📐 Architecture Diagrams
+
+Derived from the codebase. Status markers match the three-tier table above: **✅ in-app**, **🐳 control-plane service**, **📋 planned**.
+
+### 1. Governed request spine — one request through the three tiers
+
+```mermaid
+flowchart TB
+    subgraph T1 ["TIER 1 — Identity & Zero-Trust"]
+        ID["SPIFFE-format workload ID<br/>spiffe://aegis-t2a.local/...<br/>✅ in-app · SPIRE Workload API stubbed 📋"]
+        ATTEST["Workload / node attestation<br/>Docker · K8s · Unix · AWS · Azure · GCP<br/>✅ in-app"]
+        SCOPE["Scopes + NHI lifecycle<br/>read → write → execute → admin<br/>✅ in-app"]
+    end
+    subgraph T2 ["TIER 2 — LLM Security & Control"]
+        GW["Intent Gateway<br/>confidence-aware parser, disambiguation<br/>✅ in-app"]
+        POL["Policy Engine<br/>OPA HTTP decision · local fallback<br/>✅ in-app (OPA server is 🐳)"]
+        PLAN["Planner<br/>blast-radius analysis, compensation validation<br/>✅ in-app"]
+        APPR["Approval gate<br/>risk-based: auto / async / multi-signer<br/>✅ in-app · service is 🐳"]
+        AUT["Autonomy leases (levels 0–5, TTL)<br/>✅ in-app"]
+        TEMP["Temporal durable workflows<br/>✅ real client + worker"]
+        EXEC["Sandboxed executor<br/>payload guard, path blocklist, DLP filter, idempotency<br/>✅ in-app"]
+    end
+    subgraph T3 ["TIER 3 — Compliance & Audit"]
+        LED["Hash-chained audit ledger<br/>SHA-256 chain, signed events<br/>✅ in-app"]
+        IDX["Queryable audit index + replay engine<br/>✅ in-app"]
+        SOC["SOC 2 reporter<br/>control mappings — not a certification<br/>✅ in-app"]
+        ARCH["S3/MinIO archival with Object Lock<br/>🐳 via event-store service"]
+    end
+
+    ID --> ATTEST --> SCOPE
+    SCOPE --> GW
+    GW --> POL
+    POL --> PLAN
+    PLAN --> APPR
+    APPR --> AUT
+    AUT --> TEMP
+    TEMP --> EXEC
+    EXEC --> LED
+    LED --> IDX
+    IDX --> SOC
+    LED --> ARCH
+    GW --> LED
+    PLAN --> LED
+
+    classDef t1 fill:#e3f2fd,stroke:#1565c0
+    classDef t2 fill:#fff3e0,stroke:#ef6c00
+    classDef t3 fill:#e8f5e9,stroke:#2e7d32
+    class ID,ATTEST,SCOPE t1
+    class GW,POL,PLAN,APPR,AUT,TEMP,EXEC t2
+    class LED,IDX,SOC,ARCH t3
+```
+
+### 2. Governed action pipeline — how one risky action is executed
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant GW as Intent Gateway
+    participant ID as Identity
+    participant PE as Policy Engine
+    participant OPA as OPA server (compose 🐳)
+    participant AP as Approval gate
+    participant TW as Temporal workflow
+    participant EX as Sandboxed executor
+    participant AU as Audit ledger
+
+    User->>GW: natural-language intent
+    GW->>ID: issue workload identity
+    ID-->>GW: spiffe://aegis-t2a.local/... (locally generated)
+    GW->>PE: authorize(intent, context)
+    alt OPA healthy
+        PE->>OPA: POST /v1/data decision (HTTP)
+        OPA-->>PE: allow / deny / approval_required
+    else OPA unreachable
+        PE->>PE: local policy evaluation (fallback)
+    end
+    alt deny or policy error
+        PE-->>GW: deny — FAIL-CLOSED
+        GW->>AU: append denied event
+    else approval required
+        PE->>AP: route by risk level
+        AP->>User: async / multi-signer approval request
+        User->>AP: approve / reject
+        AP-->>GW: approved plan (or rejection)
+    end
+    GW->>TW: start durable workflow
+    TW->>EX: execute tool call
+    EX->>EX: DLP scan · sandbox guard · idempotency check
+    EX-->>TW: result + compensation plan
+    TW-->>GW: durable result (retried across crashes)
+    GW->>AU: append hash-chained, signed event
+```
+
+### 3. Three-tier component map
+
+```mermaid
+flowchart TB
+    subgraph T1 ["TIER 1 — Identity & Zero-Trust Foundation"]
+        direction TB
+        A1["SPIFFE-format identity ✅"]
+        A2["Workload attestation ✅"]
+        A3["Node attestation ✅"]
+        A4["Workload IAM ✅"]
+        A5["Scopes · NHI lifecycle · genealogy ✅"]
+        A6["SPIRE SVID issuance 📋 stubbed"]
+    end
+    subgraph T2 ["TIER 2 — LLM Security & Control Plane"]
+        direction TB
+        B1["Intent Gateway ✅"]
+        B2["Prompt-injection detection ✅"]
+        B3["Policy engine (OPA + local fallback) ✅"]
+        B4["Approvals · autonomy leases ✅"]
+        B5["Temporal durable workflows ✅"]
+        B6["Sandboxed executor · DLP ✅"]
+        B7["Rate limiting · circuit breakers ✅"]
+    end
+    subgraph T3 ["TIER 3 — Compliance & Audit"]
+        direction TB
+        C1["Hash-chained ledger ✅"]
+        C2["Queryable index + replay ✅"]
+        C3["SOC 2 reporter ✅ (mappings)"]
+        C4["Chain verification ✅"]
+        C5["S3/MinIO archival 🐳"]
+    end
+    T1 --> T2
+    T2 --> T3
+    T1 -.->|"identity bound to every<br/>audit event"| T3
+
+    classDef ok fill:#e8f5e9,stroke:#2e7d32
+    classDef cp fill:#e8eaf6,stroke:#1a237e
+    classDef plan fill:#fff3e0,stroke:#ef6c00
+    class A1,A2,A3,A4,A5,B1,B2,B3,B4,B5,B6,B7,C1,C2,C3,C4 ok
+    class C5 cp
+    class A6 plan
+```
+
+### 4. Governance choke points — where execution can be halted
+
+Every arrow into a ⛔ node is an enforcement point: a denial stops the request, and every decision lands in the audit ledger.
+
+```mermaid
+flowchart LR
+    IN(["user intent"])
+    G1{{"⛔ Identity gate<br/>SPIFFE ID + attestation<br/>✅ in-app"}}
+    G2{{"⛔ Policy decision<br/>OPA HTTP · local fallback<br/>FAIL-CLOSED ✅ in-app"}}
+    G3{{"⛔ Approval gate<br/>auto / async / multi-signer<br/>✅ in-app"}}
+    G4{{"⛔ Pre-execution guard<br/>sandbox · DLP · idempotency<br/>✅ in-app"}}
+    EX(["tool execution<br/>via Temporal workflow"])
+    G5{{"⛔ Post-execution audit<br/>hash-chained, signed event<br/>✅ in-app"}}
+    OUT(["audited outcome"])
+    DENY(["halted — audit event recorded"])
+
+    IN --> G1 --> G2 --> G3 --> G4 --> EX --> G5 --> OUT
+    G1 -.->|"deny"| DENY
+    G2 -.->|"deny"| DENY
+    G3 -.->|"reject"| DENY
+    G4 -.->|"block"| DENY
+
+    classDef gate fill:#ffebee,stroke:#c62828
+    class G1,G2,G3,G4,G5 gate
+```
+
+### 5. Deployment topology — main app vs. control plane
+
+```mermaid
+flowchart TB
+    subgraph APP ["Main app — Node/TypeScript (in-process)"]
+        direction TB
+        GW2["Intent Gateway + planner ✅"]
+        PE2["Policy engine<br/>OPA HTTP client + local fallback ✅"]
+        TWW["Temporal client + worker<br/>durable workflows ✅"]
+        AUD2["Hash-chained audit ledger ✅"]
+        ST["State: better-sqlite3<br/>dev/reference — Postgres 📋 for production"]
+        CA["Cache: node-cache, in-process<br/>Redis 📋 not implemented"]
+        SEC["Secrets: custom module<br/>Vault is 🐳-only"]
+        FE["Static HTML/JS dashboard"]
+    end
+    subgraph CP ["Control plane — docker-compose (optional)"]
+        direction TB
+        PG[("PostgreSQL 15 ✅<br/>service — not wired to main app")]
+        OPA2["OPA server :8181 ✅"]
+        VAULT["Vault (dev mode) ✅<br/>service — not wired to main app"]
+        MINIO[("MinIO S3 ✅")]
+        ID2["Identity service :8000"]
+        EVT2["Event store :8001"]
+        POL2["Policy engine :8002"]
+        AUT2["Autonomy manager :8003"]
+        APP2["Approval system :8004"]
+        UAP["Automation platform :8005"]
+        SPK["SPIRE server manifests 📋"]
+    end
+
+    PE2 -- "HTTP decision (when deployed)" --> OPA2
+    AUD2 -- "export (via service)" --> EVT2
+    EVT2 --> PG
+    EVT2 --> MINIO
+    ID2 --> VAULT
+    ID2 --> PG
+    SPK -.->|"not wired — SVID client stubbed 📋"| ID2
+
+    classDef dev fill:#fff3e0,stroke:#ef6c00
+    classDef live fill:#e8f5e9,stroke:#2e7d32
+    class ST,CA,SEC,SPK dev
+    class PG,OPA2,VAULT,MINIO live
+```
+
+---
+
 ## System Flow
 
 ```mermaid
