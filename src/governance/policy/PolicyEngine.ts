@@ -210,6 +210,9 @@ export class PolicyEngine extends EventEmitter {
       policy_version: this.policyVersion,
       evaluation_ms: 0,
       modified_parameters: data.result.modifications,
+      metadata: data.result.approval_config
+        ? { approval_config: data.result.approval_config }
+        : undefined,
     };
   }
 
@@ -241,6 +244,9 @@ export class PolicyEngine extends EventEmitter {
           matched_policy: rule.id,
           policy_version: this.policyVersion,
           evaluation_ms: 0,
+          metadata: rule.approval_config
+            ? { approval_config: rule.approval_config }
+            : undefined,
         };
 
         // Handle modifications

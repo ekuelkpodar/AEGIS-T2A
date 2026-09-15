@@ -42,6 +42,7 @@ const ConfigSchema = z.object({
   llmComplexModel: z.string().optional(),
   promptCacheEnabled: z.coerce.boolean().default(false),
   promptCacheTtlSeconds: z.coerce.number().int().positive().default(86400),
+  llmGuardrailsEnabled: z.coerce.boolean().default(true),
   featureFlagsJson: z.string().optional(),
 
   // Observability
@@ -128,6 +129,7 @@ function loadConfig(): Config {
     llmComplexModel: process.env['LLM_COMPLEX_MODEL'],
     promptCacheEnabled: process.env['PROMPT_CACHE_ENABLED'],
     promptCacheTtlSeconds: process.env['PROMPT_CACHE_TTL_SECONDS'],
+    llmGuardrailsEnabled: process.env['LLM_GUARDRAILS_ENABLED'],
     featureFlagsJson: process.env['FEATURE_FLAGS_JSON'],
     otelEndpoint: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'],
     otelServiceName: process.env['OTEL_SERVICE_NAME'],

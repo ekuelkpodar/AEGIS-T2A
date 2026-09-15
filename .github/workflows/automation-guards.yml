@@ -88,7 +88,11 @@ jobs:
 
       - name: Verify Rego formatting
         run: |
-          opa fmt --fail policies/examples/industry/*.rego
+          opa fmt --fail policies/examples/industry/*.rego src/governance/policy/opa/*.rego
+
+      - name: Run runtime policy unit tests
+        run: |
+          opa test src/governance/policy/opa/
 
       - name: Evaluate industry policy decisions
         run: |

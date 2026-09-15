@@ -721,3 +721,28 @@ The platform is now ready for production deployment with comprehensive fault tol
 
 4. **Config wiring** (`src/core/config.ts`)
    - `SANDBOX_READONLY_PATHS`, `SANDBOX_MAX_PAYLOAD_BYTES`
+
+---
+
+## Roadmap Improvements Pass — 2026-09-15 (branch `roadmap-improvements`)
+
+Follow-up to the credibility fixes. The full 258-item research roadmap was
+audited; only verifiable, high-leverage items were implemented — no stub
+theater. Full audit trail, per-item verification, and the deliberately-skipped
+list live in `docs/ROADMAP_AUDIT_2026-09.md`.
+
+Highlights: canonical cryptographic serialization (fixes a real
+nested-field idempotency collision bug); Luhn-validated DLP credit-card
+detection; prompt-injection detector expanded with a real statistical-anomaly
+fourth layer (replacing a false "perplexity" claim); LLM output guardrails
+wired into the completion path; measured per-agent token-usage accounting;
+`approval_config` plumbed through both OPA and local policy evaluation;
+runtime `aegis.rego` fixed for `eval_conflict_error` crashes and covered by
+`opa test` (also run in CI); Temporal retry policies, heartbeat timeouts,
+payload TTL/expiry enforcement, and removal of a broken default schedule;
+sandbox path canonicalization; supply-chain hardening (SPDX SBOM, Dependabot,
+advisory npm audit).
+
+Quality gates: `npm test` 227/255 passing (baseline 184/212, same 28
+pre-existing failures — zero regressions); `npm run typecheck` 31 errors,
+identical set to baseline; `opa test` 8/8.

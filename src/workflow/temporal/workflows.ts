@@ -22,12 +22,29 @@ const stateQuery = defineQuery<WorkflowState>('getState');
 
 const DEFAULT_ACTIVITY_TIMEOUT = '5 minutes';
 
+/**
+ * Explicit retry policy for plan activities. Transient step failures are
+ * retried with exponential backoff (max 5 attempts); validation errors are
+ * not retried.
+ */
+const ACTIVITY_RETRY_POLICY = {
+  initialInterval: 10_000,
+  backoffCoefficient: 2,
+  maximumInterval: 300_000,
+  maximumAttempts: 5,
+  nonRetryableErrorTypes: ['PlanPayloadMissingError', 'ValidationError'],
+};
+
 const activities = proxyActivities<{
   executePlanStep(request: ExecuteStepRequest): Promise<{ status: string; outputs: Record<string, unknown>; durationMs: number; costIncurred: number; error?: string }>;
   compensateStep(request: ExecuteStepRequest): Promise<{ status: string; outputs: Record<string, unknown>; durationMs: number; costIncurred: number; error?: string }>;
   fetchPlanPayload(payloadId: string): Promise<PlanManifest | null>;
 }>({
   startToCloseTimeout: DEFAULT_ACTIVITY_TIMEOUT,
+  // Long-running step executions must heartbeat so the server can detect
+  // stuck workers; activity implementations should heartbeat periodically.
+  heartbeatTimeout: '1 minute',
+  retry: ACTIVITY_RETRY_POLICY,
 });
 
 export interface PlanWorkflowInput {

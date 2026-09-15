@@ -5,7 +5,8 @@
  * 1. Pattern-based detection (known attack vectors)
  * 2. Structural analysis (unusual formatting, encoding)
  * 3. Semantic analysis (suspicious instructions)
- * 4. Perplexity scoring (statistical anomalies)
+ * 4. Statistical anomaly detection (character-level entropy / token
+ *    diversity outliers vs. typical natural-language baselines)
  *
  * References:
  * - OWASP LLM01: Prompt Injection
@@ -43,6 +44,7 @@ export interface PromptInjectionConfig {
   enablePatternDetection: boolean;
   enableStructuralAnalysis: boolean;
   enableSemanticAnalysis: boolean;
+  enableStatisticalAnalysis: boolean;
   logAllDetections: boolean;
 }
 
@@ -58,6 +60,7 @@ export class PromptInjectionDetector {
       enablePatternDetection: config?.enablePatternDetection ?? true,
       enableStructuralAnalysis: config?.enableStructuralAnalysis ?? true,
       enableSemanticAnalysis: config?.enableSemanticAnalysis ?? true,
+      enableStatisticalAnalysis: config?.enableStatisticalAnalysis ?? true,
       logAllDetections: config?.logAllDetections ?? true,
     };
 
@@ -97,6 +100,13 @@ export class PromptInjectionDetector {
       const semanticResults = this.analyzeSemantics(prompt);
       detectedPatterns.push(...semanticResults);
       maxSeverity = Math.max(maxSeverity, ...semanticResults.map(p => p.severity));
+    }
+
+    // Layer 4: Statistical anomaly detection
+    if (this.config.enableStatisticalAnalysis) {
+      const statisticalResults = this.analyzeStatistics(prompt);
+      detectedPatterns.push(...statisticalResults);
+      maxSeverity = Math.max(maxSeverity, ...statisticalResults.map(p => p.severity));
     }
 
     // Calculate overall confidence and threat level
@@ -141,19 +151,31 @@ export class PromptInjectionDetector {
     // Jailbreak attempts
     this.addPattern({
       type: 'jailbreak',
-      pattern: /ignore (all |your )?previous (instructions|rules|guidelines)/i,
+      pattern: /ignore (all |your )?previous (instructions|rules|guidelines|prompts?)/i,
       severity: 9,
     });
 
     this.addPattern({
       type: 'jailbreak',
-      pattern: /forget (all |your )?previous (instructions|rules|constraints)/i,
+      pattern: /disregard (all |the )?(above|previous|prior|earlier) (instructions|rules|prompts?)/i,
+      severity: 9,
+    });
+
+    this.addPattern({
+      type: 'jailbreak',
+      pattern: /forget (all |your )?previous (instructions|rules|constraints|prompts?)/i,
       severity: 9,
     });
 
     this.addPattern({
       type: 'jailbreak',
       pattern: /(you are now|act as|pretend to be|roleplay as).*(DAN|evil|unrestricted)/i,
+      severity: 8,
+    });
+
+    this.addPattern({
+      type: 'jailbreak',
+      pattern: /do not follow your (original )?(instructions|guidelines|rules)/i,
       severity: 8,
     });
 
@@ -166,7 +188,7 @@ export class PromptInjectionDetector {
 
     this.addPattern({
       type: 'instruction_override',
-      pattern: /(new|updated|different)\s*instructions?:/i,
+      pattern: /(new|updated|different|real)\s*(system\s*)?(instructions?|prompt):/i,
       severity: 7,
     });
 
@@ -174,6 +196,25 @@ export class PromptInjectionDetector {
       type: 'instruction_override',
       pattern: /---\s*END\s*(SYSTEM|INSTRUCTIONS|PROMPT)/i,
       severity: 8,
+    });
+
+    this.addPattern({
+      type: 'instruction_override',
+      pattern: /\[system\][\s\S]{0,200}?\[\/(user|assistant|system)\]/i,
+      severity: 8,
+    });
+
+    // Long base64/hex blobs are a classic encoded-payload carrier
+    this.addPattern({
+      type: 'encoding',
+      pattern: /[A-Za-z0-9+/]{60,}={0,2}/,
+      severity: 6,
+    });
+
+    this.addPattern({
+      type: 'encoding',
+      pattern: /\b[0-9a-fA-F]{64,}\b/,
+      severity: 5,
     });
 
     // Context escape attempts
@@ -189,17 +230,29 @@ export class PromptInjectionDetector {
       severity: 8,
     });
 
+    this.addPattern({
+      type: 'context_escape',
+      pattern: /\[[^\]]{1,60}\]\(javascript:/i,
+      severity: 8,
+    });
+
     // Data exfiltration attempts
     this.addPattern({
       type: 'data_exfiltration',
-      pattern: /(repeat|output|print|show|display)\s*(your|the)\s*(system\s*)?(prompt|instructions)/i,
+      pattern: /(repeat|output|print|show|display|reveal)\s*(your|the)\s*(system\s*)?(prompt|instructions|secrets?|api[_-]?keys?)/i,
       severity: 8,
     });
 
     this.addPattern({
       type: 'data_exfiltration',
-      pattern: /what (were|are) your (original|initial|system) (instructions|rules|prompt)/i,
+      pattern: /what (were|are) your (original|initial|system|hidden) (instructions|rules|prompt)/i,
       severity: 8,
+    });
+
+    this.addPattern({
+      type: 'data_exfiltration',
+      pattern: /(exfiltrate|leak|send|upload|post).*(password|secret|token|credential)/i,
+      severity: 9,
     });
 
     // Unicode and encoding tricks
@@ -213,6 +266,13 @@ export class PromptInjectionDetector {
       type: 'encoding',
       pattern: /\\u[0-9a-fA-F]{4}/,
       severity: 5,
+    });
+
+    // Long base64-ish blob adjacent to instruction words (encoded payload)
+    this.addPattern({
+      type: 'encoding',
+      pattern: /(decode|base64|decrypt|decipher)[\s\S]{0,40}?[A-Za-z0-9+/]{80,}={0,2}/i,
+      severity: 7,
     });
   }
 
@@ -335,6 +395,58 @@ export class PromptInjectionDetector {
           type: 'jailbreak',
           pattern: `Authority escalation: ${keyword}`,
           severity: 8,
+        });
+      }
+    }
+
+    return detected;
+  }
+
+  /**
+   * Layer 4: Statistical anomaly detection.
+   *
+   * Character-level Shannon entropy and token diversity compared against
+   * natural-language baselines. Encoded/encrypted payloads (base64, hex)
+   * have anomalously high entropy (~5.9 bits/char vs ~4.0–4.9 for English);
+   * repeated-character spam has anomalously low entropy. Thresholds are
+   * conservative so this layer only ever contributes a SUSPICIOUS signal.
+   */
+  private analyzeStatistics(prompt: string): DetectionPattern[] {
+    const detected: DetectionPattern[] = [];
+    if (prompt.length < 60) return detected;
+
+    const freq = new Map<string, number>();
+    for (const ch of prompt) {
+      freq.set(ch, (freq.get(ch) ?? 0) + 1);
+    }
+    let entropy = 0;
+    for (const count of freq.values()) {
+      const p = count / prompt.length;
+      entropy -= p * Math.log2(p);
+    }
+
+    if (entropy > 5.4) {
+      detected.push({
+        type: 'encoding',
+        pattern: `High character entropy (${entropy.toFixed(2)} bits/char — possible encoded payload)`,
+        severity: 6,
+      });
+    } else if (entropy < 2.5) {
+      detected.push({
+        type: 'encoding',
+        pattern: `Abnormally low character entropy (${entropy.toFixed(2)} bits/char — possible repetition spam)`,
+        severity: 5,
+      });
+    }
+
+    const tokens = prompt.split(/\s+/).filter(Boolean);
+    if (tokens.length >= 20) {
+      const diversity = new Set(tokens.map((t) => t.toLowerCase())).size / tokens.length;
+      if (diversity < 0.15) {
+        detected.push({
+          type: 'context_escape',
+          pattern: 'Very low token diversity (repetitive token stuffing)',
+          severity: 5,
         });
       }
     }

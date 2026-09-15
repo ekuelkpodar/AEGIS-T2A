@@ -18,10 +18,32 @@ export function sha256(data: string | Buffer): string {
 }
 
 /**
- * Compute SHA-256 hash of an object (JSON-serialized)
+ * Recursively canonicalize a value for deterministic hashing:
+ * object keys are sorted at every nesting level. The previous
+ * implementation passed `Object.keys(obj).sort()` as a JSON.stringify
+ * replacer array, which is applied at *all* levels and silently drops
+ * nested keys not present at the top level — corrupting hashes for
+ * any nested payload (idempotency keys, audit input/output hashes).
+ */
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalize);
+  }
+  if (value !== null && typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      result[key] = canonicalize((value as Record<string, unknown>)[key]);
+    }
+    return result;
+  }
+  return value;
+}
+
+/**
+ * Compute SHA-256 hash of an object (canonical JSON-serialized)
  */
 export function hashObject(obj: unknown): string {
-  const normalized = JSON.stringify(obj, Object.keys(obj as object).sort());
+  const normalized = JSON.stringify(canonicalize(obj));
   return sha256(normalized);
 }
 
@@ -77,10 +99,10 @@ export function sign(data: string | Buffer): string {
 }
 
 /**
- * Sign an object (JSON-serialized)
+ * Sign an object (canonical JSON-serialized)
  */
 export function signObject(obj: unknown): string {
-  const normalized = JSON.stringify(obj, Object.keys(obj as object).sort());
+  const normalized = JSON.stringify(canonicalize(obj));
   return sign(normalized);
 }
 
@@ -103,7 +125,7 @@ export function verifySignature(data: string | Buffer, signature: string): boole
  * Verify an object signature
  */
 export function verifyObjectSignature(obj: unknown, signature: string): boolean {
-  const normalized = JSON.stringify(obj, Object.keys(obj as object).sort());
+  const normalized = JSON.stringify(canonicalize(obj));
   return verifySignature(normalized, signature);
 }
 

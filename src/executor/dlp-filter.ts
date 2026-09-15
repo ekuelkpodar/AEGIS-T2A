@@ -121,6 +121,35 @@ export interface DLPPattern {
   confidence: number;
   context_keywords?: string[];
   negative_keywords?: string[];
+  /**
+   * Optional checksum-style validator applied to each raw match before it
+   * becomes a finding (e.g. Luhn for credit cards). Returning false drops
+   * the match as a false positive.
+   */
+  validate?: (matchedText: string) => boolean;
+}
+
+/**
+ * Luhn checksum validation (ISO/IEC 7812). Kills false positives from
+ * random 13–19 digit sequences (order IDs, timestamps) matching card regexes.
+ */
+export function luhnCheck(matchedText: string): boolean {
+  const digits = matchedText.replace(/\D/g, '');
+  if (digits.length < 13 || digits.length > 19) return false;
+
+  let sum = 0;
+  let doubleDigit = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let digit = digits.charCodeAt(i) - 48; // '0'
+    if (digit < 0 || digit > 9) return false;
+    if (doubleDigit) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    doubleDigit = !doubleDigit;
+  }
+  return sum % 10 === 0;
 }
 
 export interface DLPScanResult {
@@ -220,6 +249,7 @@ const DEFAULT_PATTERNS: DLPPattern[] = [
     classification: 'restricted',
     confidence: 0.95,
     context_keywords: ['card', 'credit', 'debit', 'payment', 'visa', 'mastercard', 'amex'],
+    validate: luhnCheck,
   },
   {
     id: 'fin-credit-card-formatted',
@@ -230,6 +260,7 @@ const DEFAULT_PATTERNS: DLPPattern[] = [
     classification: 'restricted',
     confidence: 0.85,
     context_keywords: ['card', 'credit', 'debit', 'payment'],
+    validate: luhnCheck,
   },
   {
     id: 'fin-bank-account',
@@ -642,6 +673,11 @@ export class DLPFilter extends EventEmitter {
         }
 
         if (confidence >= 0.5) {
+          // Optional checksum-style validation (e.g. Luhn for card numbers)
+          // drops regex false positives before they become findings.
+          if (pattern.validate && !pattern.validate(match[0])) {
+            continue;
+          }
           matchesToProcess.push({ match, confidence });
         }
 
